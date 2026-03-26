@@ -39,6 +39,10 @@
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
         Admin
       </a>
+      <a href="{{ url_for('admin.relacionamento_painel') }}" class="drawer__link">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"/><path d="M7 14l3-3 3 2 4-5"/></svg>
+        Painel Relacionamento
+      </a>
       {% endif %}
     </div>
     <div class="drawer__footer">
@@ -329,6 +333,20 @@
         <button class="btn btn--primary" type="submit" id="btn-salvar-ficha">Salvar alterações</button>
       </div>
     </form>
+  </div>
+</div>
+
+<div id="modal-delete" class="modal-overlay" hidden onclick="if(event.target===this)closeDeleteModal()">
+  <div class="modal modal--confirm">
+    <div class="modal__header">
+      <h4>Excluir registro</h4>
+      <button class="modal__close" type="button" onclick="closeDeleteModal()">×</button>
+    </div>
+    <p class="confirm-modal__text">Deseja excluir este registro? Essa ação não poderá ser desfeita.</p>
+    <div class="modal__actions">
+      <button class="btn btn--ghost" type="button" onclick="closeDeleteModal()">Cancelar</button>
+      <button class="btn btn--primary" type="button" id="confirm-delete-btn">Excluir</button>
+    </div>
   </div>
 </div>
 

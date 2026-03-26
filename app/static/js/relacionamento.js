@@ -1,11 +1,9 @@
-/* ═══════════════════════════════════════════════════════════════════════════
-   SOUSA ARAUJO — relacionamento.js
-   ═══════════════════════════════════════════════════════════════════════════ */
-
 'use strict';
 
 let registrosCache = [];
+let deleteState = { id: null, btnEl: null };
 const MESES_RELACIONAMENTO = ['abril', 'maio', 'junho'];
+
 function podeExcluirRegistro(registro) {
   return IS_ADMIN || registro.responsavel === CURRENT_USER_NOME;
 }
@@ -26,7 +24,6 @@ function isSituacaoRejeitada(situacao) {
   return ['NÃO', 'NAO', 'CONTATO REJEITADO'].includes(situacao);
 }
 
-// ── Toast ──────────────────────────────────────────────────────────────────
 let toastTimer;
 function showToast(msg, tipo = 'success') {
   const el = document.getElementById('toast');
@@ -36,14 +33,12 @@ function showToast(msg, tipo = 'success') {
   toastTimer = setTimeout(() => el.classList.remove('show'), 3500);
 }
 
-// ── Formatar valor ─────────────────────────────────────────────────────────
 function fmtValor(v) {
   return v > 0
     ? 'R$ ' + v.toLocaleString('pt-BR', { minimumFractionDigits: 2 })
     : '—';
 }
 
-// ── Atualizar indicadores na tela ──────────────────────────────────────────
 function atualizarIndicadores(ind) {
   document.getElementById('acoes-planejadas').textContent = ind.acoes_planejadas;
   document.getElementById('acoes-realizadas').textContent = ind.acoes_realizadas;
@@ -63,18 +58,19 @@ function atualizarIndicadores(ind) {
     `R$ ${ind.soma_valores.toLocaleString('pt-BR', { minimumFractionDigits: 2 })} de R$ ${ind.valor_meta.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`;
 }
 
-// ── Ícone de status ────────────────────────────────────────────────────────
 function statusIcon(situacao) {
-  if (situacao === 'SIM')
+  if (situacao === 'SIM') {
     return '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#059669" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>';
-  if (isSituacaoRejeitada(situacao))
+  }
+  if (isSituacaoRejeitada(situacao)) {
     return '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#DC2626" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>';
-  if (situacao === 'LIGAR EM OUTRO MOMENTO')
+  }
+  if (situacao === 'LIGAR EM OUTRO MOMENTO') {
     return '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#D97706" stroke-width="2.5"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>';
+  }
   return '<span style="color:#ccc">—</span>';
 }
 
-// ── Ficha do cliente ────────────────────────────────────────────────────────
 function abrirFicha(id) {
   const r = registrosCache.find(x => x.id === id);
   if (!r) return;
@@ -106,6 +102,16 @@ function closeFicha() {
   document.getElementById('modal-ficha').setAttribute('hidden', '');
 }
 
+function openDeleteModal(id, btnEl) {
+  deleteState = { id, btnEl };
+  document.getElementById('modal-delete').removeAttribute('hidden');
+}
+
+function closeDeleteModal() {
+  deleteState = { id: null, btnEl: null };
+  document.getElementById('modal-delete').setAttribute('hidden', '');
+}
+
 function toggleMesRelacionamento(mesId) {
   const body = document.getElementById(`body-${mesId}`);
   const arrow = document.getElementById(`arrow-${mesId}`);
@@ -114,7 +120,6 @@ function toggleMesRelacionamento(mesId) {
   arrow.classList.toggle('week-month__arrow--collapsed', collapsed);
 }
 
-// ── Renderizar tabela completa ─────────────────────────────────────────────
 function renderizarTabela(registros) {
   registrosCache = registros;
   const tbody = document.getElementById('tbody-clientes');
@@ -122,28 +127,29 @@ function renderizarTabela(registros) {
   counter.textContent = registros.length + ' registros';
 
   if (!registros.length) {
-    tbody.innerHTML = `<tr id="empty-row"><td colspan="11" class="td-empty">Nenhum registro nesta semana. Cadastre o primeiro acima.</td></tr>`;
+    tbody.innerHTML = '<tr id="empty-row"><td colspan="11" class="td-empty">Nenhum registro nesta semana. Cadastre o primeiro acima.</td></tr>';
     return;
   }
 
-  tbody.innerHTML = registros.map(r => {
+  tbody.innerHTML = registros.map((r) => {
     const classeRow = r.situacao === 'SIM' ? 'row--sim'
-                    : isSituacaoRejeitada(r.situacao) ? 'row--rejeitado'
-                    : r.situacao === 'LIGAR EM OUTRO MOMENTO' ? 'row--ligar' : '';
+      : isSituacaoRejeitada(r.situacao) ? 'row--rejeitado'
+      : r.situacao === 'LIGAR EM OUTRO MOMENTO' ? 'row--ligar' : '';
     const classeBadge = r.situacao === 'SIM' ? 'badge--sim'
-                      : isSituacaoRejeitada(r.situacao) ? 'badge--contato-rejeitado'
-                      : r.situacao === 'LIGAR EM OUTRO MOMENTO' ? 'badge--ligar-em-outro-momento'
-                      : 'badge--não';
+      : isSituacaoRejeitada(r.situacao) ? 'badge--contato-rejeitado'
+      : r.situacao === 'LIGAR EM OUTRO MOMENTO' ? 'badge--ligar-em-outro-momento'
+      : 'badge--não';
     const acaoExcluir = podeExcluirRegistro(r)
-                      ? `<button class="btn-del" onclick="deletarRegistro(${r.id}, this)" title="Excluir">
-                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <polyline points="3 6 5 6 21 6"/>
-                            <path d="M19 6l-1 14H6L5 6"/>
-                            <path d="M10 11v6M14 11v6"/>
-                            <path d="M9 6V4h6v2"/>
-                          </svg>
-                        </button>`
-                      : '';
+      ? `<button class="btn-del" onclick="deletarRegistro(${r.id}, this)" title="Excluir">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="3 6 5 6 21 6"/>
+            <path d="M19 6l-1 14H6L5 6"/>
+            <path d="M10 11v6M14 11v6"/>
+            <path d="M9 6V4h6v2"/>
+          </svg>
+        </button>`
+      : '';
+
     return `
       <tr data-id="${r.id}" class="${classeRow}" style="cursor:pointer" onclick="abrirFicha(${r.id})">
         <td class="td-id">${r.id}</td>
@@ -161,10 +167,9 @@ function renderizarTabela(registros) {
   }).join('');
 }
 
-// ── WebSocket ──────────────────────────────────────────────────────────────
 let socket;
 function conectarSocket() {
-  socket = io({ transports: ['websocket', 'polling'] });
+  socket = io({ transports: ['polling'] });
   socket.on('connect', () => {
     document.getElementById('live-badge').style.opacity = '1';
   });
@@ -172,27 +177,27 @@ function conectarSocket() {
     document.getElementById('live-badge').style.opacity = '.4';
   });
   socket.on('dados_atualizados', (payload) => {
-    if (payload.indicadores && payload.indicadores.semana == SEMANA_ATUAL) {
+    if (payload.indicadores && payload.indicadores.semana === SEMANA_ATUAL) {
       atualizarIndicadores(payload.indicadores);
       renderizarTabela(payload.registros);
     }
   });
 }
 
-// ── Formulário de cadastro ─────────────────────────────────────────────────
 document.getElementById('form-cadastro').addEventListener('submit', async (e) => {
   e.preventDefault();
   const form = e.target;
-  const btn  = document.getElementById('btn-salvar');
+  const btn = document.getElementById('btn-salvar');
   const dados = {};
   new FormData(form).forEach((v, k) => { dados[k] = v.trim(); });
 
   if (!dados.empreendimento || !dados.cliente || !dados.telefone || !dados.tipo_contato || !dados.situacao) {
-    showToast('Preencha todos os campos obrigatórios.', 'error'); return;
+    showToast('Preencha todos os campos obrigatórios.', 'error');
+    return;
   }
 
   btn.disabled = true;
-  btn.textContent = 'Salvando…';
+  btn.textContent = 'Salvando...';
 
   try {
     const resp = await fetch('/relacionamento/cadastrar', {
@@ -212,18 +217,28 @@ document.getElementById('form-cadastro').addEventListener('submit', async (e) =>
     showToast('Falha de conexão. Tente novamente.', 'error');
   } finally {
     btn.disabled = false;
-    btn.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg> Salvar Registro`;
+    btn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg> Salvar Registro';
   }
 });
 
-// ── Deletar registro ───────────────────────────────────────────────────────
 async function deletarRegistro(id, btnEl) {
-  if (!confirm('Deseja excluir este registro?')) return;
+  openDeleteModal(id, btnEl);
+}
+
+async function confirmarExclusaoRegistro() {
+  const { id, btnEl } = deleteState;
+  if (!id || !btnEl) return;
+
+  closeDeleteModal();
   btnEl.disabled = true;
+
   try {
     const resp = await fetch(`/relacionamento/registro/${id}`, { method: 'DELETE' });
     const json = await resp.json();
-    if (!resp.ok) showToast(json.erro || 'Erro ao excluir.', 'error');
+    if (!resp.ok) {
+      showToast(json.erro || 'Erro ao excluir.', 'error');
+      btnEl.disabled = false;
+    }
   } catch {
     showToast('Falha de conexão.', 'error');
     btnEl.disabled = false;
@@ -278,18 +293,18 @@ async function salvarFicha() {
   }
 }
 
-// ── Busca manual (fallback) ────────────────────────────────────────────────
 async function _buscarAtualizacao() {
   try {
     const resp = await fetch(`/relacionamento/registros?semana=${SEMANA_ATUAL}`);
     const json = await resp.json();
     atualizarIndicadores(json.indicadores);
     renderizarTabela(json.registros);
-  } catch { /* WS já cobre */ }
+  } catch {
+    // websocket cobre esse fluxo na maior parte do tempo
+  }
 }
 
-// ── Toggle form ────────────────────────────────────────────────────────────
-const toggleBtn  = document.getElementById('toggle-form');
+const toggleBtn = document.getElementById('toggle-form');
 const formWrapper = document.getElementById('form-wrapper');
 let formVisible = false;
 toggleBtn.addEventListener('click', () => {
@@ -298,9 +313,12 @@ toggleBtn.addEventListener('click', () => {
   toggleBtn.textContent = formVisible ? '▲ Recolher' : '▼ Expandir';
 });
 
-// ── Init ───────────────────────────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', () => {
   registrosCache = Array.isArray(INITIAL_REGISTROS) ? INITIAL_REGISTROS : [];
+  const confirmDeleteBtn = document.getElementById('confirm-delete-btn');
+  if (confirmDeleteBtn) {
+    confirmDeleteBtn.addEventListener('click', confirmarExclusaoRegistro);
+  }
   MESES_RELACIONAMENTO.forEach((mesId) => {
     const body = document.getElementById(`body-${mesId}`);
     const arrow = document.getElementById(`arrow-${mesId}`);
