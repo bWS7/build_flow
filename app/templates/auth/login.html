@@ -20,6 +20,7 @@
     {% endif %}
 
     <form method="POST" class="login-form" novalidate>
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
       <div class="field">
         <label class="field__label login-field__label" for="email">E-mail corporativo</label>
         <input

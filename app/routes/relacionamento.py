@@ -10,6 +10,7 @@ from sqlalchemy import func
 relacionamento_bp = Blueprint('relacionamento', __name__)
 
 TIPOS_CONTATO = ['LIGAÇÃO', 'VISITA', 'WHATSAPP', 'E-MAIL', 'REUNIÃO']
+SEMANAS_VALIDAS = set(range(1, 13))
 
 
 def requer_relacionamento_ou_admin(f):
@@ -64,13 +65,21 @@ def _pode_gerenciar_registro(registro: Relacionamento) -> bool:
     return current_user.tipo == 'admin' or registro.responsavel == current_user.nome.upper()
 
 
+def _parse_semana(valor) -> int | None:
+    try:
+        semana = int(valor)
+    except (TypeError, ValueError):
+        return None
+    return semana if semana in SEMANAS_VALIDAS else None
+
+
 # ── Rotas ──────────────────────────────────────────────────────────────────────
 
 @relacionamento_bp.route('/')
 @login_required
 @requer_relacionamento_ou_admin
 def index():
-    semana = int(request.args.get('semana', 1))
+    semana = _parse_semana(request.args.get('semana', 1)) or 1
     empreendimentos = Empreendimento.query.filter_by(ativo=True).order_by(Empreendimento.nome).all()
     indicadores = _calcular_indicadores(semana)
     registros = Relacionamento.query.filter_by(semana=semana)\
@@ -100,8 +109,11 @@ def cadastrar():
             return jsonify({'erro': f'Campo obrigatório ausente: {campo}'}), 400
 
     situacao = dados['situacao'].upper().strip()
+    tipo_contato = dados['tipo_contato'].upper().strip()
     if situacao not in SITUACAO_OPCOES:
         return jsonify({'erro': 'Situação inválida.'}), 400
+    if tipo_contato not in TIPOS_CONTATO:
+        return jsonify({'erro': 'Tipo de contato inválido.'}), 400
 
     try:
         valor = float(dados.get('valor', 0) or 0)
@@ -110,14 +122,16 @@ def cadastrar():
     except (ValueError, TypeError):
         valor = 0.0
 
-    semana = int(dados.get('semana', 1))
+    semana = _parse_semana(dados.get('semana', 1))
+    if semana is None:
+        return jsonify({'erro': 'Semana inválida.'}), 400
 
     novo = Relacionamento(
         empreendimento=dados['empreendimento'].upper().strip(),
         cliente=dados['cliente'].upper().strip(),
         telefone=dados['telefone'].upper().strip(),
         email_cliente=(dados.get('email_cliente') or '').upper().strip() or None,
-        tipo_contato=dados['tipo_contato'].upper().strip(),
+        tipo_contato=tipo_contato,
         situacao=situacao,
         observacao=(dados.get('observacao') or '').upper().strip() or None,
         valor=valor,
@@ -179,7 +193,9 @@ def editar_registro(reg_id):
 @login_required
 @requer_relacionamento_ou_admin
 def listar_registros():
-    semana = int(request.args.get('semana', 1))
+    semana = _parse_semana(request.args.get('semana', 1))
+    if semana is None:
+        return jsonify({'erro': 'Semana inválida.'}), 400
     registros = Relacionamento.query.filter_by(semana=semana)\
         .order_by(Relacionamento.criado_em.desc()).all()
     indicadores = _calcular_indicadores(semana)

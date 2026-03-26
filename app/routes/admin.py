@@ -18,12 +18,19 @@ MESES_RELATORIO = [
 PERIODO_TRIMESTRAL = ('resumo_trimestral', 'Resumo Trimestral', 1)
 META_FINAL_MONTH = 11
 META_FINAL_DAY = 30
+MIN_PASSWORD_LENGTH = 10
 
 
 def _safe_pct(realizado: float, planejado: float) -> float:
     if planejado <= 0:
         return 0.0
     return min(round((realizado / planejado) * 100, 1), 999.9)
+
+
+def _senha_forte(senha: str) -> bool:
+    if len(senha or '') < MIN_PASSWORD_LENGTH:
+        return False
+    return any(char.isalpha() for char in senha) and any(char.isdigit() for char in senha)
 
 
 def _normalizar_filtros(args) -> dict:
@@ -420,6 +427,8 @@ def criar_usuario():
         return jsonify({'erro': 'Todos os campos são obrigatórios.'}), 400
     if not email.endswith(DOMINIO_PERMITIDO):
         return jsonify({'erro': f'E-mail deve ser do domínio {DOMINIO_PERMITIDO}'}), 400
+    if not _senha_forte(senha):
+        return jsonify({'erro': f'Senha deve ter ao menos {MIN_PASSWORD_LENGTH} caracteres, com letras e números.'}), 400
     if tipo not in TIPOS_VALIDOS:
         return jsonify({'erro': 'Tipo de usuário inválido.'}), 400
     if User.query.filter_by(email=email).first():
@@ -466,6 +475,8 @@ def editar_usuario(uid):
         return jsonify({'erro': f'E-mail deve ser do domínio {DOMINIO_PERMITIDO}'}), 400
     if tipo not in TIPOS_VALIDOS:
         return jsonify({'erro': 'Tipo de usuário inválido.'}), 400
+    if senha and not _senha_forte(senha):
+        return jsonify({'erro': f'Senha deve ter ao menos {MIN_PASSWORD_LENGTH} caracteres, com letras e números.'}), 400
 
     email_existente = User.query.filter(User.email == email, User.id != uid).first()
     if email_existente:

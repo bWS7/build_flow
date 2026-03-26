@@ -7,6 +7,10 @@
 const META_LOCK_PREFIX = 'meta-locked-s';
 const MESES = ['abril', 'maio', 'junho'];
 
+function csrfHeaders(extra = {}) {
+  return { 'X-CSRFToken': window.APP_CSRF_TOKEN || '', ...extra };
+}
+
 // ── Toast ──────────────────────────────────────────────────────────────────
 let toastTimer;
 function showToast(msg, tipo = 'success') {
@@ -47,7 +51,7 @@ async function criarUsuario() {
   try {
     const resp = await fetch('/admin/usuario/criar', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: csrfHeaders({ 'Content-Type': 'application/json' }),
       body: JSON.stringify(dados),
     });
     const json = await resp.json();
@@ -88,7 +92,7 @@ async function salvarEdicaoUsuario() {
   try {
     const resp = await fetch(`/admin/usuario/${id}/editar`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: csrfHeaders({ 'Content-Type': 'application/json' }),
       body: JSON.stringify(dados),
     });
     const json = await resp.json();
@@ -107,7 +111,10 @@ async function salvarEdicaoUsuario() {
 // ── Toggle usuário ativo/inativo ───────────────────────────────────────────
 async function toggleUsuario(id, btn) {
   try {
-    const resp = await fetch(`/admin/usuario/${id}/toggle`, { method: 'POST' });
+    const resp = await fetch(`/admin/usuario/${id}/toggle`, {
+      method: 'POST',
+      headers: csrfHeaders(),
+    });
     const json = await resp.json();
     if (resp.ok) {
       showToast(json.ativo ? 'Usuário ativado.' : 'Usuário desativado.', 'success');
@@ -128,7 +135,7 @@ async function criarEmpreendimento() {
   try {
     const resp = await fetch('/admin/empreendimento/criar', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: csrfHeaders({ 'Content-Type': 'application/json' }),
       body: JSON.stringify({ nome }),
     });
     const json = await resp.json();
@@ -147,7 +154,10 @@ async function criarEmpreendimento() {
 // ── Toggle empreendimento ──────────────────────────────────────────────────
 async function toggleEmpreendimento(id, btn) {
   try {
-    const resp = await fetch(`/admin/empreendimento/${id}/toggle`, { method: 'POST' });
+    const resp = await fetch(`/admin/empreendimento/${id}/toggle`, {
+      method: 'POST',
+      headers: csrfHeaders(),
+    });
     const json = await resp.json();
     if (resp.ok) {
       showToast(json.ativo ? 'Empreendimento ativado.' : 'Desativado.', 'success');
@@ -220,7 +230,7 @@ async function salvarMeta(semana, btn) {
   try {
     const resp = await fetch('/admin/meta/salvar', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: csrfHeaders({ 'Content-Type': 'application/json' }),
       body: JSON.stringify({ semana, acoes_planejadas: acoes, valor_meta: valor }),
     });
     const json = await resp.json();

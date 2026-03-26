@@ -23,6 +23,10 @@
 
   const history = [];
 
+  function csrfHeaders(extra = {}) {
+    return { 'X-CSRFToken': window.APP_CSRF_TOKEN || '', ...extra };
+  }
+
   function setOpen(open) {
     root.classList.toggle('analytics-ai--open', open);
     panel.hidden = !open;
@@ -50,7 +54,7 @@
     try {
       const response = await fetch(config.url, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: csrfHeaders({ 'Content-Type': 'application/json' }),
         body: JSON.stringify({
           message,
           history,

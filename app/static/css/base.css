@@ -281,6 +281,7 @@ body {
   color: rgba(255,255,255,.4); display: flex; flex-shrink: 0;
   padding: 6px; border-radius: var(--radius-sm);
   transition: all var(--transition);
+  background: transparent; border: 0; cursor: pointer;
 }
 .drawer__logout:hover { color: var(--white); background: rgba(255,255,255,.1); }
 

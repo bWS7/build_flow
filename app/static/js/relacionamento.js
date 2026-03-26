@@ -4,6 +4,10 @@ let registrosCache = [];
 let deleteState = { id: null, btnEl: null };
 const MESES_RELACIONAMENTO = ['abril', 'maio', 'junho'];
 
+function csrfHeaders(extra = {}) {
+  return { 'X-CSRFToken': window.APP_CSRF_TOKEN || '', ...extra };
+}
+
 function podeExcluirRegistro(registro) {
   return IS_ADMIN || registro.responsavel === CURRENT_USER_NOME;
 }
@@ -202,7 +206,7 @@ document.getElementById('form-cadastro').addEventListener('submit', async (e) =>
   try {
     const resp = await fetch('/relacionamento/cadastrar', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: csrfHeaders({ 'Content-Type': 'application/json' }),
       body: JSON.stringify(dados),
     });
     const json = await resp.json();
@@ -233,7 +237,10 @@ async function confirmarExclusaoRegistro() {
   btnEl.disabled = true;
 
   try {
-    const resp = await fetch(`/relacionamento/registro/${id}`, { method: 'DELETE' });
+    const resp = await fetch(`/relacionamento/registro/${id}`, {
+      method: 'DELETE',
+      headers: csrfHeaders(),
+    });
     const json = await resp.json();
     if (!resp.ok) {
       showToast(json.erro || 'Erro ao excluir.', 'error');
@@ -275,7 +282,7 @@ async function salvarFicha() {
   try {
     const resp = await fetch(`/relacionamento/registro/${id}`, {
       method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
+      headers: csrfHeaders({ 'Content-Type': 'application/json' }),
       body: JSON.stringify(dados),
     });
     const json = await resp.json();

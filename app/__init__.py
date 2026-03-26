@@ -1,9 +1,12 @@
 import os
-from flask import Flask
+import secrets
+from flask import Flask, flash, redirect, request, url_for
 from flask_sqlalchemy import SQLAlchemy
 from flask_login import LoginManager
 from flask_migrate import Migrate
 from flask_socketio import SocketIO
+from flask_wtf import CSRFProtect
+from flask_wtf.csrf import CSRFError
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -31,6 +34,7 @@ db = SQLAlchemy()
 login_manager = LoginManager()
 migrate = Migrate()
 socketio = SocketIO()
+csrf = CSRFProtect()
 
 
 def _resolve_database_url():
@@ -46,6 +50,17 @@ def _resolve_database_url():
     return database_url
 
 
+def _resolve_secret_key():
+    return os.environ.get('SECRET_KEY') or secrets.token_urlsafe(32)
+
+
+def _resolve_socketio_cors():
+    allowed_origins = (os.environ.get('ALLOWED_ORIGINS') or '').strip()
+    if not allowed_origins:
+        return None
+    return [origin.strip() for origin in allowed_origins.split(',') if origin.strip()]
+
+
 def create_app():
     app = Flask(__name__)
 
@@ -54,25 +69,30 @@ def create_app():
     app.jinja_env.filters['brl_int'] = _format_brl_int
 
     # ── Configurações ──────────────────────────────────────────────────────────
-    app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'dev-secret-change-in-prod')
+    app.config['SECRET_KEY'] = _resolve_secret_key()
     app.config['SQLALCHEMY_DATABASE_URI'] = _resolve_database_url()
     app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
     app.config['WTF_CSRF_ENABLED'] = True
+    app.config['WTF_CSRF_TIME_LIMIT'] = 7200
+    app.config['SESSION_COOKIE_HTTPONLY'] = True
+    app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
+    app.config['REMEMBER_COOKIE_HTTPONLY'] = True
+    app.config['REMEMBER_COOKIE_SAMESITE'] = 'Lax'
 
     # Cookies seguros em produção
     if os.environ.get('FLASK_ENV') == 'production':
         app.config['SESSION_COOKIE_SECURE'] = True
-        app.config['SESSION_COOKIE_HTTPONLY'] = True
-        app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
+        app.config['REMEMBER_COOKIE_SECURE'] = True
 
     # ── Extensões ──────────────────────────────────────────────────────────────
     db.init_app(app)
     login_manager.init_app(app)
+    csrf.init_app(app)
     login_manager.login_view = 'auth.login'
     login_manager.login_message = 'Por favor, faça login para acessar esta página.'
     login_manager.login_message_category = 'warning'
     migrate.init_app(app, db)
-    socketio.init_app(app, cors_allowed_origins="*", async_mode='threading')
+    socketio.init_app(app, cors_allowed_origins=_resolve_socketio_cors(), async_mode='threading')
 
     # ── Blueprints ─────────────────────────────────────────────────────────────
     from app.routes.auth import auth_bp
@@ -88,6 +108,25 @@ def create_app():
         db.create_all()
         _seed_initial_data()
 
+    @app.after_request
+    def _apply_security_headers(response):
+        response.headers['X-Frame-Options'] = 'SAMEORIGIN'
+        response.headers['X-Content-Type-Options'] = 'nosniff'
+        response.headers['Referrer-Policy'] = 'strict-origin-when-cross-origin'
+        response.headers['Permissions-Policy'] = 'camera=(), microphone=(), geolocation=()'
+        if app.config.get('SESSION_COOKIE_SECURE'):
+            response.headers['Strict-Transport-Security'] = 'max-age=31536000; includeSubDomains'
+        return response
+
+    @app.errorhandler(CSRFError)
+    def _handle_csrf_error(error):
+        mensagem = 'Requisição bloqueada por validação de segurança. Atualize a página e tente novamente.'
+        wants_json = request.path.startswith('/admin/') or request.path.startswith('/relacionamento/') or request.is_json
+        if wants_json:
+            return {'erro': mensagem, 'detalhe': error.description}, 400
+        flash(mensagem, 'error')
+        return redirect(url_for('auth.login'))
+
     return app
 
 
@@ -96,14 +135,18 @@ def _seed_initial_data():
     from app.models.user import User
     from app.models.empreendimento import Empreendimento
 
-    # Admin inicial
-    if not User.query.filter_by(email='bruno.alves@sousaaraujo.com.br').first():
+    seed_admin_email = (os.environ.get('SEED_ADMIN_EMAIL') or '').strip().lower()
+    seed_admin_password = os.environ.get('SEED_ADMIN_PASSWORD') or ''
+    seed_admin_name = (os.environ.get('SEED_ADMIN_NAME') or 'ADMIN').strip().upper()
+
+    # Admin inicial controlado por variÃ¡veis de ambiente
+    if seed_admin_email and seed_admin_password and not User.query.filter_by(email=seed_admin_email).first():
         admin = User(
-            nome='BRUNO ALVES',
-            email='bruno.alves@sousaaraujo.com.br',
+            nome=seed_admin_name,
+            email=seed_admin_email,
             tipo='admin',
         )
-        admin.set_password('Sousa@1234')
+        admin.set_password(seed_admin_password)
         db.session.add(admin)
 
     # Remove placeholders de empreendimento caso existam
