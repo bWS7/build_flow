@@ -1,0 +1,205 @@
+from flask import Blueprint, render_template, request, jsonify, abort
+from flask_login import login_required, current_user
+from functools import wraps
+from app import db, socketio
+from app.models.relacionamento import Relacionamento, SITUACAO_OPCOES
+from app.models.empreendimento import Empreendimento
+from app.models.meta import MetaSemana
+from sqlalchemy import func
+
+relacionamento_bp = Blueprint('relacionamento', __name__)
+
+TIPOS_CONTATO = ['LIGAÇÃO', 'VISITA', 'WHATSAPP', 'E-MAIL', 'REUNIÃO']
+
+
+def requer_relacionamento_ou_admin(f):
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        if not current_user.is_authenticated:
+            abort(401)
+        if current_user.tipo not in ('relacionamento', 'admin'):
+            abort(403)
+        return f(*args, **kwargs)
+    return decorated
+
+
+# ── Helpers ────────────────────────────────────────────────────────────────────
+
+def _calcular_indicadores(semana: int) -> dict:
+    meta = MetaSemana.query.filter_by(semana=semana).first()
+    acoes_planejadas = meta.acoes_planejadas if meta else 0
+    valor_meta = float(meta.valor_meta) if meta else 0.0
+
+    todos = Relacionamento.query.filter_by(semana=semana).all()
+    acoes_realizadas = len(todos)
+    registros_sim = [r for r in todos if r.situacao == 'SIM']
+    soma_valores = sum(float(r.valor) for r in registros_sim if r.valor > 0)
+
+    pct_acoes = (acoes_realizadas / acoes_planejadas * 100) if acoes_planejadas > 0 else 0
+    pct_valor = (soma_valores / valor_meta * 100) if valor_meta > 0 else 0
+
+    return {
+        'semana': semana,
+        'acoes_planejadas': acoes_planejadas,
+        'acoes_realizadas': acoes_realizadas,
+        'valor_meta': valor_meta,
+        'soma_valores': soma_valores,
+        'pct_acoes': min(round(pct_acoes, 1), 100),
+        'pct_valor': min(round(pct_valor, 1), 100),
+    }
+
+
+def _broadcast_update(semana: int):
+    """Emite atualização via WebSocket para todos os clientes."""
+    indicadores = _calcular_indicadores(semana)
+    registros = Relacionamento.query.filter_by(semana=semana)\
+        .order_by(Relacionamento.criado_em.desc()).all()
+    socketio.emit('dados_atualizados', {
+        'indicadores': indicadores,
+        'registros': [r.to_dict() for r in registros],
+    })
+
+
+def _pode_gerenciar_registro(registro: Relacionamento) -> bool:
+    return current_user.tipo == 'admin' or registro.responsavel == current_user.nome.upper()
+
+
+# ── Rotas ──────────────────────────────────────────────────────────────────────
+
+@relacionamento_bp.route('/')
+@login_required
+@requer_relacionamento_ou_admin
+def index():
+    semana = int(request.args.get('semana', 1))
+    empreendimentos = Empreendimento.query.filter_by(ativo=True).order_by(Empreendimento.nome).all()
+    indicadores = _calcular_indicadores(semana)
+    registros = Relacionamento.query.filter_by(semana=semana)\
+        .order_by(Relacionamento.criado_em.desc()).all()
+
+    return render_template(
+        'relacionamento/index.html',
+        empreendimentos=empreendimentos,
+        situacoes=SITUACAO_OPCOES,
+        tipos_contato=TIPOS_CONTATO,
+        indicadores=indicadores,
+        registros=registros,
+        registros_json=[r.to_dict() for r in registros],
+        semana_atual=semana,
+    )
+
+
+@relacionamento_bp.route('/cadastrar', methods=['POST'])
+@login_required
+@requer_relacionamento_ou_admin
+def cadastrar():
+    dados = request.get_json(silent=True) or request.form.to_dict()
+
+    campos_obrigatorios = ['empreendimento', 'cliente', 'telefone', 'tipo_contato', 'situacao']
+    for campo in campos_obrigatorios:
+        if not dados.get(campo):
+            return jsonify({'erro': f'Campo obrigatório ausente: {campo}'}), 400
+
+    situacao = dados['situacao'].upper().strip()
+    if situacao not in SITUACAO_OPCOES:
+        return jsonify({'erro': 'Situação inválida.'}), 400
+
+    try:
+        valor = float(dados.get('valor', 0) or 0)
+        if valor < 0:
+            valor = 0.0
+    except (ValueError, TypeError):
+        valor = 0.0
+
+    semana = int(dados.get('semana', 1))
+
+    novo = Relacionamento(
+        empreendimento=dados['empreendimento'].upper().strip(),
+        cliente=dados['cliente'].upper().strip(),
+        telefone=dados['telefone'].upper().strip(),
+        email_cliente=(dados.get('email_cliente') or '').upper().strip() or None,
+        tipo_contato=dados['tipo_contato'].upper().strip(),
+        situacao=situacao,
+        observacao=(dados.get('observacao') or '').upper().strip() or None,
+        valor=valor,
+        responsavel=current_user.nome.upper(),
+        semana=semana,
+    )
+    db.session.add(novo)
+    db.session.commit()
+
+    _broadcast_update(semana)
+    return jsonify({'sucesso': True, 'id': novo.id}), 201
+
+
+@relacionamento_bp.route('/registro/<int:reg_id>', methods=['PUT'])
+@login_required
+@requer_relacionamento_ou_admin
+def editar_registro(reg_id):
+    reg = db.session.get(Relacionamento, reg_id)
+    if not reg:
+        return jsonify({'erro': 'Registro não encontrado.'}), 404
+    if not _pode_gerenciar_registro(reg):
+        return jsonify({'erro': 'Você só pode editar registros criados por você.'}), 403
+
+    dados = request.get_json(silent=True) or request.form.to_dict()
+    campos_obrigatorios = ['empreendimento', 'cliente', 'telefone', 'tipo_contato', 'situacao']
+    for campo in campos_obrigatorios:
+        if not dados.get(campo):
+            return jsonify({'erro': f'Campo obrigatório ausente: {campo}'}), 400
+
+    situacao = (dados.get('situacao') or '').upper().strip()
+    tipo_contato = (dados.get('tipo_contato') or '').upper().strip()
+    if situacao not in SITUACAO_OPCOES:
+        return jsonify({'erro': 'Situação inválida.'}), 400
+    if tipo_contato not in TIPOS_CONTATO:
+        return jsonify({'erro': 'Tipo de contato inválido.'}), 400
+
+    try:
+        valor = float(dados.get('valor', 0) or 0)
+        if valor < 0:
+            valor = 0.0
+    except (ValueError, TypeError):
+        valor = 0.0
+
+    reg.empreendimento = (dados.get('empreendimento') or '').upper().strip()
+    reg.cliente = (dados.get('cliente') or '').upper().strip()
+    reg.telefone = (dados.get('telefone') or '').upper().strip()
+    reg.email_cliente = (dados.get('email_cliente') or '').upper().strip() or None
+    reg.tipo_contato = tipo_contato
+    reg.situacao = situacao
+    reg.observacao = (dados.get('observacao') or '').upper().strip() or None
+    reg.valor = valor
+
+    db.session.commit()
+    _broadcast_update(reg.semana)
+    return jsonify({'sucesso': True, 'registro': reg.to_dict()})
+
+
+@relacionamento_bp.route('/registros')
+@login_required
+@requer_relacionamento_ou_admin
+def listar_registros():
+    semana = int(request.args.get('semana', 1))
+    registros = Relacionamento.query.filter_by(semana=semana)\
+        .order_by(Relacionamento.criado_em.desc()).all()
+    indicadores = _calcular_indicadores(semana)
+    return jsonify({
+        'registros': [r.to_dict() for r in registros],
+        'indicadores': indicadores,
+    })
+
+
+@relacionamento_bp.route('/registro/<int:reg_id>', methods=['DELETE'])
+@login_required
+@requer_relacionamento_ou_admin
+def deletar_registro(reg_id):
+    reg = db.session.get(Relacionamento, reg_id)
+    if not reg:
+        return jsonify({'erro': 'Registro não encontrado.'}), 404
+    if not _pode_gerenciar_registro(reg):
+        return jsonify({'erro': 'Você só pode excluir registros criados por você.'}), 403
+    semana = reg.semana
+    db.session.delete(reg)
+    db.session.commit()
+    _broadcast_update(semana)
+    return jsonify({'sucesso': True})

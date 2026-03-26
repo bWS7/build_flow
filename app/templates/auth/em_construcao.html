@@ -1,0 +1,12 @@
+{% extends "base.html" %}
+{% block title %}Em Construção{% endblock %}
+{% block body %}
+<div class="construction-page">
+  <div class="construction-box">
+    <div class="construction-box__icon">🏗️</div>
+    <h1>Módulo em construção</h1>
+    <p>Este módulo para o perfil <strong>{{ current_user.tipo | upper }}</strong> será disponibilizado em breve.</p>
+    <a href="{{ url_for('auth.logout') }}" class="btn btn--outline">Sair</a>
+  </div>
+</div>
+{% endblock %}

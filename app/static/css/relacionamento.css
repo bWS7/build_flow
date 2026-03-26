@@ -1,0 +1,252 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   SOUSA ARAUJO — relacionamento.css
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* ── WEEK PILLS ───────────────────────────────────────────────────────────── */
+.topbar__weeks {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.week-month {
+  min-width: 150px;
+  background: var(--gray-100);
+  border: 1px solid var(--gray-200);
+  border-radius: 14px;
+  padding: 8px;
+}
+.week-month__toggle {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--wine);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+.week-month__arrow {
+  flex-shrink: 0;
+  transition: transform .22s ease;
+}
+.week-month__arrow--collapsed { transform: rotate(-90deg); }
+.week-month__body {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 8px;
+}
+.week-month__body--collapsed { display: none; }
+.week-pill {
+  padding: 5px 12px;
+  border-radius: 99px;
+  font-size: 12px; font-weight: 700; letter-spacing: .04em;
+  color: var(--gray-600);
+  background: var(--gray-100);
+  border: 1.5px solid var(--gray-200);
+  text-decoration: none;
+  transition: all var(--transition);
+}
+.week-pill:hover { border-color: var(--wine); color: var(--wine); }
+.week-pill--active { background: var(--wine); color: var(--white); border-color: var(--wine); }
+
+/* ── INDICATORS (KPI CARDS) ───────────────────────────────────────────────── */
+.indicators {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+  padding: 24px 28px 0;
+}
+
+.kpi-card {
+  background: var(--white);
+  border-radius: var(--radius-lg);
+  padding: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  box-shadow: var(--shadow-sm);
+  border: 1px solid var(--gray-200);
+  transition: box-shadow var(--transition);
+}
+.kpi-card:hover { box-shadow: var(--shadow); }
+.kpi-card--highlight {
+  background: var(--wine-dark);
+  border-color: var(--wine-dark);
+}
+.kpi-card--highlight .kpi-card__label { color: rgba(255,255,255,.6); }
+.kpi-card--highlight .kpi-card__value { color: var(--white); }
+
+.kpi-card__body { display: flex; flex-direction: column; gap: 4px; }
+.kpi-card__label {
+  font-size: 10px; font-weight: 700;
+  letter-spacing: .07em; text-transform: uppercase;
+  color: var(--gray-400);
+}
+.kpi-card__value {
+  font-family: var(--font-display);
+  font-size: 28px; font-weight: 700;
+  color: var(--black);
+  line-height: 1.1;
+}
+
+.kpi-card__icon {
+  width: 44px; height: 44px;
+  border-radius: var(--radius);
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+}
+.kpi-card__icon--plan    { background: #EFF6FF; color: #1D4ED8; }
+.kpi-card__icon--done    { background: #D1FAE5; color: #065F46; }
+.kpi-card__icon--target  { background: var(--wine-ghost); color: var(--wine); }
+.kpi-card__icon--money   { background: #FEF3C7; color: #92400E; }
+
+/* ── PROGRESS BARS ────────────────────────────────────────────────────────── */
+.progress-section {
+  padding: 20px 28px 0;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+
+.progress-block {
+  background: var(--white);
+  border-radius: var(--radius-lg);
+  padding: 18px 20px;
+  border: 1px solid var(--gray-200);
+  box-shadow: var(--shadow-sm);
+}
+
+.progress-block__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+}
+.progress-block__label {
+  font-size: 11px; font-weight: 700;
+  letter-spacing: .06em; text-transform: uppercase;
+  color: var(--gray-600);
+}
+.progress-block__pct {
+  font-family: var(--font-display);
+  font-size: 22px; font-weight: 700;
+  color: var(--wine);
+}
+
+.progress-track {
+  height: 10px;
+  background: var(--gray-100);
+  border-radius: 99px;
+  overflow: hidden;
+  margin-bottom: 8px;
+}
+.progress-fill {
+  height: 100%;
+  border-radius: 99px;
+  transition: width .6s cubic-bezier(.4,0,.2,1);
+  min-width: 0;
+}
+.progress-fill--acoes {
+  background: linear-gradient(90deg, var(--wine-light), var(--wine-dark));
+}
+.progress-fill--valor {
+  background: linear-gradient(90deg, #F59E0B, #92400E);
+}
+
+.progress-block__detail {
+  font-size: 11px;
+  color: var(--gray-400);
+}
+
+/* ── FORM SECTION ─────────────────────────────────────────────────────────── */
+.form-section {
+  margin: 20px 28px 0;
+  background: var(--white);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--gray-200);
+  box-shadow: var(--shadow-sm);
+  overflow: hidden;
+}
+
+.section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--gray-100);
+}
+.section-header__title {
+  display: flex; align-items: center; gap: 8px;
+  font-size: 13px; font-weight: 700;
+  letter-spacing: .03em; color: var(--gray-900);
+}
+.section-header__count {
+  font-size: 12px; font-weight: 600;
+  color: var(--gray-400);
+  background: var(--gray-100);
+  padding: 3px 10px; border-radius: 99px;
+}
+
+.cadastro-form {
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.form-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 14px;
+}
+
+.field--full { grid-column: 1 / -1; }
+
+.form-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  padding-top: 4px;
+  border-top: 1px solid var(--gray-100);
+}
+
+/* ── TABLE SECTION ────────────────────────────────────────────────────────── */
+.table-section {
+  margin: 20px 28px 28px;
+  background: var(--white);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--gray-200);
+  box-shadow: var(--shadow-sm);
+  overflow: hidden;
+}
+
+.table-wrap {
+  overflow-x: auto;
+}
+
+/* ── RESPONSIVE ───────────────────────────────────────────────────────────── */
+@media (max-width: 1200px) {
+  .form-grid { grid-template-columns: repeat(2, 1fr); }
+  .indicators { grid-template-columns: repeat(2, 1fr); }
+}
+
+@media (max-width: 900px) {
+  .progress-section { grid-template-columns: 1fr; }
+  .indicators { padding: 16px 16px 0; }
+  .form-section, .table-section { margin-inline: 16px; }
+  .progress-section { padding-inline: 16px; }
+}
+
+@media (max-width: 640px) {
+  .form-grid { grid-template-columns: 1fr; }
+  .indicators { grid-template-columns: 1fr 1fr; }
+  .topbar__weeks { width: 100%; }
+  .week-month { width: 100%; min-width: 0; }
+}

@@ -1,0 +1,409 @@
+{% extends "base.html" %}
+{% block title %}Admin - Painel Relacionamento{% endblock %}
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/admin.css') }}" />
+{% endblock %}
+
+{% set logo_svg %}<img src="{{ url_for('static', filename='images/logo2.webp') }}" alt="Sousa Araujo" />{% endset %}
+
+{% block body %}
+<div class="app-layout">
+  <header class="topheader">
+    <button class="hamburger" id="menu-btn" aria-label="Abrir menu">
+      <span></span><span></span><span></span>
+    </button>
+    <div class="topheader__center">Painel de Relacionamento</div>
+    <a href="{{ url_for('admin.relacionamento_painel') }}" class="topheader__logo">{{ logo_svg }}</a>
+  </header>
+
+  <div class="drawer-overlay" id="drawer-overlay"></div>
+
+  <nav class="drawer" id="drawer">
+    <div class="drawer__header">
+      <img src="{{ url_for('static', filename='images/logo.webp') }}" class="drawer__logo" alt="Sousa Araujo" />
+      <button class="drawer__close" id="drawer-close">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+    <div class="drawer__nav">
+      <a href="{{ url_for('relacionamento.index') }}" class="drawer__link">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
+        Relacionamento
+      </a>
+      <a href="{{ url_for('admin.dashboard') }}" class="drawer__link">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+        Admin
+      </a>
+      <a href="{{ url_for('admin.relacionamento_painel') }}" class="drawer__link drawer__link--active">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"/><path d="M7 14l3-3 3 2 4-5"/></svg>
+        Painel Relacionamento
+      </a>
+    </div>
+    <div class="drawer__footer">
+      <div class="drawer__avatar">{{ current_user.nome[0] }}</div>
+      <div class="drawer__user-info">
+        <span class="drawer__user-name">{{ current_user.nome | title }}</span>
+        <span class="drawer__user-role">Admin</span>
+      </div>
+      <a href="{{ url_for('auth.logout') }}" class="drawer__logout" title="Sair">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+      </a>
+    </div>
+  </nav>
+
+  <main class="main-content">
+    <section class="analytics-page">
+      <div class="analytics-toolbar">
+        {% for mes in meses %}
+        <a href="{{ url_for('admin.relacionamento_painel', mes=mes.slug, empreendimento=filtros.empreendimento, responsavel=filtros.responsavel, tipo_contato=filtros.tipo_contato, situacao=filtros.situacao) }}"
+           class="analytics-month {% if mes.slug == mes_atual.slug %}analytics-month--active{% endif %}">
+          {{ mes.nome }}
+        </a>
+        {% endfor %}
+      </div>
+
+      {% if mes_atual.slug == 'resumo_trimestral' %}
+      <form method="get" action="{{ url_for('admin.relacionamento_painel') }}" class="analytics-filter-bar">
+        <input type="hidden" name="mes" value="resumo_trimestral" />
+        <label class="analytics-filter">
+          <span>Empreendimento</span>
+          <select name="empreendimento" class="field__input">
+            <option value="">Todos</option>
+            {% for item in opcoes_filtro.empreendimentos %}
+            <option value="{{ item }}" {% if filtros.empreendimento == item %}selected{% endif %}>{{ item }}</option>
+            {% endfor %}
+          </select>
+        </label>
+        <label class="analytics-filter">
+          <span>Responsavel</span>
+          <select name="responsavel" class="field__input">
+            <option value="">Todos</option>
+            {% for item in opcoes_filtro.responsaveis %}
+            <option value="{{ item }}" {% if filtros.responsavel == item %}selected{% endif %}>{{ item }}</option>
+            {% endfor %}
+          </select>
+        </label>
+        <label class="analytics-filter">
+          <span>Tipo de contato</span>
+          <select name="tipo_contato" class="field__input">
+            <option value="">Todos</option>
+            {% for item in opcoes_filtro.tipos_contato %}
+            <option value="{{ item }}" {% if filtros.tipo_contato == item %}selected{% endif %}>{{ item }}</option>
+            {% endfor %}
+          </select>
+        </label>
+        <label class="analytics-filter">
+          <span>Situacao</span>
+          <select name="situacao" class="field__input">
+            <option value="">Todas</option>
+            {% for item in opcoes_filtro.situacoes %}
+            <option value="{{ item }}" {% if filtros.situacao == item %}selected{% endif %}>{{ item }}</option>
+            {% endfor %}
+          </select>
+        </label>
+        <div class="analytics-filter__actions">
+          <button type="submit" class="btn btn--primary">Aplicar filtros</button>
+          <a href="{{ url_for('admin.relacionamento_painel', mes='resumo_trimestral') }}" class="btn btn--ghost">Limpar</a>
+        </div>
+      </form>
+
+      {% if filtros_aplicados %}
+      <section class="analytics-filter-chips">
+        {% for chave, valor in filtros_aplicados.items() %}
+        <span class="analytics-chip">{{ chave.replace('_', ' ')|title }}: {{ valor }}</span>
+        {% endfor %}
+      </section>
+      {% endif %}
+      {% endif %}
+
+      <section class="analytics-summary-grid">
+        <article class="analytics-card">
+          <span class="analytics-card__label">Valor Planejado {{ mes_atual.nome }}</span>
+          <strong class="analytics-card__value">R$ {{ resumo_mensal.valor_planejado | brl }}</strong>
+        </article>
+        <article class="analytics-card">
+          <span class="analytics-card__label">Valor Realizado {{ mes_atual.nome }}</span>
+          <strong class="analytics-card__value">R$ {{ resumo_mensal.valor_realizado | brl }}</strong>
+        </article>
+        <article class="analytics-card">
+          <span class="analytics-card__label">Acoes Planejadas {{ mes_atual.nome }}</span>
+          <strong class="analytics-card__value">{{ resumo_mensal.acoes_planejadas }}</strong>
+        </article>
+        <article class="analytics-card">
+          <span class="analytics-card__label">Acoes Realizadas {{ mes_atual.nome }}</span>
+          <strong class="analytics-card__value">{{ resumo_mensal.acoes_realizadas }}</strong>
+        </article>
+      </section>
+
+      {% if mes_atual.slug == 'resumo_trimestral' %}
+      <section class="analytics-highlights">
+        <article class="analytics-highlight analytics-highlight--strong">
+          <span class="analytics-highlight__label">Execucao Atual</span>
+          <strong class="analytics-highlight__value">{{ resumo_mensal.pct_valor }}%</strong>
+          <p>{{ resumo_mensal.pct_acoes }}% das acoes concluidas no periodo.</p>
+        </article>
+        <article class="analytics-highlight">
+          <span class="analytics-highlight__label">Melhor Semana</span>
+          <strong class="analytics-highlight__value">
+            {% if destaques.melhor_semana %}{{ destaques.melhor_semana.mes_nome }} S{{ destaques.melhor_semana.semana_label }}{% else %}Sem dados{% endif %}
+          </strong>
+          <p>
+            {% if destaques.melhor_semana %}
+            Valor {{ destaques.melhor_semana.pct_valor }}% | Acoes {{ destaques.melhor_semana.pct_acoes }}%
+            {% else %}
+            Ainda nao ha registros lancados.
+            {% endif %}
+          </p>
+        </article>
+        <article class="analytics-highlight analytics-highlight--alert">
+          <span class="analytics-highlight__label">Ponto de Atencao</span>
+          <strong class="analytics-highlight__value">
+            {% if destaques.pior_semana %}{{ destaques.pior_semana.mes_nome }} S{{ destaques.pior_semana.semana_label }}{% else %}Sem dados{% endif %}
+          </strong>
+          <p>Gap de R$ {{ destaques.gap_valor | brl }} e {{ destaques.gap_acoes }} acoes para o planejado.</p>
+        </article>
+      </section>
+      {% endif %}
+
+      <section class="analytics-panel">
+        <div class="analytics-panel__header">
+          <h2>{% if mes_atual.slug == 'resumo_trimestral' %}Resumo Trimestral{% else %}Resumo Mensal{% endif %}</h2>
+          <span>{{ mes_atual.nome }}</span>
+        </div>
+        <div class="analytics-metric">
+          <div>
+            <strong>Execucao de Valor</strong>
+            <p>R$ {{ resumo_mensal.valor_realizado | brl }} de R$ {{ resumo_mensal.valor_planejado | brl }}</p>
+          </div>
+          <span>{{ resumo_mensal.pct_valor }}%</span>
+        </div>
+        <div class="analytics-progress"><span style="width: {{ resumo_mensal.pct_valor if resumo_mensal.pct_valor <= 100 else 100 }}%"></span></div>
+        <div class="analytics-metric">
+          <div>
+            <strong>Execucao de Acoes</strong>
+            <p>{{ resumo_mensal.acoes_realizadas }} de {{ resumo_mensal.acoes_planejadas }} acoes planejadas</p>
+          </div>
+          <span>{{ resumo_mensal.pct_acoes }}%</span>
+        </div>
+        <div class="analytics-progress analytics-progress--dark"><span style="width: {{ resumo_mensal.pct_acoes if resumo_mensal.pct_acoes <= 100 else 100 }}%"></span></div>
+      </section>
+
+      {% if mes_atual.slug == 'resumo_trimestral' %}
+      <section class="analytics-panel">
+        <div class="analytics-panel__header">
+          <h2>Evolucao das Metas</h2>
+          <span>{% if mes_atual.slug == 'resumo_trimestral' %}Abril a Junho{% else %}{{ mes_atual.nome }}{% endif %}</span>
+        </div>
+        <div class="analytics-chart-shell">
+          <div class="analytics-chart-side">
+            <span>100%</span>
+            <span>75%</span>
+            <span>50%</span>
+            <span>25%</span>
+            <span>0%</span>
+          </div>
+          <div class="analytics-chart-stage">
+            <div class="analytics-chart-legend analytics-chart-legend--top">
+              <span><i class="analytics-chart-legend__dot analytics-chart-legend__dot--valor"></i> % Valor Realizado</span>
+              <span><i class="analytics-chart-legend__dot analytics-chart-legend__dot--acoes"></i> % Acoes Realizadas</span>
+            </div>
+            <div class="analytics-chart">
+              <div class="analytics-chart__gridline analytics-chart__gridline--100"></div>
+              <div class="analytics-chart__gridline analytics-chart__gridline--75"></div>
+              <div class="analytics-chart__gridline analytics-chart__gridline--50"></div>
+              <div class="analytics-chart__gridline analytics-chart__gridline--25"></div>
+              <svg viewBox="0 0 {{ chart.width }} {{ chart.height }}" preserveAspectRatio="none" aria-label="Grafico de linha da evolucao">
+                <defs>
+                  <linearGradient id="valorAreaLine" x1="0%" y1="0%" x2="0%" y2="100%">
+                    <stop offset="0%" stop-color="#6B1A2A" stop-opacity="0.28"></stop>
+                    <stop offset="100%" stop-color="#6B1A2A" stop-opacity="0.02"></stop>
+                  </linearGradient>
+                  <linearGradient id="acoesAreaLine" x1="0%" y1="0%" x2="0%" y2="100%">
+                    <stop offset="0%" stop-color="#B6762B" stop-opacity="0.24"></stop>
+                    <stop offset="100%" stop-color="#B6762B" stop-opacity="0.02"></stop>
+                  </linearGradient>
+                  <filter id="lineGlow" x="-20%" y="-20%" width="140%" height="140%">
+                    <feGaussianBlur stdDeviation="3" result="blur"></feGaussianBlur>
+                    <feMerge>
+                      <feMergeNode in="blur"></feMergeNode>
+                      <feMergeNode in="SourceGraphic"></feMergeNode>
+                    </feMerge>
+                  </filter>
+                </defs>
+                <polygon points="{{ chart.valor_area_points }}" class="analytics-line-chart__area analytics-line-chart__area--valor"></polygon>
+                <polygon points="{{ chart.acoes_area_points }}" class="analytics-line-chart__area analytics-line-chart__area--acoes"></polygon>
+                <polyline points="{{ chart.valor_points }}" class="analytics-line-chart__line analytics-line-chart__line--valor" filter="url(#lineGlow)"></polyline>
+                <polyline points="{{ chart.acoes_points }}" class="analytics-line-chart__line analytics-line-chart__line--acoes" filter="url(#lineGlow)"></polyline>
+                {% for point in chart.valor_markers %}
+                <g class="analytics-line-chart__point-group">
+                  <circle cx="{{ point.x }}" cy="{{ point.y }}" r="9" class="analytics-line-chart__halo analytics-line-chart__halo--valor"></circle>
+                  <circle cx="{{ point.x }}" cy="{{ point.y }}" r="5" class="analytics-line-chart__point analytics-line-chart__point--valor"></circle>
+                </g>
+                {% endfor %}
+                {% for point in chart.acoes_markers %}
+                <g class="analytics-line-chart__point-group">
+                  <circle cx="{{ point.x }}" cy="{{ point.y }}" r="9" class="analytics-line-chart__halo analytics-line-chart__halo--acoes"></circle>
+                  <circle cx="{{ point.x }}" cy="{{ point.y }}" r="5" class="analytics-line-chart__point analytics-line-chart__point--acoes"></circle>
+                </g>
+                {% endfor %}
+              </svg>
+            </div>
+            <div class="analytics-chart-xlabels">
+              {% for semana in semanas_mes %}
+              <span>{{ semana.mes_nome }} S{{ semana.semana_label }}</span>
+              {% endfor %}
+            </div>
+          </div>
+        </div>
+      </section>
+      {% endif %}
+
+      {% if mes_atual.slug != 'resumo_trimestral' %}
+      <section class="analytics-weeks">
+        {% for semana in semanas_mes %}
+        <article class="analytics-panel analytics-panel--week">
+          <div class="analytics-panel__header">
+            <h2>Semana {{ semana.semana_label }}</h2>
+            <span>Semana global {{ semana.semana }}</span>
+          </div>
+          <div class="analytics-week-grid">
+            <div>
+              <strong>Planejado</strong>
+              <p>Valor: R$ {{ semana.valor_planejado | brl }}</p>
+              <p>Acoes: {{ semana.acoes_planejadas }}</p>
+            </div>
+            <div>
+              <strong>Realizado</strong>
+              <p>Valor: R$ {{ semana.valor_realizado | brl }}</p>
+              <p>Acoes: {{ semana.acoes_realizadas }}</p>
+            </div>
+          </div>
+          <div class="analytics-metric">
+            <div><strong>Progresso de Valor</strong></div>
+            <span>{{ semana.pct_valor }}%</span>
+          </div>
+          <div class="analytics-progress"><span style="width: {{ semana.pct_valor if semana.pct_valor <= 100 else 100 }}%"></span></div>
+          <div class="analytics-metric">
+            <div><strong>Progresso de Acoes</strong></div>
+            <span>{{ semana.pct_acoes }}%</span>
+          </div>
+          <div class="analytics-progress analytics-progress--dark"><span style="width: {{ semana.pct_acoes if semana.pct_acoes <= 100 else 100 }}%"></span></div>
+        </article>
+        {% endfor %}
+      </section>
+      {% endif %}
+
+      {% if mes_atual.slug == 'resumo_trimestral' %}
+      <section class="analytics-panel">
+        <div class="analytics-panel__header">
+          <h2>Evolucao Geral</h2>
+          <span>Semanas 1 a 12</span>
+        </div>
+        <div class="analytics-table-wrap">
+          <table class="data-table analytics-table">
+            <thead>
+              <tr>
+                <th>Mes</th>
+                <th>Semana</th>
+                <th>Valor Planejado</th>
+                <th>Valor Realizado</th>
+                <th>% Valor</th>
+                <th>Acoes Planejadas</th>
+                <th>Acoes Realizadas</th>
+                <th>% Acoes</th>
+                <th>Acum. Valor</th>
+                <th>Acum. Acoes</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for linha in evolucao %}
+              <tr>
+                <td>{{ linha.mes_nome }}</td>
+                <td>S{{ linha.semana_label }}</td>
+                <td>R$ {{ linha.valor_planejado | brl }}</td>
+                <td>R$ {{ linha.valor_realizado | brl }}</td>
+                <td>{{ linha.pct_valor }}%</td>
+                <td>{{ linha.acoes_planejadas }}</td>
+                <td>{{ linha.acoes_realizadas }}</td>
+                <td>{{ linha.pct_acoes }}%</td>
+                <td>{{ linha.pct_valor_acumulado }}%</td>
+                <td>{{ linha.pct_acoes_acumulado }}%</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </section>
+      {% endif %}
+    </section>
+  </main>
+</div>
+
+<script>
+(function () {
+  const btn = document.getElementById('menu-btn');
+  const drawer = document.getElementById('drawer');
+  const overlay = document.getElementById('drawer-overlay');
+  function open() { drawer.classList.add('open'); overlay.classList.add('show'); }
+  function shut() { drawer.classList.remove('open'); overlay.classList.remove('show'); }
+  btn.addEventListener('click', open);
+  overlay.addEventListener('click', shut);
+  document.getElementById('drawer-close').addEventListener('click', shut);
+})();
+</script>
+{% if mes_atual.slug == 'resumo_trimestral' %}
+<div
+  class="analytics-ai{% if not analytics_ai_enabled %} analytics-ai--disabled{% endif %}"
+  data-analytics-ai
+  data-enabled="{{ 'true' if analytics_ai_enabled else 'false' }}"
+  data-chat-url="{{ url_for('admin.relacionamento_ai_chat') }}"
+  data-mes="{{ mes_atual.slug }}"
+  data-empreendimento="{{ filtros.empreendimento }}"
+  data-responsavel="{{ filtros.responsavel }}"
+  data-tipo-contato="{{ filtros.tipo_contato }}"
+  data-situacao="{{ filtros.situacao }}"
+>
+  <button type="button" class="analytics-ai__toggle" data-ai-toggle aria-expanded="false" aria-label="Abrir Kamille, assistente analítica">
+    <img src="{{ url_for('static', filename='images/kamille.png') }}" alt="Kamille" class="analytics-ai__avatar" />
+  </button>
+  <section class="analytics-ai__panel" data-ai-panel hidden>
+    <header class="analytics-ai__header">
+      <div class="analytics-ai__identity">
+        <img src="{{ url_for('static', filename='images/kamille.png') }}" alt="Kamille" class="analytics-ai__header-avatar" />
+        <div class="analytics-ai__identity-copy">
+          <span class="analytics-ai__eyebrow">Assistente Analítica</span>
+          <strong>Kamille</strong>
+          <p>Sua parceira para interpretar o trimestre com leitura analítica, comercial e financeira.</p>
+        </div>
+      </div>
+      <button type="button" class="analytics-ai__close" data-ai-close aria-label="Fechar Kamille">x</button>
+    </header>
+    <div class="analytics-ai__messages" data-ai-messages>
+      <div class="analytics-ai__message analytics-ai__message--assistant analytics-ai__message--intro">
+        Sou a Kamille. Posso analisar comparações entre semanas, gargalos, desempenho por responsável, situações e oportunidades do trimestre.
+      </div>
+    </div>
+    <div class="analytics-ai__status" data-ai-status></div>
+    <form class="analytics-ai__form" data-ai-form>
+      <textarea
+        class="analytics-ai__input"
+        data-ai-input
+        rows="1"
+      ></textarea>
+      <button type="submit" class="analytics-ai__send" aria-label="Enviar pergunta para Kamille">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="5" y1="12" x2="19" y2="12"></line>
+          <polyline points="12 5 19 12 12 19"></polyline>
+        </svg>
+      </button>
+    </form>
+  </section>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block extra_js %}
+{% if mes_atual.slug == 'resumo_trimestral' %}
+<script src="{{ url_for('static', filename='js/analytics_ai.js') }}"></script>
+{% endif %}
+{% endblock %}

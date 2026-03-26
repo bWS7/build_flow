@@ -1,0 +1,359 @@
+{% extends "base.html" %}
+{% block title %}Relacionamento — Semana {{ semana_atual }}{% endblock %}
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/relacionamento.css') }}" />
+{% endblock %}
+
+{% set logo_svg %}<img src="{{ url_for('static', filename='images/logo2.webp') }}" alt="Sousa Araujo" />{% endset %}
+
+{% block body %}
+<div class="app-layout">
+
+  <!-- ─── TOP HEADER ──────────────────────────────────────────────────────── -->
+  <header class="topheader">
+    <button class="hamburger" id="menu-btn" aria-label="Abrir menu">
+      <span></span><span></span><span></span>
+    </button>
+    <div class="topheader__center">Central de Relacionamento</div>
+    <a href="{{ url_for('relacionamento.index') }}" class="topheader__logo">{{ logo_svg }}</a>
+  </header>
+
+  <!-- ─── DRAWER OVERLAY ──────────────────────────────────────────────────── -->
+  <div class="drawer-overlay" id="drawer-overlay"></div>
+
+  <!-- ─── DRAWER ──────────────────────────────────────────────────────────── -->
+  <nav class="drawer" id="drawer">
+    <div class="drawer__header">
+      <img src="{{ url_for('static', filename='images/logo.webp') }}" class="drawer__logo" alt="Sousa Araujo" />
+      <button class="drawer__close" id="drawer-close">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+    <div class="drawer__nav">
+      <a href="{{ url_for('relacionamento.index') }}" class="drawer__link drawer__link--active">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
+        Relacionamento
+      </a>
+      {% if current_user.tipo == 'admin' %}
+      <a href="{{ url_for('admin.dashboard') }}" class="drawer__link">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+        Admin
+      </a>
+      {% endif %}
+    </div>
+    <div class="drawer__footer">
+      <div class="drawer__avatar">{{ current_user.nome[0] }}</div>
+      <div class="drawer__user-info">
+        <span class="drawer__user-name">{{ current_user.nome | title }}</span>
+        <span class="drawer__user-role">{{ current_user.tipo | upper }}</span>
+      </div>
+      <a href="{{ url_for('auth.logout') }}" class="drawer__logout" title="Sair">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+      </a>
+    </div>
+  </nav>
+
+  <!-- ─── MAIN ─────────────────────────────────────────────────────────── -->
+  <main class="main-content">
+
+    <!-- Topbar -->
+    <header class="topbar">
+      <div class="topbar__left">
+        <span class="topbar__badge" id="live-badge">
+          <span class="topbar__pulse"></span> AO VIVO
+        </span>
+      </div>
+      <div class="topbar__weeks">
+        {% for mes_nome, mes_ini, mes_id in [('Abril', 1, 'abril'), ('Maio', 5, 'maio'), ('Junho', 9, 'junho')] %}
+        <div class="week-month">
+          <button class="week-month__toggle" type="button" onclick="toggleMesRelacionamento('{{ mes_id }}')">
+            <span>{{ mes_nome }}</span>
+            <svg class="week-month__arrow week-month__arrow--collapsed" id="arrow-{{ mes_id }}" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+          </button>
+          <div class="week-month__body week-month__body--collapsed" id="body-{{ mes_id }}">
+            {% for s in range(mes_ini, mes_ini + 4) %}
+            {% set semana_local = loop.index %}
+            <a href="?semana={{ s }}"
+               class="week-pill {% if s == semana_atual %}week-pill--active{% endif %}">
+              S{{ semana_local }}
+            </a>
+            {% endfor %}
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+    </header>
+
+    <!-- ─── INDICADORES ──────────────────────────────────────────────── -->
+    <section class="indicators">
+      <div class="kpi-card">
+        <div class="kpi-card__body">
+          <span class="kpi-card__label">AÇÕES PLANEJADAS</span>
+          <span class="kpi-card__value" id="acoes-planejadas">{{ indicadores.acoes_planejadas }}</span>
+        </div>
+        <div class="kpi-card__icon kpi-card__icon--plan">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+        </div>
+      </div>
+
+      <div class="kpi-card kpi-card--highlight">
+        <div class="kpi-card__body">
+          <span class="kpi-card__label">AÇÕES REALIZADAS</span>
+          <span class="kpi-card__value" id="acoes-realizadas">{{ indicadores.acoes_realizadas }}</span>
+        </div>
+        <div class="kpi-card__icon kpi-card__icon--done">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
+        </div>
+      </div>
+
+      <div class="kpi-card">
+        <div class="kpi-card__body">
+          <span class="kpi-card__label">VALOR META</span>
+          <span class="kpi-card__value" id="valor-meta">R$ {{ indicadores.valor_meta | brl_int }}</span>
+        </div>
+        <div class="kpi-card__icon kpi-card__icon--target">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>
+        </div>
+      </div>
+
+      <div class="kpi-card">
+        <div class="kpi-card__body">
+          <span class="kpi-card__label">VALOR REALIZADO</span>
+          <span class="kpi-card__value" id="valor-realizado">R$ {{ indicadores.soma_valores | brl_int }}</span>
+        </div>
+        <div class="kpi-card__icon kpi-card__icon--money">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+        </div>
+      </div>
+    </section>
+
+    <!-- ─── BARRAS DE PROGRESSO ──────────────────────────────────────── -->
+    <section class="progress-section">
+      <div class="progress-block">
+        <div class="progress-block__header">
+          <span class="progress-block__label">Progresso de Ações</span>
+          <span class="progress-block__pct" id="pct-acoes">{{ indicadores.pct_acoes }}%</span>
+        </div>
+        <div class="progress-track">
+          <div class="progress-fill progress-fill--acoes" id="bar-acoes" style="width:{{ indicadores.pct_acoes }}%"></div>
+        </div>
+        <div class="progress-block__detail">
+          <span id="txt-acoes">{{ indicadores.acoes_realizadas }} de {{ indicadores.acoes_planejadas }} ações</span>
+        </div>
+      </div>
+
+      <div class="progress-block">
+        <div class="progress-block__header">
+          <span class="progress-block__label">Progresso de Valor</span>
+          <span class="progress-block__pct" id="pct-valor">{{ indicadores.pct_valor }}%</span>
+        </div>
+        <div class="progress-track">
+          <div class="progress-fill progress-fill--valor" id="bar-valor" style="width:{{ indicadores.pct_valor }}%"></div>
+        </div>
+        <div class="progress-block__detail">
+          <span id="txt-valor">R$ {{ indicadores.soma_valores | brl }} de R$ {{ indicadores.valor_meta | brl }}</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- ─── CADASTRO ─────────────────────────────────────────────────── -->
+    <section class="form-section">
+      <div class="section-header">
+        <h3 class="section-header__title">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
+          Novo Registro — Semana {{ semana_atual }}
+        </h3>
+        <button class="btn btn--sm btn--ghost" id="toggle-form">▼ Expandir</button>
+      </div>
+
+      <div id="form-wrapper" style="display:none">
+        <form id="form-cadastro" class="cadastro-form" novalidate>
+          <input type="hidden" name="semana" value="{{ semana_atual }}" />
+          <div class="form-grid">
+            <div class="field">
+              <label class="field__label">Empreendimento *</label>
+              <select class="field__input" name="empreendimento" required>
+                <option value="">Selecione...</option>
+                {% for emp in empreendimentos %}
+                <option value="{{ emp.nome }}">{{ emp.nome }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="field">
+              <label class="field__label">Cliente *</label>
+              <input class="field__input" type="text" name="cliente" placeholder="Nome completo" required />
+            </div>
+            <div class="field">
+              <label class="field__label">Telefone *</label>
+              <input class="field__input" type="text" name="telefone" placeholder="(11) 99999-9999" required />
+            </div>
+            <div class="field">
+              <label class="field__label">E-mail do cliente</label>
+              <input class="field__input" type="email" name="email_cliente" placeholder="cliente@email.com" />
+            </div>
+            <div class="field">
+              <label class="field__label">Tipo de contato *</label>
+              <select class="field__input" name="tipo_contato" required>
+                <option value="">Selecione...</option>
+                {% for tc in tipos_contato %}
+                <option value="{{ tc }}">{{ tc }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="field">
+              <label class="field__label">Situação / Negociação Aceita? *</label>
+              <select class="field__input" name="situacao" required>
+                {% for sit in situacoes %}
+                <option value="{{ sit }}">{{ sit }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="field">
+              <label class="field__label">Valor (R$)</label>
+              <input class="field__input" type="number" name="valor" min="0" step="0.01" placeholder="0,00" />
+            </div>
+            <div class="field">
+              <label class="field__label">Responsável</label>
+              <input class="field__input" type="text" value="{{ current_user.nome | upper }}" readonly />
+            </div>
+          </div>
+          <div class="field field--full">
+            <label class="field__label">Observação</label>
+            <textarea class="field__input field__textarea" name="observacao" rows="2" placeholder="Observações adicionais..."></textarea>
+          </div>
+          <div class="form-actions">
+            <button type="reset" class="btn btn--ghost">Limpar</button>
+            <button type="submit" class="btn btn--primary" id="btn-salvar">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+              Salvar Registro
+            </button>
+          </div>
+        </form>
+      </div>
+    </section>
+
+    <!-- ─── TABELA ───────────────────────────────────────────────────── -->
+    <section class="table-section">
+      <div class="section-header">
+        <h3 class="section-header__title">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M3 15h18M9 3v18"/></svg>
+          Clientes — Semana {{ semana_atual }}
+        </h3>
+        <span class="section-header__count" id="total-registros">{{ registros|length }} registros</span>
+      </div>
+      <div class="table-wrap">
+        <table class="data-table" id="tabela-clientes">
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>EMPREENDIMENTO</th>
+              <th>CLIENTE</th>
+              <th>TELEFONE</th>
+              <th>TIPO CONTATO</th>
+              <th>SITUAÇÃO / NEGOCIAÇÃO ACEITA?</th>
+              <th>VALOR</th>
+              <th>RESPONSÁVEL</th>
+              <th>DATA</th>
+              <th></th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody id="tbody-clientes">
+            {% for r in registros %}
+            <tr data-id="{{ r.id }}" style="cursor:pointer"
+                class="{% if r.situacao == 'SIM' %}row--sim{% elif r.situacao in ['NÃO', 'CONTATO REJEITADO'] %}row--rejeitado{% elif r.situacao == 'LIGAR EM OUTRO MOMENTO' %}row--ligar{% endif %}"
+                onclick="abrirFicha({{ r.id }})">
+              <td class="td-id">{{ r.id }}</td>
+              <td>{{ r.empreendimento }}</td>
+              <td class="td-nome">{{ r.cliente }}</td>
+              <td>{{ r.telefone }}</td>
+              <td>{{ r.tipo_contato }}</td>
+              <td><span class="badge badge--{{ r.situacao | lower | replace(' ', '-') }}">{{ r.situacao }}</span></td>
+              <td class="td-valor">{% if r.valor > 0 %}R$ {{ r.valor | brl }}{% else %}—{% endif %}</td>
+              <td>{{ r.responsavel }}</td>
+              <td class="td-data">{{ r.formatar_criado_em('%d/%m/%Y') }}</td>
+              <td class="td-icon">
+                {% if r.situacao == 'SIM' %}
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#059669" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+                {% elif r.situacao in ['NÃO', 'CONTATO REJEITADO'] %}
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#DC2626" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                {% elif r.situacao == 'LIGAR EM OUTRO MOMENTO' %}
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#D97706" stroke-width="2.5"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+                {% else %}
+                  <span style="color:var(--gray-400)">—</span>
+                {% endif %}
+              </td>
+              <td onclick="event.stopPropagation()">
+                {% if current_user.tipo == 'admin' or r.responsavel == current_user.nome | upper %}
+                <button class="btn-del" onclick="deletarRegistro({{ r.id }}, this)" title="Excluir">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/></svg>
+                </button>
+                {% endif %}
+              </td>
+            </tr>
+            {% else %}
+            <tr id="empty-row">
+              <td colspan="11" class="td-empty">Nenhum registro nesta semana. Cadastre o primeiro acima.</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+  </main>
+</div>
+
+<!-- ─── MODAL FICHA ──────────────────────────────────────────────────────── -->
+<div id="modal-ficha" class="modal-overlay" hidden onclick="if(event.target===this)closeFicha()">
+  <div class="modal modal--ficha">
+    <div class="modal__header">
+      <h4>Ficha do Cliente <span id="fi-id" style="color:var(--gray-400);font-size:13px;font-weight:500"></span></h4>
+      <button class="modal__close" onclick="closeFicha()">✕</button>
+    </div>
+    <form class="ficha-grid" id="form-ficha" onsubmit="event.preventDefault(); salvarFicha();">
+      <div class="field"><label class="field__label">Cliente</label><input class="field__input" id="fi-cliente" type="text" /></div>
+      <div class="field"><label class="field__label">Empreendimento</label><select class="field__input" id="fi-emp"></select></div>
+      <div class="field"><label class="field__label">Telefone</label><input class="field__input" id="fi-tel" type="text" /></div>
+      <div class="field"><label class="field__label">E-mail</label><input class="field__input" id="fi-email" type="email" /></div>
+      <div class="field"><label class="field__label">Tipo de Contato</label><select class="field__input" id="fi-tipo"></select></div>
+      <div class="field"><label class="field__label">Situação / Negociação Aceita?</label><select class="field__input" id="fi-situacao"></select></div>
+      <div class="field"><label class="field__label">Valor</label><input class="field__input" id="fi-valor" type="number" min="0" step="0.01" /></div>
+      <div class="field"><label class="field__label">Responsável</label><input class="field__input" id="fi-resp" type="text" readonly /></div>
+      <div class="field"><label class="field__label">Semana</label><input class="field__input" id="fi-semana" type="text" readonly /></div>
+      <div class="field"><label class="field__label">Data / Hora</label><input class="field__input" id="fi-data" type="text" readonly /></div>
+      <div class="field field--full"><label class="field__label">Observação</label><textarea class="field__input field__textarea" id="fi-obs" rows="3"></textarea></div>
+      <div class="modal__actions field--full">
+        <span id="fi-permissao" class="ficha-permission"></span>
+        <button class="btn btn--ghost" type="button" onclick="closeFicha()">Fechar</button>
+        <button class="btn btn--primary" type="submit" id="btn-salvar-ficha">Salvar alterações</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Toast -->
+<div id="toast" class="toast" aria-live="polite"></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.5/socket.io.min.js"></script>
+<script src="{{ url_for('static', filename='js/relacionamento.js') }}"></script>
+<script>
+  const SEMANA_ATUAL = {{ semana_atual }};
+  const CURRENT_USER_NOME = {{ (current_user.nome | upper) | tojson }};
+  const IS_ADMIN = {{ 'true' if current_user.tipo == 'admin' else 'false' }};
+  const INITIAL_REGISTROS = {{ registros_json | tojson }};
+  const TIPOS_CONTATO = {{ tipos_contato | tojson }};
+  const SITUACOES = {{ situacoes | tojson }};
+  const EMPREENDIMENTOS = {{ empreendimentos | map(attribute='nome') | list | tojson }};
+  (function () {
+    const btn = document.getElementById('menu-btn');
+    const drawer = document.getElementById('drawer');
+    const overlay = document.getElementById('drawer-overlay');
+    function open() { drawer.classList.add('open'); overlay.classList.add('show'); }
+    function shut() { drawer.classList.remove('open'); overlay.classList.remove('show'); }
+    btn.addEventListener('click', open);
+    overlay.addEventListener('click', shut);
+    document.getElementById('drawer-close').addEventListener('click', shut);
+  })();
+</script>
+{% endblock %}
