@@ -30,26 +30,41 @@
       </button>
     </div>
     <div class="drawer__nav">
-      <a href="{{ url_for('vendas.index') }}" class="drawer__link">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3h18v18H3z"/><path d="M8 14l3-3 2 2 4-5"/></svg>
-        Vendas
+      <a href="{{ url_for('admin.dashboard') }}" class="drawer__link drawer__link--active">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+        Admin
       </a>
       <a href="{{ url_for('relacionamento.index') }}" class="drawer__link">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
         Relacionamento
       </a>
-      <a href="{{ url_for('admin.dashboard') }}" class="drawer__link drawer__link--active">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
-        Admin
+      <a href="{{ url_for('vendas.index') }}" class="drawer__link">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3h18v18H3z"/><path d="M8 14l3-3 2 2 4-5"/></svg>
+        Vendas
       </a>
-      <a href="{{ url_for('admin.relacionamento_painel') }}" class="drawer__link">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"/><path d="M7 14l3-3 3 2 4-5"/></svg>
-        Painel Relacionamento
-      </a>
-      <a href="{{ url_for('admin.vendas_painel') }}" class="drawer__link">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"/><path d="M7 14l3-3 3 2 4-5"/></svg>
-        Painel Vendas
-      </a>
+      <details class="drawer-subnav">
+        <summary class="drawer-subnav__toggle">
+          <span class="drawer-subnav__label">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 7h7l2 2h9v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7z"/></svg>
+            Painéis
+          </span>
+          <svg class="drawer-subnav__arrow" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+        </summary>
+        <div class="drawer-subnav__items">
+          <a href="{{ url_for('admin.master_painel') }}" class="drawer__sublink">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 12h16"/><path d="M12 4v16"/></svg>
+            Painel Master
+          </a>
+          <a href="{{ url_for('admin.relacionamento_painel') }}" class="drawer__sublink">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"/><path d="M7 14l3-3 3 2 4-5"/></svg>
+            Painel Relacionamento
+          </a>
+          <a href="{{ url_for('admin.vendas_painel') }}" class="drawer__sublink">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"/><path d="M7 14l3-3 3 2 4-5"/></svg>
+            Painel Vendas
+          </a>
+        </div>
+      </details>
     </div>
     <div class="drawer__footer">
       <div class="drawer__avatar">{{ current_user.nome[0] }}</div>

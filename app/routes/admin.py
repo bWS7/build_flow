@@ -1,7 +1,7 @@
 from flask import Blueprint, render_template, request, jsonify, abort, flash, redirect, url_for
 from flask_login import login_required, current_user
 from functools import wraps
-from datetime import date
+from datetime import date, datetime, time
 from sqlalchemy import func
 from app import db
 from app.models.user import User, DOMINIO_PERMITIDO, TIPOS_VALIDOS
@@ -21,6 +21,15 @@ PERIODO_TRIMESTRAL = ('resumo_trimestral', 'Resumo Trimestral', 1)
 META_FINAL_MONTH = 11
 META_FINAL_DAY = 30
 MIN_PASSWORD_LENGTH = 10
+MASTER_START_DATE = datetime(2026, 4, 1, 0, 0, 0)
+MASTER_END_DATE = datetime(2026, 6, 30, 23, 59, 59)
+MASTER_METRICAS_FICTICIAS = (
+    ('giro', 'Giro', 77.0, 100.0, 'Fluxo operacional projetado para o trimestre.'),
+    ('medicao', 'Medição', 39.0, 100.0, 'Leitura fictícia até a entrada oficial do módulo.'),
+    ('investidor', 'Investidor', 68.0, 100.0, 'Captação consolidada em ambiente ilustrativo.'),
+    ('fornecedores', 'Fornecedores', 12.0, 100.0, 'Status provisório enquanto o painel não recebe inputs reais.'),
+    ('bancos', 'Bancos', 88.0, 100.0, 'Indicador fictício de relacionamento bancário.'),
+)
 
 
 def _safe_pct(realizado: float, planejado: float) -> float:
@@ -344,6 +353,116 @@ def _montar_relatorio_relacionamento(mes_slug: str, filtros: dict | None = None)
         'opcoes_filtro': opcoes_filtro,
     }
 
+
+def _formatar_tempo_restante(total_segundos: int) -> str:
+    if total_segundos <= 0:
+        return 'Prazo encerrado'
+    dias, resto = divmod(total_segundos, 86400)
+    horas, resto = divmod(resto, 3600)
+    minutos, _ = divmod(resto, 60)
+    return f'{dias}d {horas:02d}h {minutos:02d}min'
+
+
+def _montar_master_painel() -> dict:
+    resumo_inadimplencia = _montar_relatorio_relacionamento('resumo_trimestral')
+    resumo_vendas = montar_contexto_template_vendas('resumo_trimestral', incluir_resumo=True)
+
+    cards = [
+        {
+            'slug': 'venda_varejo',
+            'nome': 'Venda Varejo',
+            'realizado': float(resumo_vendas['financeiro']['total_vendidas']),
+            'meta': float(resumo_vendas['financeiro']['meta_quantidade']),
+            'percentual': float(resumo_vendas['financeiro']['percentual_atingimento']),
+            'descricao': 'Total vendido frente à meta trimestral cadastrada no admin.',
+            'comparativo_label': 'vendas realizadas x vendas planejadas',
+            'ficticio': False,
+        },
+    ]
+
+    cards.extend([
+        {
+            'slug': slug,
+            'nome': nome,
+            'realizado': realizado,
+            'meta': meta,
+            'percentual': _safe_pct(realizado, meta),
+            'descricao': descricao,
+            'comparativo_label': 'realizado x planejado',
+            'ficticio': True,
+        }
+        for slug, nome, realizado, meta, descricao in MASTER_METRICAS_FICTICIAS
+    ])
+
+    cards.append({
+        'slug': 'inadimplencia',
+        'nome': 'Inadimplência',
+        'realizado': float(resumo_inadimplencia['resumo_mensal']['valor_realizado']),
+        'meta': float(resumo_inadimplencia['resumo_mensal']['valor_planejado']),
+        'percentual': float(resumo_inadimplencia['resumo_mensal']['pct_valor']),
+        'descricao': 'Valor realizado frente ao valor planejado do trimestre.',
+        'comparativo_label': 'valor realizado x valor planejado',
+        'ficticio': False,
+    })
+
+    cards_ordenados = sorted(cards, key=lambda item: (
+        ['venda_varejo', 'giro', 'inadimplencia', 'medicao', 'investidor', 'fornecedores', 'bancos'].index(item['slug'])
+    ))
+
+    total_realizado = sum(float(item['percentual']) for item in cards_ordenados)
+    total_meta = float(len(cards_ordenados) * 100)
+    objetivo_geral = _safe_pct(total_realizado, total_meta)
+
+    agora = datetime.now().replace(microsecond=0)
+    inicio_contagem = MASTER_START_DATE
+    fim_trimestre = MASTER_END_DATE
+    duracao_total = max(int((fim_trimestre - inicio_contagem).total_seconds()), 1)
+    tempo_decorrido = int((agora - inicio_contagem).total_seconds())
+    tempo_decorrido = min(max(tempo_decorrido, 0), duracao_total)
+    tempo_pct = round((tempo_decorrido / duracao_total) * 100, 1)
+
+    destaque_principal = max(cards_ordenados, key=lambda item: item['percentual']) if cards_ordenados else None
+    alerta_principal = min(cards_ordenados, key=lambda item: item['percentual']) if cards_ordenados else None
+
+    return {
+        'cards_master': cards_ordenados,
+        'objetivo_geral': objetivo_geral,
+        'objetivo_realizado_total': total_realizado,
+        'objetivo_meta_total': total_meta,
+        'tempo_pct': tempo_pct,
+        'tempo_restante_label': _formatar_tempo_restante(tempo_decorrido),
+        'data_limite_label': f'{inicio_contagem.strftime("%d/%m/%Y")} a {fim_trimestre.strftime("%d/%m/%Y")}',
+        'timer_started_at_iso': inicio_contagem.isoformat(),
+        'timer_deadline_at_iso': fim_trimestre.isoformat(),
+        'destaque_principal': destaque_principal,
+        'alerta_principal': alerta_principal,
+        'analytics_ai_enabled': analytics_ai_enabled() and analytics_ai_available(),
+    }
+
+
+def _montar_contexto_ia_master() -> dict:
+    painel = _montar_master_painel()
+    return {
+        'objetivo_geral': painel['objetivo_geral'],
+        'tempo_pct': painel['tempo_pct'],
+        'tempo_restante_label': painel['tempo_restante_label'],
+        'data_limite_label': painel['data_limite_label'],
+        'cards_master': [
+            {
+                'frente': card['nome'],
+                'realizado': card['realizado'],
+                'meta': card['meta'],
+                'percentual': card['percentual'],
+                'descricao': card['descricao'],
+                'comparativo_label': card['comparativo_label'],
+                'ficticio': card['ficticio'],
+            }
+            for card in painel['cards_master']
+        ],
+        'destaque_principal': painel['destaque_principal'],
+        'alerta_principal': painel['alerta_principal'],
+    }
+
 admin_bp = Blueprint('admin', __name__)
 
 
@@ -393,6 +512,44 @@ def vendas_painel():
     dados = montar_contexto_template_vendas(request.args.get('mes', 'abril'), incluir_resumo=True)
     dados['painel_admin_vendas'] = True
     return render_template('vendas/index.html', **dados)
+
+
+@admin_bp.route('/master')
+@login_required
+@requer_admin
+def master_painel():
+    return render_template('admin/master_painel.html', **_montar_master_painel())
+
+
+@admin_bp.route('/master/ai-chat', methods=['POST'])
+@login_required
+@requer_admin
+def master_ai_chat():
+    if not analytics_ai_enabled():
+        return jsonify({
+            'erro': 'A assistente analitica nao esta configurada. Defina GEMINI_API_KEY para habilitar.',
+        }), 503
+    if not analytics_ai_available():
+        return jsonify({
+            'erro': 'Dependencia do Gemini nao instalada no ambiente.',
+        }), 503
+
+    dados = request.get_json(silent=True) or {}
+    pergunta = (dados.get('message') or '').strip()
+    if not pergunta:
+        return jsonify({'erro': 'Pergunta obrigatoria.'}), 400
+
+    history = dados.get('history') or []
+    contexto = _montar_contexto_ia_master()
+
+    try:
+        resposta = ask_analytics_assistant(pergunta, history, contexto)
+    except Exception:
+        return jsonify({
+            'erro': 'Nao foi possivel consultar a assistente analitica no momento.',
+        }), 502
+
+    return jsonify({'answer': resposta})
 
 
 @admin_bp.route('/relacionamento/ai-chat', methods=['POST'])

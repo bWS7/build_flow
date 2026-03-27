@@ -1,0 +1,242 @@
+{% extends "base.html" %}
+{% block title %}Admin - Painel Master{% endblock %}
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/admin.css') }}" />
+<link rel="stylesheet" href="{{ url_for('static', filename='css/master.css') }}" />
+{% endblock %}
+
+{% set logo_svg %}<img src="{{ url_for('static', filename='images/logo2.webp') }}" alt="Sousa Araujo" />{% endset %}
+
+{% block body %}
+<div class="app-layout">
+  <header class="topheader">
+    <button class="hamburger" id="menu-btn" aria-label="Abrir menu">
+      <span></span><span></span><span></span>
+    </button>
+    <div class="topheader__center">Painel Master</div>
+    <a href="{{ url_for('admin.master_painel') }}" class="topheader__logo">{{ logo_svg }}</a>
+  </header>
+
+  <div class="drawer-overlay" id="drawer-overlay"></div>
+
+  <nav class="drawer" id="drawer">
+    <div class="drawer__header">
+      <img src="{{ url_for('static', filename='images/logo.webp') }}" class="drawer__logo" alt="Sousa Araujo" />
+      <button class="drawer__close" id="drawer-close">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+    <div class="drawer__nav">
+      <a href="{{ url_for('admin.dashboard') }}" class="drawer__link">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+        Admin
+      </a>
+      <a href="{{ url_for('relacionamento.index') }}" class="drawer__link">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
+        Relacionamento
+      </a>
+      <a href="{{ url_for('vendas.index') }}" class="drawer__link">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3h18v18H3z"/><path d="M8 14l3-3 2 2 4-5"/></svg>
+        Vendas
+      </a>
+      <details class="drawer-subnav" open>
+        <summary class="drawer-subnav__toggle">
+          <span class="drawer-subnav__label">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 7h7l2 2h9v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7z"/></svg>
+            Painéis
+          </span>
+          <svg class="drawer-subnav__arrow" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+        </summary>
+        <div class="drawer-subnav__items">
+          <a href="{{ url_for('admin.master_painel') }}" class="drawer__sublink drawer__sublink--active">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 12h16"/><path d="M12 4v16"/></svg>
+            Painel Master
+          </a>
+          <a href="{{ url_for('admin.relacionamento_painel') }}" class="drawer__sublink">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"/><path d="M7 14l3-3 3 2 4-5"/></svg>
+            Painel Relacionamento
+          </a>
+          <a href="{{ url_for('admin.vendas_painel') }}" class="drawer__sublink">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"/><path d="M7 14l3-3 3 2 4-5"/></svg>
+            Painel Vendas
+          </a>
+        </div>
+      </details>
+    </div>
+    <div class="drawer__footer">
+      <div class="drawer__avatar">{{ current_user.nome[0] }}</div>
+      <div class="drawer__user-info">
+        <span class="drawer__user-name">{{ current_user.nome | title }}</span>
+        <span class="drawer__user-role">Admin</span>
+      </div>
+      <form method="POST" action="{{ url_for('auth.logout') }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+        <button type="submit" class="drawer__logout" title="Sair">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+        </button>
+      </form>
+    </div>
+  </nav>
+
+  <main class="main-content">
+    <section class="master-page">
+      <section class="master-intro">
+        <div>
+          <h1 class="master-intro__title">Painel Master</h1>
+        </div>
+      </section>
+
+      <section class="master-strip">
+        {% for card in cards_master %}
+        <article class="master-chip {% if card.ficticio %}master-chip--ficticio{% endif %}">
+          <div class="master-chip__topline">
+            <span class="master-chip__label">{{ card.nome }}</span>
+          </div>
+          <strong class="master-chip__value">{{ card.percentual }}%</strong>
+          <div class="master-chip__meta">
+            {% if card.slug == 'inadimplencia' %}
+            R$ {{ card.realizado | brl_int }} x R$ {{ card.meta | brl_int }}
+            {% else %}
+            {{ card.realizado | round(0) | int }} x {{ card.meta | round(0) | int }}
+            {% endif %}
+          </div>
+          <div class="master-chip__meta master-chip__meta--context">{{ card.comparativo_label }}</div>
+          <div class="master-chip__track">
+            <span class="master-chip__fill" style="width: {{ card.percentual if card.percentual <= 100 else 100 }}%"></span>
+          </div>
+        </article>
+        {% endfor %}
+      </section>
+
+      <section class="master-hero-grid">
+        <article class="master-panel master-panel--goal" data-master-goal style="--panel-progress: {{ objetivo_geral if objetivo_geral <= 100 else 100 }}%;">
+          <div class="master-panel__rail">Objetivo Alcançado</div>
+          <div class="master-panel__body">
+            <strong class="master-panel__metric"><span data-master-goal-value>{{ objetivo_geral }}</span>%</strong>
+            <p>{{ objetivo_realizado_total | round(1) }} de {{ objetivo_meta_total | round(0) | int }} pontos percentuais rumo aos 100% em cada frente.</p>
+          </div>
+        </article>
+
+        <article
+          class="master-panel master-panel--time"
+          data-master-timer
+          data-started-at="{{ timer_started_at_iso }}"
+          data-deadline-at="{{ timer_deadline_at_iso }}"
+          style="--panel-progress: {{ tempo_pct if tempo_pct <= 100 else 100 }}%;"
+        >
+          <div class="master-panel__rail">Tempo Incorrido</div>
+          <div class="master-panel__body">
+            
+              <strong class="master-panel__metric master-panel__metric--time"><span data-master-timer-pct>{{ tempo_pct }}</span>%</strong>
+              <p><span data-master-timer-value>{{ tempo_restante_label }}</span> do período decorrido. Janela de {{ data_limite_label }}.</p>
+            
+          </div>
+        </article>
+      </section>
+
+      <section class="master-summary-grid">
+        <article class="master-card">
+          <span class="master-card__eyebrow">Maior avanço</span>
+          <strong class="master-card__title">{{ destaque_principal.nome if destaque_principal else 'Sem dados' }}</strong>
+          <p>{{ destaque_principal.percentual if destaque_principal else 0 }}% da meta trimestral.</p>
+        </article>
+        <article class="master-card master-card--alert">
+          <span class="master-card__eyebrow">Maior atenção</span>
+          <strong class="master-card__title">{{ alerta_principal.nome if alerta_principal else 'Sem dados' }}</strong>
+          <p>{{ alerta_principal.percentual if alerta_principal else 0 }}% da meta atual.</p>
+        </article>
+      </section>
+
+      <section class="master-table-card">
+        <div class="master-table-card__header">
+          <h2>Resumo das Frentes</h2>
+          <span>Dados reais em Inadimplência e Venda Varejo; demais frentes provisórias.</span>
+        </div>
+        <div class="table-wrap">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Frente</th>
+                <th>Realizado</th>
+                <th>Meta</th>
+                <th>Percentual</th>
+                <th>Observação</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for card in cards_master %}
+              <tr>
+                <td>{{ card.nome }}</td>
+                <td>{{ card.realizado | round(0) | int }}</td>
+                <td>{{ card.meta | round(0) | int }}</td>
+                <td>{{ card.percentual }}%</td>
+                <td>{{ card.descricao }}</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </section>
+    </section>
+  </main>
+</div>
+
+<div
+  class="analytics-ai{% if not analytics_ai_enabled %} analytics-ai--disabled{% endif %}"
+  data-analytics-ai
+  data-enabled="{{ 'true' if analytics_ai_enabled else 'false' }}"
+  data-chat-url="{{ url_for('admin.master_ai_chat') }}"
+  data-mes="master"
+  data-empreendimento=""
+  data-responsavel=""
+  data-tipo-contato=""
+  data-situacao=""
+>
+  <button type="button" class="analytics-ai__toggle" data-ai-toggle aria-expanded="false" aria-label="Abrir Kamille, assistente analítica">
+    <img src="{{ url_for('static', filename='images/kamille.png') }}" alt="Kamille" class="analytics-ai__avatar" />
+  </button>
+  <section class="analytics-ai__panel" data-ai-panel hidden>
+    <header class="analytics-ai__header">
+      <div class="analytics-ai__identity">
+        <img src="{{ url_for('static', filename='images/kamille.png') }}" alt="Kamille" class="analytics-ai__header-avatar" />
+        <div class="analytics-ai__identity-copy">
+          <span class="analytics-ai__eyebrow">Assistente Analítica</span>
+          <strong>Kamille</strong>
+          <p>Posso cruzar tempo, metas e desempenho do painel master.</p>
+        </div>
+      </div>
+      <button type="button" class="analytics-ai__close" data-ai-close aria-label="Fechar Kamille">x</button>
+    </header>
+    <div class="analytics-ai__messages" data-ai-messages>
+      <div class="analytics-ai__message analytics-ai__message--assistant analytics-ai__message--intro">
+        Sou a Kamille. Posso resumir riscos, comparar frentes e destacar oportunidades do trimestre.
+      </div>
+    </div>
+    <div class="analytics-ai__status" data-ai-status></div>
+    <form class="analytics-ai__form" data-ai-form>
+      <textarea class="analytics-ai__input" data-ai-input rows="1"></textarea>
+      <button type="submit" class="analytics-ai__send" aria-label="Enviar pergunta para Kamille">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="5" y1="12" x2="19" y2="12"></line>
+          <polyline points="12 5 19 12 12 19"></polyline>
+        </svg>
+      </button>
+    </form>
+  </section>
+</div>
+
+<script>
+(function () {
+  const btn = document.getElementById('menu-btn');
+  const drawer = document.getElementById('drawer');
+  const overlay = document.getElementById('drawer-overlay');
+  function open() { drawer.classList.add('open'); overlay.classList.add('show'); }
+  function shut() { drawer.classList.remove('open'); overlay.classList.remove('show'); }
+  btn.addEventListener('click', open);
+  overlay.addEventListener('click', shut);
+  document.getElementById('drawer-close').addEventListener('click', shut);
+})();
+</script>
+<script src="{{ url_for('static', filename='js/master.js') }}"></script>
+<script src="{{ url_for('static', filename='js/analytics_ai.js') }}"></script>
+{% endblock %}
