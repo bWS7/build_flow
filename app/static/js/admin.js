@@ -6,6 +6,7 @@
 
 const META_LOCK_PREFIX = 'meta-locked-s';
 const MESES = ['abril', 'maio', 'junho'];
+const ADMIN_COLLAPSIBLES = ['metas-varejo', 'metas-relacionamento'];
 
 function csrfHeaders(extra = {}) {
   return { 'X-CSRFToken': window.APP_CSRF_TOKEN || '', ...extra };
@@ -249,6 +250,59 @@ function editarMeta(semana, btn) {
   renderizarMetaEditavel(semana);
 }
 
+function obterMetaVendaEls(mes) {
+  return {
+    item: document.querySelector(`.meta-item[data-meta-venda="${mes}"]`),
+    input: document.getElementById(`meta-venda-${mes}`),
+    btn: document.getElementById(`btn-meta-venda-${mes}`),
+  };
+}
+
+function renderizarMetaVendaBloqueada(mes) {
+  const { item, input, btn } = obterMetaVendaEls(mes);
+  if (!input || !btn) return;
+  input.readOnly = true;
+  btn.innerHTML = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg> Editar';
+  btn.classList.remove('btn--primary');
+  btn.classList.add('btn--ghost');
+  btn.onclick = () => editarMetaVenda(mes, btn);
+  if (item) item.dataset.locked = 'true';
+}
+
+function renderizarMetaVendaEditavel(mes) {
+  const { item, input, btn } = obterMetaVendaEls(mes);
+  if (!input || !btn) return;
+  input.readOnly = false;
+  btn.textContent = 'Salvar Meta';
+  btn.classList.remove('btn--ghost');
+  btn.classList.add('btn--primary');
+  btn.onclick = () => salvarMetaVenda(mes, btn);
+  if (item) item.dataset.locked = 'false';
+}
+
+async function salvarMetaVenda(mes, btn) {
+  const input = document.getElementById(`meta-venda-${mes}`);
+  const quantidade = Math.max(parseInt(input ? input.value : '0', 10) || 0, 0);
+
+  try {
+    const resp = await fetch('/admin/meta-venda/salvar', {
+      method: 'POST',
+      headers: csrfHeaders({ 'Content-Type': 'application/json' }),
+      body: JSON.stringify({ mes, quantidade_meta: quantidade }),
+    });
+    const raw = await resp.text();
+    const json = raw ? JSON.parse(raw) : {};
+    if (resp.ok) {
+      showToast(`Meta de ${mes} salva com sucesso!`, 'success');
+      renderizarMetaVendaBloqueada(mes);
+    } else {
+      showToast(json.erro || 'Erro ao salvar meta de vendas.', 'error');
+    }
+  } catch (error) {
+    showToast('Erro ao salvar meta de vendas.', 'error');
+  }
+}
+
 // ── Meses colapsáveis ───────────────────────────────────────────────────────
 function toggleMes(mesId) {
   const body  = document.getElementById(`body-${mesId}`);
@@ -257,12 +311,35 @@ function toggleMes(mesId) {
   arrow.classList.toggle('mes-arrow--collapsed', isCollapsed);
 }
 
+function toggleAdminCard(cardId) {
+  const body = document.getElementById(`body-${cardId}`);
+  const arrow = document.getElementById(`arrow-${cardId}`);
+  if (!body || !arrow) return;
+  const collapsed = body.classList.toggle('admin-card__body--collapsed');
+  arrow.classList.toggle('admin-card__arrow--collapsed', collapsed);
+}
+
 document.addEventListener('DOMContentLoaded', () => {
   document.querySelectorAll('.meta-item[data-semana]').forEach((item) => {
     const semana = item.dataset.semana;
     const lockedByServer = item.dataset.locked === 'true';
     const lockedByClient = localStorage.getItem(`${META_LOCK_PREFIX}${semana}`) === '1';
     if (lockedByServer || lockedByClient) renderizarMetaBloqueada(semana);
+  });
+
+  document.querySelectorAll('.meta-item[data-meta-venda]').forEach((item) => {
+    const mes = item.dataset.metaVenda;
+    const lockedByServer = item.dataset.locked === 'true';
+    if (lockedByServer) renderizarMetaVendaBloqueada(mes);
+  });
+
+  ADMIN_COLLAPSIBLES.forEach((cardId) => {
+    const body = document.getElementById(`body-${cardId}`);
+    const arrow = document.getElementById(`arrow-${cardId}`);
+    if (body && arrow) {
+      body.classList.add('admin-card__body--collapsed');
+      arrow.classList.add('admin-card__arrow--collapsed');
+    }
   });
 
   MESES.forEach(mesId => {
@@ -274,3 +351,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 });
+
+function editarMetaVenda(mes, btn) {
+  renderizarMetaVendaEditavel(mes);
+}

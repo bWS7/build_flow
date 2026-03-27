@@ -98,10 +98,12 @@ def create_app():
     from app.routes.auth import auth_bp
     from app.routes.relacionamento import relacionamento_bp
     from app.routes.admin import admin_bp
+    from app.routes.vendas import vendas_bp
 
     app.register_blueprint(auth_bp)
     app.register_blueprint(relacionamento_bp, url_prefix='/relacionamento')
     app.register_blueprint(admin_bp, url_prefix='/admin')
+    app.register_blueprint(vendas_bp, url_prefix='/vendas')
 
     # ── Seed inicial ───────────────────────────────────────────────────────────
     with app.app_context():

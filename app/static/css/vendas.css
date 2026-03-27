@@ -1,0 +1,297 @@
+.topbar__weeks--months {
+  align-items: center;
+}
+
+.sales-entry-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.5fr) minmax(320px, 1fr);
+  gap: 20px;
+  padding: 20px;
+}
+
+.sales-entry-grid .cadastro-form {
+  padding: 0;
+}
+
+.bulk-card {
+  background: linear-gradient(180deg, #FFFCFB 0%, #F8F3F0 100%);
+  border: 1px solid #E9DDD7;
+  border-radius: var(--radius-lg);
+  padding: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.bulk-card__header h4 {
+  font-family: var(--font-display);
+  font-size: 18px;
+  color: var(--black);
+}
+
+.bulk-card__header p,
+.bulk-card__feedback {
+  font-size: 13px;
+  color: var(--gray-600);
+}
+
+.bulk-card__textarea {
+  min-height: 220px;
+  resize: vertical;
+}
+
+.bulk-card__actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.progress-block--funnel {
+  overflow: hidden;
+}
+
+.progress-insights {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  margin-top: 18px;
+}
+
+.progress-insight {
+  padding: 16px;
+  border-radius: 16px;
+  border: 1px solid #E9DDD7;
+  background: linear-gradient(180deg, #FFFDFC 0%, #F8F3F0 100%);
+}
+
+.progress-insight__label {
+  display: block;
+  margin-bottom: 8px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: var(--gray-400);
+}
+
+.progress-insight__value {
+  display: block;
+  font-family: var(--font-display);
+  font-size: 22px;
+  color: var(--wine);
+  line-height: 1.15;
+}
+
+.sales-funnel {
+  display: grid;
+  grid-template-columns: 220px minmax(0, 1fr);
+  gap: 18px;
+  align-items: center;
+}
+
+.sales-funnel__chart {
+  width: 220px;
+  height: 220px;
+  margin: 0 auto;
+  position: relative;
+  display: grid;
+  place-items: center;
+  border: 0;
+  padding: 0;
+  appearance: none;
+  border-radius: 50%;
+  cursor: pointer;
+  box-shadow: inset 0 0 0 1px rgba(107, 26, 42, 0.06);
+  overflow: hidden;
+  transition: transform .22s ease, box-shadow .22s ease;
+}
+
+.sales-funnel__chart:focus-visible {
+  outline: 3px solid rgba(107, 26, 42, 0.14);
+  outline-offset: 4px;
+}
+
+.sales-funnel__chart::before {
+  content: '';
+  position: absolute;
+  inset: 22%;
+  border-radius: 50%;
+  background:
+    radial-gradient(circle at 30% 30%, rgba(255, 255, 255, 0.9), rgba(255, 255, 255, 0.76)),
+    linear-gradient(180deg, #FFFCFB 0%, #F6EFEC 100%);
+  box-shadow:
+    inset 0 0 0 1px rgba(107, 26, 42, 0.08),
+    0 8px 18px rgba(107, 26, 42, 0.08);
+}
+
+.sales-funnel__chart:hover {
+  transform: scale(1.02);
+  box-shadow:
+    inset 0 0 0 1px rgba(107, 26, 42, 0.08),
+    0 14px 28px rgba(107, 26, 42, 0.12);
+}
+
+.sales-funnel__chart--active {
+  box-shadow:
+    inset 0 0 0 3px rgba(107, 26, 42, 0.16),
+    0 18px 30px rgba(107, 26, 42, 0.16);
+}
+
+.sales-funnel__chart--empty {
+  cursor: default;
+}
+
+.sales-funnel__center {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  pointer-events: none;
+  text-align: center;
+  padding: 16px;
+  width: 56%;
+  aspect-ratio: 1;
+  border-radius: 50%;
+}
+
+.sales-funnel__center strong {
+  font-family: var(--font-display);
+  font-size: 30px;
+  line-height: 1;
+  color: #5E1020;
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.85);
+}
+
+.sales-funnel__center small {
+  font-family: var(--font-sans);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: #742535;
+  line-height: 1.25;
+}
+
+.sales-funnel__center--empty strong,
+.sales-funnel__center--empty small {
+  color: #8F7B74;
+}
+
+.sales-funnel__legend {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.sales-funnel__item {
+  display: grid;
+  grid-template-columns: 12px minmax(0, 1fr);
+  gap: 10px;
+  align-items: start;
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid transparent;
+  border-radius: 14px;
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+  transition: background .2s ease, border-color .2s ease, transform .2s ease;
+}
+
+.sales-funnel__item:hover {
+  transform: translateX(2px);
+  border-color: #E8D6D0;
+  background: #FBF6F3;
+}
+
+.sales-funnel__item--active {
+  background: #F7EEEA;
+  border-color: #E8D6D0;
+  box-shadow: inset 0 0 0 1px rgba(107, 26, 42, 0.05);
+}
+
+.sales-funnel__dot {
+  width: 12px;
+  height: 12px;
+  margin-top: 4px;
+  border-radius: 50%;
+}
+
+.sales-funnel__item strong {
+  display: block;
+  font-size: 13px;
+  color: var(--gray-900);
+}
+
+.sales-funnel__item p {
+  font-size: 12px;
+  color: var(--gray-600);
+}
+
+.sales-table tbody tr {
+  cursor: pointer;
+}
+
+.sales-filters {
+  display: grid;
+  grid-template-columns: 1.4fr 1fr 1fr auto auto;
+  gap: 12px;
+  padding: 16px 20px 0;
+}
+
+.badge--vendida {
+  background: #D1FAE5;
+  color: #065F46;
+}
+
+.badge--cancelada {
+  background: #FEE2E2;
+  color: #991B1B;
+}
+
+.badge--confeccao-de-contrato {
+  background: #FEF3C7;
+  color: #92400E;
+}
+
+.badge--contrato-assinado,
+.badge--contrato-assinado-clientes {
+  background: #F7EEEA;
+  color: var(--wine);
+}
+
+.badge--nova-reserva,
+.badge--pendente-de-assinatura {
+  background: #EEE7E2;
+  color: #5F4B45;
+}
+
+@media (max-width: 1200px) {
+  .sales-entry-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 900px) {
+  .sales-funnel {
+    grid-template-columns: 1fr;
+  }
+
+  .sales-filters {
+    grid-template-columns: 1fr;
+  }
+
+  .progress-insights {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 640px) {
+  .sales-funnel__chart {
+    width: 180px;
+    height: 180px;
+  }
+}

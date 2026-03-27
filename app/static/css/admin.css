@@ -29,6 +29,33 @@
   border-bottom: 1px solid var(--gray-100);
 }
 
+.admin-card__header--toggle {
+  width: 100%;
+  background: none;
+  border: 0;
+  cursor: pointer;
+  text-align: left;
+}
+
+.admin-card__toggle-wrap {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.admin-card__arrow {
+  transition: transform .22s ease;
+  flex-shrink: 0;
+}
+
+.admin-card__arrow--collapsed {
+  transform: rotate(-90deg);
+}
+
+.admin-card__body--collapsed {
+  display: none;
+}
+
 .admin-card__header h3 {
   font-family: var(--font-display);
   font-size: 16px;
@@ -527,6 +554,13 @@
   gap: 14px;
 }
 
+.sales-admin-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 14px;
+  padding: 20px;
+}
+
 .meta-item {
   display: flex;
   flex-direction: column;
@@ -553,6 +587,7 @@
 
 /* ── RESPONSIVE ───────────────────────────────────────────────────────────── */
 @media (max-width: 1200px) {
+  .sales-admin-grid { grid-template-columns: repeat(2, 1fr); }
   .metas-grid { grid-template-columns: repeat(2, 1fr); }
   .analytics-summary-grid { grid-template-columns: repeat(2, 1fr); }
   .analytics-highlights { grid-template-columns: 1fr; }
@@ -578,6 +613,7 @@
   .analytics-chart-xlabels { gap: 10px; overflow-x: auto; }
 }
 @media (max-width: 500px) {
+  .sales-admin-grid { grid-template-columns: 1fr; }
   .metas-grid { grid-template-columns: 1fr; }
   .analytics-month { width: 100%; }
 }

@@ -17,7 +17,7 @@ _login_locks = {}
 REDIRECT_MAP = {
     'admin': 'admin.dashboard',
     'relacionamento': 'relacionamento.index',
-    'comercial': 'auth.em_construcao',
+    'comercial': 'vendas.index',
     'financeiro': 'auth.em_construcao',
     'obra': 'auth.em_construcao',
 }

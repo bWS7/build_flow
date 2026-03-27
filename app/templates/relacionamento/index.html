@@ -30,6 +30,12 @@
       </button>
     </div>
     <div class="drawer__nav">
+      {% if current_user.tipo == 'admin' %}
+      <a href="{{ url_for('vendas.index') }}" class="drawer__link">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3h18v18H3z"/><path d="M8 14l3-3 2 2 4-5"/></svg>
+        Vendas
+      </a>
+      {% endif %}
       <a href="{{ url_for('relacionamento.index') }}" class="drawer__link drawer__link--active">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
         Relacionamento

@@ -7,7 +7,9 @@ from app import db
 from app.models.user import User, DOMINIO_PERMITIDO, TIPOS_VALIDOS
 from app.models.empreendimento import Empreendimento
 from app.models.meta import MetaSemana
+from app.models.meta_venda import MetaVendaVarejo
 from app.models.relacionamento import Relacionamento
+from app.routes.vendas import MESES_VENDAS, montar_contexto_template_vendas
 from app.services.analytics_ai import analytics_ai_available, analytics_ai_enabled, ask_analytics_assistant
 
 MESES_RELATORIO = [
@@ -361,10 +363,16 @@ def dashboard():
     usuarios = User.query.order_by(User.nome).all()
     empreendimentos = Empreendimento.query.order_by(Empreendimento.nome).all()
     metas = MetaSemana.query.order_by(MetaSemana.semana).all()
+    metas_vendas = {
+        meta.mes: meta
+        for meta in MetaVendaVarejo.query.order_by(MetaVendaVarejo.mes).all()
+    }
     return render_template('admin/dashboard.html',
                            usuarios=usuarios,
                            empreendimentos=empreendimentos,
                            metas=metas,
+                           metas_vendas=metas_vendas,
+                           meses_vendas=MESES_VENDAS,
                            tipos=TIPOS_VALIDOS)
 
 
@@ -376,6 +384,15 @@ def relacionamento_painel():
     dados = _montar_relatorio_relacionamento(request.args.get('mes', 'abril'), filtros)
     dados['analytics_ai_enabled'] = analytics_ai_enabled() and analytics_ai_available()
     return render_template('admin/relacionamento_painel.html', **dados)
+
+
+@admin_bp.route('/vendas')
+@login_required
+@requer_admin
+def vendas_painel():
+    dados = montar_contexto_template_vendas(request.args.get('mes', 'abril'), incluir_resumo=True)
+    dados['painel_admin_vendas'] = True
+    return render_template('vendas/index.html', **dados)
 
 
 @admin_bp.route('/relacionamento/ai-chat', methods=['POST'])
@@ -551,6 +568,32 @@ def salvar_meta():
         meta.valor_meta = valor
     else:
         meta = MetaSemana(semana=semana, acoes_planejadas=acoes, valor_meta=valor)
+        db.session.add(meta)
+    db.session.commit()
+    return jsonify({'sucesso': True})
+
+
+@admin_bp.route('/meta-venda/salvar', methods=['POST'])
+@login_required
+@requer_admin
+def salvar_meta_venda():
+    dados = request.get_json(silent=True) or request.form.to_dict()
+    mes = (dados.get('mes') or '').strip().lower()
+    meses_validos = {slug for slug, _, _ in MESES_VENDAS}
+    if mes not in meses_validos:
+        return jsonify({'erro': 'Mês inválido.'}), 400
+
+    try:
+        quantidade = int(dados.get('quantidade_meta', 0) or 0)
+    except (ValueError, TypeError):
+        return jsonify({'erro': 'Quantidade inválida.'}), 400
+
+    meta = MetaVendaVarejo.query.filter_by(mes=mes).first()
+    if meta:
+        meta.valor_meta = 0
+        meta.quantidade_meta = max(quantidade, 0)
+    else:
+        meta = MetaVendaVarejo(mes=mes, valor_meta=0, quantidade_meta=max(quantidade, 0))
         db.session.add(meta)
     db.session.commit()
     return jsonify({'sucesso': True})

@@ -1,0 +1,394 @@
+{% extends "base.html" %}
+{% block title %}Vendas - {{ mes_atual_nome }}{% endblock %}
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/relacionamento.css') }}" />
+<link rel="stylesheet" href="{{ url_for('static', filename='css/admin.css') }}" />
+<link rel="stylesheet" href="{{ url_for('static', filename='css/vendas.css') }}" />
+{% endblock %}
+
+{% set logo_svg %}<img src="{{ url_for('static', filename='images/logo2.webp') }}" alt="Sousa Araujo" />{% endset %}
+
+{% block body %}
+<div class="app-layout">
+  <header class="topheader">
+    <button class="hamburger" id="menu-btn" aria-label="Abrir menu">
+      <span></span><span></span><span></span>
+    </button>
+    <div class="topheader__center">{% if painel_admin_vendas %}Painel de Vendas{% else %}Central de Vendas{% endif %}</div>
+    <a href="{% if painel_admin_vendas %}{{ url_for('admin.vendas_painel') }}{% else %}{{ url_for('vendas.index') }}{% endif %}" class="topheader__logo">{{ logo_svg }}</a>
+  </header>
+
+  <div class="drawer-overlay" id="drawer-overlay"></div>
+
+  <nav class="drawer" id="drawer">
+    <div class="drawer__header">
+      <img src="{{ url_for('static', filename='images/logo.webp') }}" class="drawer__logo" alt="Sousa Araujo" />
+      <button class="drawer__close" id="drawer-close">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+    <div class="drawer__nav">
+      <a href="{{ url_for('vendas.index') }}" class="drawer__link {% if not painel_admin_vendas %}drawer__link--active{% endif %}">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3h18v18H3z"/><path d="M8 14l3-3 2 2 4-5"/></svg>
+        Vendas
+      </a>
+      {% if current_user.tipo == 'admin' %}
+      <a href="{{ url_for('admin.vendas_painel') }}" class="drawer__link {% if painel_admin_vendas %}drawer__link--active{% endif %}">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"/><path d="M7 14l3-3 3 2 4-5"/></svg>
+        Painel Vendas
+      </a>
+      <a href="{{ url_for('relacionamento.index') }}" class="drawer__link">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
+        Relacionamento
+      </a>
+      <a href="{{ url_for('admin.dashboard') }}" class="drawer__link">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+        Admin
+      </a>
+      <a href="{{ url_for('admin.relacionamento_painel') }}" class="drawer__link">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"/><path d="M7 14l3-3 3 2 4-5"/></svg>
+        Painel Relacionamento
+      </a>
+      {% endif %}
+    </div>
+    <div class="drawer__footer">
+      <div class="drawer__avatar">{{ current_user.nome[0] }}</div>
+      <div class="drawer__user-info">
+        <span class="drawer__user-name">{{ current_user.nome | title }}</span>
+        <span class="drawer__user-role">{{ current_user.tipo | upper }}</span>
+      </div>
+      <form method="POST" action="{{ url_for('auth.logout') }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+        <button type="submit" class="drawer__logout" title="Sair">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+        </button>
+      </form>
+    </div>
+  </nav>
+
+  <main class="main-content">
+    <header class="topbar">
+      <div class="topbar__left">
+        <span class="topbar__badge" id="live-badge">
+          <span class="topbar__pulse"></span> AO VIVO
+        </span>
+      </div>
+      <div class="topbar__weeks topbar__weeks--months">
+        {% for slug, nome, _ in meses %}
+        <a href="{% if painel_admin_vendas %}{{ url_for('admin.vendas_painel', mes=slug) }}{% else %}{{ url_for('vendas.index', mes=slug) }}{% endif %}" class="week-pill {% if slug == mes_atual %}week-pill--active{% endif %}">
+          {{ nome }}
+        </a>
+        {% endfor %}
+      </div>
+    </header>
+
+    <section class="indicators">
+      <div class="kpi-card">
+        <div class="kpi-card__body">
+          <span class="kpi-card__label">{% if resumo_trimestral %}Meta do Trimestre{% else %}Meta do Mês{% endif %}</span>
+          <span class="kpi-card__value" id="meta-quantidade">{{ financeiro.meta_quantidade }}</span>
+        </div>
+        <div class="kpi-card__icon kpi-card__icon--target">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+        </div>
+      </div>
+      <div class="kpi-card kpi-card--highlight">
+        <div class="kpi-card__body">
+          <span class="kpi-card__label">Valor Total de Vendas Realizadas</span>
+          <span class="kpi-card__value" id="valor-realizado">R$ {{ financeiro.valor_realizado | brl_int }}</span>
+        </div>
+        <div class="kpi-card__icon kpi-card__icon--done">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
+        </div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-card__body">
+          <span class="kpi-card__label">Atingimento</span>
+          <span class="kpi-card__value" id="atingimento-meta">{{ financeiro.percentual_atingimento }}%</span>
+        </div>
+        <div class="kpi-card__icon kpi-card__icon--money">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+        </div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-card__body">
+          <span class="kpi-card__label">Reservas Vendidas</span>
+          <span class="kpi-card__value" id="total-vendidas">{{ financeiro.total_vendidas }}</span>
+        </div>
+        <div class="kpi-card__icon kpi-card__icon--plan">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+        </div>
+      </div>
+    </section>
+
+    <section class="progress-section">
+      <div class="progress-block">
+        <div class="progress-block__header">
+          <span class="progress-block__label">Progresso</span>
+          <span class="progress-block__pct" id="pct-valor">{{ financeiro.percentual_atingimento }}%</span>
+        </div>
+        <div class="progress-track">
+          <div class="progress-fill progress-fill--acoes" id="bar-valor" style="width:{{ financeiro.percentual_atingimento if financeiro.percentual_atingimento <= 100 else 100 }}%"></div>
+        </div>
+        <div class="progress-block__detail" id="txt-valor">{{ financeiro.total_vendidas }} de {{ financeiro.meta_quantidade }} unidades vendidas</div>
+        <div class="progress-insights">
+          <article class="progress-insight">
+            <span class="progress-insight__label">Unidades restantes</span>
+            <strong class="progress-insight__value" id="insight-restante">{{ (financeiro.meta_quantidade - financeiro.total_vendidas) if financeiro.meta_quantidade > financeiro.total_vendidas else 0 }}</strong>
+          </article>
+          <article class="progress-insight">
+            <span class="progress-insight__label">Ritmo atual</span>
+            <strong class="progress-insight__value" id="insight-ritmo">{% if financeiro.meta_quantidade <= 0 %}Meta pendente{% elif financeiro.total_vendidas < financeiro.meta_quantidade %}Meta em andamento{% else %}Meta atingida{% endif %}</strong>
+          </article>
+          <article class="progress-insight">
+            <span class="progress-insight__label">Ticket médio vendido</span>
+            <strong class="progress-insight__value" id="insight-ticket">{% if financeiro.total_vendidas %}R$ {{ (financeiro.valor_realizado / financeiro.total_vendidas) | brl_int }}{% else %}R$ 0{% endif %}</strong>
+          </article>
+        </div>
+      </div>
+      <div class="progress-block progress-block--funnel">
+        <div class="progress-block__header">
+          <span class="progress-block__label">Funil por Situação</span>
+          <span class="progress-block__pct" id="funil-total">{{ financeiro.funil | sum(attribute='quantidade') }} reservas</span>
+        </div>
+        <div class="sales-funnel">
+          <button class="sales-funnel__chart" id="funil-chart" type="button" aria-label="Gráfico de pizza das situações de vendas"></button>
+          <div class="sales-funnel__legend" id="funil-legenda">
+            {% for item in financeiro.funil %}
+            <div class="sales-funnel__item" data-situacao="{{ item.label }}">
+              <span class="sales-funnel__dot" style="background: {{ item.cor }}"></span>
+              <div>
+                <strong>{{ item.label }}</strong>
+                <p>{{ item.quantidade }} reservas | {{ item.percentual }}%</p>
+              </div>
+            </div>
+            {% endfor %}
+          </div>
+        </div>
+      </div>
+    </section>
+
+    {% if not resumo_trimestral and not painel_admin_vendas %}
+    <section class="form-section">
+      <div class="section-header">
+        <h3 class="section-header__title">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
+          Nova Venda - {{ mes_atual_nome }}
+        </h3>
+        <button class="btn btn--sm btn--ghost" id="toggle-form">▼ Expandir</button>
+      </div>
+      <div id="form-wrapper" style="display:none">
+        <div class="sales-entry-grid">
+          <form id="form-cadastro-venda" class="cadastro-form" novalidate>
+            <div class="form-grid">
+              <div class="field"><label class="field__label">Reserva *</label><input class="field__input" name="reserva" type="text" required /></div>
+              <div class="field"><label class="field__label">Data *</label><input class="field__input" name="data" type="date" required /></div>
+              <div class="field"><label class="field__label">Situação *</label><select class="field__input" name="situacao" required>{% for sit in situacoes %}<option value="{{ sit }}">{{ sit }}</option>{% endfor %}</select></div>
+              <div class="field"><label class="field__label">Empreendimento *</label><select class="field__input" name="empreendimento" required><option value="">Selecione...</option>{% for emp in empreendimentos %}<option value="{{ emp.nome }}">{{ emp.nome }}</option>{% endfor %}</select></div>
+              <div class="field"><label class="field__label">Bloco</label><input class="field__input" name="bloco" type="text" /></div>
+              <div class="field"><label class="field__label">Unidade</label><input class="field__input" name="unidade" type="text" /></div>
+              <div class="field"><label class="field__label">Cliente *</label><input class="field__input" name="cliente" type="text" required /></div>
+              <div class="field"><label class="field__label">Corretor</label><input class="field__input" name="corretor" type="text" /></div>
+              <div class="field"><label class="field__label">Imobiliária</label><input class="field__input" name="imobiliaria" type="text" /></div>
+              <div class="field"><label class="field__label">Valor Presente</label><input class="field__input" name="valor_presente" type="number" min="0" step="0.01" /></div>
+            </div>
+            <div class="form-actions">
+              <button type="reset" class="btn btn--ghost">Limpar</button>
+              <button type="submit" class="btn btn--primary" id="btn-salvar-venda">Salvar Venda</button>
+            </div>
+          </form>
+
+          <section class="bulk-card">
+            <div class="bulk-card__header">
+              <h4>Entrada em Massa</h4>
+              <p>Cole linhas do Excel/Sheets na ordem da tabela.</p>
+            </div>
+            <textarea id="bulk-paste" class="field__input field__textarea bulk-card__textarea" rows="9" placeholder="Reserva[TAB]Data[TAB]Situação[TAB]Empreendimento[TAB]Bloco[TAB]Unidade[TAB]Cliente[TAB]Corretor[TAB]Imobiliária[TAB]Valor Presente"></textarea>
+            <div class="bulk-card__actions">
+              <button class="btn btn--ghost" type="button" id="btn-preview-bulk">Validar linhas</button>
+              <button class="btn btn--primary" type="button" id="btn-save-bulk">Salvar em massa</button>
+            </div>
+            <div class="bulk-card__feedback" id="bulk-feedback">Cole os dados para importar múltiplas reservas de uma vez.</div>
+          </section>
+        </div>
+      </div>
+    </section>
+    {% endif %}
+
+    <section class="table-section">
+      <div class="section-header">
+        <h3 class="section-header__title">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M3 15h18"/></svg>
+          Grid de Vendas - {{ mes_atual_nome }}
+        </h3>
+        <span class="section-header__count" id="total-registros">{{ registros|length }} reservas</span>
+      </div>
+      <div class="sales-filters">
+        <input class="field__input" type="search" id="filtro-busca" placeholder="Buscar por reserva, cliente, corretor, unidade..." />
+        <select class="field__input" id="filtro-situacao">
+          <option value="">Todas as situações</option>
+          {% for sit in situacoes %}
+          <option value="{{ sit }}">{{ sit }}</option>
+          {% endfor %}
+        </select>
+        <select class="field__input" id="filtro-empreendimento">
+          <option value="">Todos os empreendimentos</option>
+          {% for emp in empreendimentos %}
+          <option value="{{ emp.nome }}">{{ emp.nome }}</option>
+          {% endfor %}
+        </select>
+        <button class="btn btn--primary" type="button" id="btn-exportar-grid">Baixar planilha</button>
+        <button class="btn btn--ghost" type="button" id="btn-limpar-filtros">Limpar filtros</button>
+      </div>
+      <div class="table-wrap">
+        <table class="data-table sales-table">
+          <thead>
+            <tr>
+              <th>Reserva</th>
+              <th>Data</th>
+              <th>Situação</th>
+              <th>Empreendimento</th>
+              <th>Bloco</th>
+              <th>Unidade</th>
+              <th>Cliente</th>
+              <th>Corretor</th>
+              <th>Imobiliária</th>
+              <th>Valor Presente</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody id="tbody-vendas">
+            {% for r in registros %}
+            <tr data-id="{{ r.id }}" onclick="abrirVenda({{ r.id }})">
+              <td>{{ r.reserva }}</td>
+              <td>{{ r.data_reserva.strftime('%d/%m/%Y') }}</td>
+              <td><span class="badge badge--{{ r.situacao | lower | replace(' ', '-') }}">{{ r.situacao }}</span></td>
+              <td>{{ r.empreendimento }}</td>
+              <td>{{ r.bloco or '—' }}</td>
+              <td>{{ r.unidade or '—' }}</td>
+              <td>{{ r.cliente }}</td>
+              <td>{{ r.corretor or '—' }}</td>
+              <td>{{ r.imobiliaria or '—' }}</td>
+              <td>{% if r.valor_presente > 0 %}R$ {{ r.valor_presente | brl }}{% else %}—{% endif %}</td>
+              <td onclick="event.stopPropagation()"><button class="btn-del" onclick="deletarVenda({{ r.id }}, this)" title="Excluir"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/></svg></button></td>
+            </tr>
+            {% else %}
+            <tr id="empty-row"><td colspan="11" class="td-empty">Nenhum registro em {{ mes_atual_nome }}.</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+</div>
+
+<div id="modal-venda" class="modal-overlay" hidden onclick="if(event.target===this)closeVenda()">
+  <div class="modal modal--ficha">
+    <div class="modal__header">
+      <h4>Ficha da Venda <span id="vi-id" style="color:var(--gray-400);font-size:13px;font-weight:500"></span></h4>
+      <button class="modal__close" onclick="closeVenda()">×</button>
+    </div>
+    <form class="ficha-grid" id="form-venda" onsubmit="event.preventDefault(); salvarVendaEditada();">
+      <div class="field"><label class="field__label">Reserva</label><input class="field__input" id="vi-reserva" type="text" /></div>
+      <div class="field"><label class="field__label">Data</label><input class="field__input" id="vi-data" type="date" /></div>
+      <div class="field"><label class="field__label">Situação</label><select class="field__input" id="vi-situacao"></select></div>
+      <div class="field"><label class="field__label">Empreendimento</label><select class="field__input" id="vi-empreendimento"></select></div>
+      <div class="field"><label class="field__label">Bloco</label><input class="field__input" id="vi-bloco" type="text" /></div>
+      <div class="field"><label class="field__label">Unidade</label><input class="field__input" id="vi-unidade" type="text" /></div>
+      <div class="field"><label class="field__label">Cliente</label><input class="field__input" id="vi-cliente" type="text" /></div>
+      <div class="field"><label class="field__label">Corretor</label><input class="field__input" id="vi-corretor" type="text" /></div>
+      <div class="field"><label class="field__label">Imobiliária</label><input class="field__input" id="vi-imobiliaria" type="text" /></div>
+      <div class="field"><label class="field__label">Valor Presente</label><input class="field__input" id="vi-valor" type="number" min="0" step="0.01" /></div>
+      <div class="modal__actions field--full">
+        <button class="btn btn--ghost" type="button" onclick="closeVenda()">Fechar</button>
+        <button class="btn btn--primary" type="submit" id="btn-salvar-modal">Salvar alterações</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div id="modal-delete" class="modal-overlay" hidden onclick="if(event.target===this)closeDeleteModal()">
+  <div class="modal modal--confirm">
+    <div class="modal__header">
+      <h4>Excluir venda</h4>
+      <button class="modal__close" type="button" onclick="closeDeleteModal()">×</button>
+    </div>
+    <p class="confirm-modal__text">Deseja excluir esta venda? Essa ação não poderá ser desfeita.</p>
+    <div class="modal__actions">
+      <button class="btn btn--ghost" type="button" onclick="closeDeleteModal()">Cancelar</button>
+      <button class="btn btn--primary" type="button" id="confirm-delete-btn">Excluir</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast" class="toast" aria-live="polite"></div>
+
+{% if resumo_trimestral %}
+<div
+  class="analytics-ai{% if not analytics_ai_enabled %} analytics-ai--disabled{% endif %}"
+  data-analytics-ai
+  data-enabled="{{ 'true' if analytics_ai_enabled else 'false' }}"
+  data-chat-url="{{ url_for('vendas.vendas_ai_chat') }}"
+  data-mes="{{ mes_atual }}"
+  data-empreendimento=""
+  data-responsavel=""
+  data-tipo-contato=""
+  data-situacao=""
+>
+  <button type="button" class="analytics-ai__toggle" data-ai-toggle aria-expanded="false" aria-label="Abrir Kamille, assistente analitica">
+    <img src="{{ url_for('static', filename='images/kamille.png') }}" alt="Kamille" class="analytics-ai__avatar" />
+  </button>
+  <section class="analytics-ai__panel" data-ai-panel hidden>
+    <header class="analytics-ai__header">
+      <div class="analytics-ai__identity">
+        <img src="{{ url_for('static', filename='images/kamille.png') }}" alt="Kamille" class="analytics-ai__header-avatar" />
+        <div class="analytics-ai__identity-copy">
+          <span class="analytics-ai__eyebrow">Assistente Analitica</span>
+          <strong>Kamille</strong>
+          <p>Sua parceira para interpretar o trimestre com leitura analitica, comercial e financeira.</p>
+        </div>
+      </div>
+      <button type="button" class="analytics-ai__close" data-ai-close aria-label="Fechar Kamille">x</button>
+    </header>
+    <div class="analytics-ai__messages" data-ai-messages>
+      <div class="analytics-ai__message analytics-ai__message--assistant analytics-ai__message--intro">
+        Sou a Kamille. Posso analisar metas, funil, reservas vendidas e oportunidades do trimestre.
+      </div>
+    </div>
+    <div class="analytics-ai__status" data-ai-status></div>
+    <form class="analytics-ai__form" data-ai-form>
+      <textarea class="analytics-ai__input" data-ai-input rows="1"></textarea>
+      <button type="submit" class="analytics-ai__send" aria-label="Enviar pergunta para Kamille">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="5" y1="12" x2="19" y2="12"></line>
+          <polyline points="12 5 19 12 12 19"></polyline>
+        </svg>
+      </button>
+    </form>
+  </section>
+</div>
+{% endif %}
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.5/socket.io.min.js"></script>
+<script src="{{ url_for('static', filename='js/vendas.js') }}"></script>
+{% if resumo_trimestral %}
+<script src="{{ url_for('static', filename='js/analytics_ai.js') }}"></script>
+{% endif %}
+<script>
+  const MES_ATUAL = {{ mes_atual | tojson }};
+  const INITIAL_REGISTROS = {{ registros_json | tojson }};
+  const INITIAL_FINANCEIRO = {{ financeiro | tojson }};
+  const EMPREENDIMENTOS = {{ empreendimentos | map(attribute='nome') | list | tojson }};
+  const SITUACOES = {{ situacoes | tojson }};
+  (function () {
+    const btn = document.getElementById('menu-btn');
+    const drawer = document.getElementById('drawer');
+    const overlay = document.getElementById('drawer-overlay');
+    function open() { drawer.classList.add('open'); overlay.classList.add('show'); }
+    function shut() { drawer.classList.remove('open'); overlay.classList.remove('show'); }
+    btn.addEventListener('click', open);
+    overlay.addEventListener('click', shut);
+    document.getElementById('drawer-close').addEventListener('click', shut);
+  })();
+</script>
+{% endblock %}

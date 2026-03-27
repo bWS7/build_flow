@@ -30,6 +30,10 @@
       </button>
     </div>
     <div class="drawer__nav">
+      <a href="{{ url_for('vendas.index') }}" class="drawer__link">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3h18v18H3z"/><path d="M8 14l3-3 2 2 4-5"/></svg>
+        Vendas
+      </a>
       <a href="{{ url_for('relacionamento.index') }}" class="drawer__link">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
         Relacionamento
@@ -41,6 +45,10 @@
       <a href="{{ url_for('admin.relacionamento_painel') }}" class="drawer__link">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"/><path d="M7 14l3-3 3 2 4-5"/></svg>
         Painel Relacionamento
+      </a>
+      <a href="{{ url_for('admin.vendas_painel') }}" class="drawer__link">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"/><path d="M7 14l3-3 3 2 4-5"/></svg>
+        Painel Vendas
       </a>
     </div>
     <div class="drawer__footer">
@@ -71,8 +79,11 @@
       <section class="admin-card">
         <div class="admin-card__header">
           <h3>Usuários</h3>
-          <button class="btn btn--sm btn--primary" onclick="openModal('modal-usuario')">+ Novo</button>
+          <span class="admin-card__toggle-wrap">
+            <span class="btn btn--sm btn--primary" onclick="event.stopPropagation(); openModal('modal-usuario')">+ Novo</span>
+          </span>
         </div>
+        <div>
         <table class="data-table">
           <thead><tr><th>Nome</th><th>Tipo</th><th>Status</th><th></th></tr></thead>
           <tbody>
@@ -89,13 +100,16 @@
             {% endfor %}
           </tbody>
         </table>
+        </div>
       </section>
 
       <!-- ── EMPREENDIMENTOS ────────────────────────────────────────────── -->
       <section class="admin-card">
         <div class="admin-card__header">
           <h3>Empreendimentos</h3>
-          <button class="btn btn--sm btn--primary" onclick="openModal('modal-empreendimento')">+ Novo</button>
+          <span class="admin-card__toggle-wrap">
+            <span class="btn btn--sm btn--primary" onclick="event.stopPropagation(); openModal('modal-empreendimento')">+ Novo</span>
+          </span>
         </div>
         <div style="max-height:280px;overflow-y:auto">
           <table class="data-table">
@@ -116,10 +130,46 @@
       </section>
 
       <!-- ── METAS ──────────────────────────────────────────────────────── -->
-      <section class="admin-card admin-card--full">
-        <div class="admin-card__header">
-          <h3>Metas por Semana</h3>
+      <section class="admin-card admin-card--full admin-collapsible">
+        <button class="admin-card__header admin-card__header--toggle" type="button" onclick="toggleAdminCard('metas-varejo')">
+          <h3>Metas de Venda Varejo</h3>
+          <svg class="admin-card__arrow" id="arrow-metas-varejo" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+        </button>
+        <div class="admin-card__body" id="body-metas-varejo">
+        <div class="sales-admin-grid">
+          {% for mes_slug, mes_nome, _ in meses_vendas %}
+          {% set meta_venda = metas_vendas.get(mes_slug) %}
+          {% set is_saved_meta_venda = meta_venda is not none %}
+          <div class="meta-item {% if is_saved_meta_venda %}meta-item--saved{% endif %}" data-meta-venda="{{ mes_slug }}" data-locked="{{ 'true' if is_saved_meta_venda else 'false' }}">
+            <span class="meta-item__label">{{ mes_nome }}</span>
+            <div class="field">
+              <label class="field__label">Meta mensal (unidades)</label>
+              <input class="field__input" type="number" min="0" step="1" id="meta-venda-{{ mes_slug }}"
+                     value="{{ meta_venda.quantidade_meta if meta_venda else 0 }}"
+                     placeholder="0"
+                     {% if is_saved_meta_venda %}readonly{% endif %} />
+            </div>
+            <button class="btn btn--sm {% if is_saved_meta_venda %}btn--ghost{% else %}btn--primary{% endif %}" type="button" id="btn-meta-venda-{{ mes_slug }}"
+                    onclick="{% if is_saved_meta_venda %}editarMetaVenda('{{ mes_slug }}', this){% else %}salvarMetaVenda('{{ mes_slug }}', this){% endif %}">
+              {% if is_saved_meta_venda %}
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+              Editar
+              {% else %}
+              Salvar Meta
+              {% endif %}
+            </button>
+          </div>
+          {% endfor %}
         </div>
+        </div>
+      </section>
+
+      <section class="admin-card admin-card--full admin-collapsible">
+        <button class="admin-card__header admin-card__header--toggle" type="button" onclick="toggleAdminCard('metas-relacionamento')">
+          <h3>Metas Relacionamento</h3>
+          <svg class="admin-card__arrow" id="arrow-metas-relacionamento" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+        </button>
+        <div class="admin-card__body" id="body-metas-relacionamento">
 
         {% for mes_nome, mes_ini, mes_id in [('Abril', 1, 'abril'), ('Maio', 5, 'maio'), ('Junho', 9, 'junho')] %}
         <div class="mes-group" id="mes-{{ mes_id }}">
@@ -165,6 +215,7 @@
         </div>
         {% endfor %}
 
+        </div>
       </section>
 
     </div>
