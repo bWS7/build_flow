@@ -1,8 +1,8 @@
-/* ═══════════════════════════════════════════════════════════════════════════
-   SOUSA ARAUJO — relacionamento.css
-   ═══════════════════════════════════════════════════════════════════════════ */
+/* ---------------------------------------------------------------------------
+   SOUSA ARAUJO � relacionamento.css
+   --------------------------------------------------------------------------- */
 
-/* ── WEEK PILLS ───────────────────────────────────────────────────────────── */
+/* -- WEEK PILLS ------------------------------------------------------------- */
 .topbar__weeks {
   display: flex;
   align-items: flex-start;
@@ -56,7 +56,7 @@
 .week-pill:hover { border-color: var(--wine); color: var(--wine); }
 .week-pill--active { background: var(--wine); color: var(--white); border-color: var(--wine); }
 
-/* ── INDICATORS (KPI CARDS) ───────────────────────────────────────────────── */
+/* -- INDICATORS (KPI CARDS) ------------------------------------------------- */
 .indicators {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
@@ -107,7 +107,7 @@
 .kpi-card__icon--target  { background: var(--wine-ghost); color: var(--wine); }
 .kpi-card__icon--money   { background: #FEF3C7; color: #92400E; }
 
-/* ── PROGRESS BARS ────────────────────────────────────────────────────────── */
+/* -- PROGRESS BARS ---------------------------------------------------------- */
 .progress-section {
   padding: 20px 28px 0;
   display: grid;
@@ -165,7 +165,7 @@
   color: var(--gray-400);
 }
 
-/* ── FORM SECTION ─────────────────────────────────────────────────────────── */
+/* -- FORM SECTION ----------------------------------------------------------- */
 .form-section {
   margin: 20px 28px 0;
   background: var(--white);
@@ -217,7 +217,7 @@
   border-top: 1px solid var(--gray-100);
 }
 
-/* ── TABLE SECTION ────────────────────────────────────────────────────────── */
+/* -- TABLE SECTION ---------------------------------------------------------- */
 .table-section {
   margin: 20px 28px 28px;
   background: var(--white);
@@ -246,7 +246,7 @@
   margin-top: 8px;
 }
 
-/* ── RESPONSIVE ───────────────────────────────────────────────────────────── */
+/* -- RESPONSIVE ------------------------------------------------------------- */
 @media (max-width: 1200px) {
   .form-grid { grid-template-columns: repeat(2, 1fr); }
   .indicators { grid-template-columns: repeat(2, 1fr); }
@@ -264,4 +264,59 @@
   .indicators { grid-template-columns: 1fr 1fr; }
   .topbar__weeks { width: 100%; }
   .week-month { width: 100%; min-width: 0; }
+}
+
+html[data-theme='dark'] .week-month {
+  background: rgba(255, 255, 255, 0.03);
+  border-color: rgba(255, 255, 255, 0.06);
+  box-shadow: var(--theme-shadow-sm);
+}
+html[data-theme='dark'] .week-month__toggle { color: #efc5cd; }
+html[data-theme='dark'] .week-pill {
+  color: var(--text-secondary);
+  background: rgba(255,255,255,.03);
+  border-color: rgba(255,255,255,.06);
+}
+html[data-theme='dark'] .week-pill:hover { border-color: rgba(183, 85, 104, 0.28); color: var(--text-primary); }
+html[data-theme='dark'] .week-pill--active {
+  background: linear-gradient(135deg, var(--wine-light), var(--wine));
+  color: #fff8f5;
+  border-color: transparent;
+}
+html[data-theme='dark'] .kpi-card,
+html[data-theme='dark'] .progress-block,
+html[data-theme='dark'] .form-section,
+html[data-theme='dark'] .table-section {
+  background: linear-gradient(180deg, rgba(28, 31, 39, 0.96), rgba(20, 22, 29, 0.98));
+  border-color: rgba(255,255,255,.06);
+  box-shadow: var(--theme-shadow-sm);
+}
+html[data-theme='dark'] .kpi-card:hover { box-shadow: var(--theme-shadow); }
+html[data-theme='dark'] .kpi-card--highlight {
+  background:
+    radial-gradient(circle at top left, rgba(183, 85, 104, 0.2), transparent 34%),
+    linear-gradient(180deg, rgba(69, 21, 33, 0.98), rgba(31, 17, 24, 0.98));
+  border-color: rgba(183, 85, 104, 0.18);
+}
+html[data-theme='dark'] .kpi-card__label { color: var(--text-muted); }
+html[data-theme='dark'] .kpi-card__value,
+html[data-theme='dark'] .section-header__title { color: var(--text-primary); }
+html[data-theme='dark'] .kpi-card--highlight .kpi-card__label { color: rgba(255,255,255,.62); }
+html[data-theme='dark'] .kpi-card--highlight .kpi-card__value { color: #fff7f4; }
+html[data-theme='dark'] .kpi-card__icon--plan { background: rgba(104, 169, 255, 0.14); color: #9fcbff; }
+html[data-theme='dark'] .kpi-card__icon--done { background: rgba(52, 195, 143, 0.16); color: #a5f3d8; }
+html[data-theme='dark'] .kpi-card__icon--target { background: rgba(183, 85, 104, 0.16); color: #f1c1ca; }
+html[data-theme='dark'] .kpi-card__icon--money { background: rgba(215, 162, 77, 0.16); color: #f3d49a; }
+html[data-theme='dark'] .progress-block__label,
+html[data-theme='dark'] .section-header__count,
+html[data-theme='dark'] .confirm-modal__text,
+html[data-theme='dark'] .progress-block__detail { color: var(--text-secondary); }
+html[data-theme='dark'] .progress-block__pct { color: #f2ccd3; }
+html[data-theme='dark'] .progress-track { background: rgba(255,255,255,.06); }
+html[data-theme='dark'] .progress-fill--valor { background: linear-gradient(90deg, #f0b35f, #996329); }
+html[data-theme='dark'] .section-header,
+html[data-theme='dark'] .form-actions { border-color: rgba(255,255,255,.06); }
+html[data-theme='dark'] .section-header__count {
+  background: rgba(255,255,255,.04);
+  border: 1px solid rgba(255,255,255,.06);
 }
