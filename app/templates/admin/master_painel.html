@@ -33,11 +33,15 @@
       </a>
       <a href="{{ url_for('relacionamento.index') }}" class="drawer__link">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
-        Relacionamento
+        Inadimplencia
       </a>
       <a href="{{ url_for('vendas.index') }}" class="drawer__link">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3h18v18H3z"/><path d="M8 14l3-3 2 2 4-5"/></svg>
-        Vendas
+        Vendas Varejo
+      </a>
+      <a href="{{ url_for('investidores.index') }}" class="drawer__link">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3h18v18H3z"/><path d="M8 14l3-3 2 2 4-5"/></svg>
+        Investidores
       </a>
       <details class="drawer-subnav" open>
         <summary class="drawer-subnav__toggle">
@@ -54,11 +58,15 @@
           </a>
           <a href="{{ url_for('admin.relacionamento_painel') }}" class="drawer__sublink">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"/><path d="M7 14l3-3 3 2 4-5"/></svg>
-            Painel Relacionamento
+            Painel Inadimplencia
           </a>
           <a href="{{ url_for('admin.vendas_painel') }}" class="drawer__sublink">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"/><path d="M7 14l3-3 3 2 4-5"/></svg>
-            Painel Vendas
+            Painel de Vendas Varejo
+          </a>
+          <a href="{{ url_for('admin.investidores_painel') }}" class="drawer__sublink">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"/><path d="M7 14l3-3 3 2 4-5"/></svg>
+            Painel Investidores
           </a>
         </div>
       </details>
@@ -97,7 +105,7 @@
           </div>
           <strong class="master-chip__value">{{ card.percentual }}%</strong>
           <div class="master-chip__meta">
-            {% if card.slug == 'inadimplencia' %}
+            {% if card.monetario %}
             R$ {{ card.realizado | brl_int }} x R$ {{ card.meta | brl_int }}
             {% else %}
             {{ card.realizado | round(0) | int }} x {{ card.meta | round(0) | int }}
@@ -153,7 +161,7 @@
       <section class="master-table-card">
         <div class="master-table-card__header">
           <h2>Resumo das Frentes</h2>
-          <span>Dados reais em Inadimplência e Venda Varejo; demais frentes provisórias.</span>
+          <span>Dados reais em Inadimplencia, Venda Varejo e Investidor; demais frentes provisorias.</span>
         </div>
         <div class="table-wrap">
           <table class="data-table">
@@ -170,8 +178,8 @@
               {% for card in cards_master %}
               <tr>
                 <td>{{ card.nome }}</td>
-                <td>{{ card.realizado | round(0) | int }}</td>
-                <td>{{ card.meta | round(0) | int }}</td>
+                <td>{% if card.monetario %}R$ {{ card.realizado | brl_int }}{% else %}{{ card.realizado | round(0) | int }}{% endif %}</td>
+                <td>{% if card.monetario %}R$ {{ card.meta | brl_int }}{% else %}{{ card.meta | round(0) | int }}{% endif %}</td>
                 <td>{{ card.percentual }}%</td>
                 <td>{{ card.descricao }}</td>
               </tr>

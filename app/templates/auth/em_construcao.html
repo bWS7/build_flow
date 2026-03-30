@@ -5,7 +5,7 @@
   <div class="construction-box">
     <div class="construction-box__icon">🏗️</div>
     <h1>Módulo em construção</h1>
-    <p>Este módulo para o perfil <strong>{{ current_user.tipo | upper }}</strong> será disponibilizado em breve.</p>
+    <p>Este módulo para o perfil <strong>{{ current_user.tipo | user_type_label }}</strong> será disponibilizado em breve.</p>
     <form method="POST" action="{{ url_for('auth.logout') }}">
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
       <button type="submit" class="btn btn--outline">Sair</button>

@@ -4,3 +4,5 @@ from .relacionamento import Relacionamento
 from .meta import MetaSemana
 from .venda import Venda
 from .meta_venda import MetaVendaVarejo
+from .investidor import Investidor
+from .meta_investidor import MetaInvestidor

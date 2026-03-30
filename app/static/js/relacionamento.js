@@ -322,6 +322,7 @@ toggleBtn.addEventListener('click', () => {
 
 document.addEventListener('DOMContentLoaded', () => {
   registrosCache = Array.isArray(INITIAL_REGISTROS) ? INITIAL_REGISTROS : [];
+  renderizarTabela(registrosCache);
   const confirmDeleteBtn = document.getElementById('confirm-delete-btn');
   if (confirmDeleteBtn) {
     confirmDeleteBtn.addEventListener('click', confirmarExclusaoRegistro);

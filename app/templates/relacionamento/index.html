@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% block title %}Relacionamento - Semana {{ semana_atual }}{% endblock %}
+{% block title %}Inadimplencia - Semana {{ semana_atual }}{% endblock %}
 {% block extra_css %}
 <link rel="stylesheet" href="{{ url_for('static', filename='css/relacionamento.css') }}" />
 {% endblock %}
@@ -12,7 +12,7 @@
     <button class="hamburger" id="menu-btn" aria-label="Abrir menu">
       <span></span><span></span><span></span>
     </button>
-    <div class="topheader__center">Central de Relacionamento</div>
+    <div class="topheader__center">Central de Inadimplencia</div>
     <a href="{{ url_for('relacionamento.index') }}" class="topheader__logo">{{ logo_svg }}</a>
   </header>
   <div class="drawer-overlay" id="drawer-overlay"></div>
@@ -32,12 +32,16 @@
       {% endif %}
       <a href="{{ url_for('relacionamento.index') }}" class="drawer__link drawer__link--active">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
-        Relacionamento
+        Inadimplencia
       </a>
       {% if current_user.tipo == 'admin' %}
       <a href="{{ url_for('vendas.index') }}" class="drawer__link">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3h18v18H3z"/><path d="M8 14l3-3 2 2 4-5"/></svg>
-        Vendas
+        Vendas Varejo
+      </a>
+      <a href="{{ url_for('investidores.index') }}" class="drawer__link">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3h18v18H3z"/><path d="M8 14l3-3 2 2 4-5"/></svg>
+        Investidores
       </a>
       <details class="drawer-subnav">
         <summary class="drawer-subnav__toggle">
@@ -54,11 +58,15 @@
           </a>
           <a href="{{ url_for('admin.relacionamento_painel') }}" class="drawer__sublink">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"/><path d="M7 14l3-3 3 2 4-5"/></svg>
-            Painel Relacionamento
+            Painel Inadimplencia
           </a>
           <a href="{{ url_for('admin.vendas_painel') }}" class="drawer__sublink">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"/><path d="M7 14l3-3 3 2 4-5"/></svg>
-            Painel Vendas
+            Painel de Vendas Varejo
+          </a>
+          <a href="{{ url_for('admin.investidores_painel') }}" class="drawer__sublink">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"/><path d="M7 14l3-3 3 2 4-5"/></svg>
+            Painel Investidores
           </a>
         </div>
       </details>
@@ -71,7 +79,7 @@
       <div class="drawer__avatar">{{ current_user.nome[0] }}</div>
       <div class="drawer__user-info">
         <span class="drawer__user-name">{{ current_user.nome | title }}</span>
-        <span class="drawer__user-role">{{ current_user.tipo | upper }}</span>
+        <span class="drawer__user-role">{{ current_user.tipo | user_type_label }}</span>
       </div>
       <form method="POST" action="{{ url_for('auth.logout') }}">
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
@@ -275,45 +283,7 @@
               <th></th>
             </tr>
           </thead>
-          <tbody id="tbody-clientes">
-            {% for r in registros %}
-            <tr data-id="{{ r.id }}" style="cursor:pointer"
-                class="{% if r.situacao == 'SIM' %}row--sim{% elif r.situacao in ['NÃO', 'CONTATO REJEITADO'] %}row--rejeitado{% elif r.situacao == 'LIGAR EM OUTRO MOMENTO' %}row--ligar{% endif %}"
-                onclick="abrirFicha({{ r.id }})">
-              <td class="td-id">{{ r.id }}</td>
-              <td>{{ r.empreendimento }}</td>
-              <td class="td-nome">{{ r.cliente }}</td>
-              <td>{{ r.telefone }}</td>
-              <td>{{ r.tipo_contato }}</td>
-              <td><span class="badge badge--{{ r.situacao | lower | replace(' ', '-') }}">{{ r.situacao }}</span></td>
-              <td class="td-valor">{% if r.valor > 0 %}R$ {{ r.valor | brl }}{% else %}—{% endif %}</td>
-              <td>{{ r.responsavel }}</td>
-              <td class="td-data">{{ r.formatar_criado_em('%d/%m/%Y') }}</td>
-              <td class="td-icon">
-                {% if r.situacao == 'SIM' %}
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#059669" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
-                {% elif r.situacao in ['NÃO', 'CONTATO REJEITADO'] %}
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#DC2626" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-                {% elif r.situacao == 'LIGAR EM OUTRO MOMENTO' %}
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#D97706" stroke-width="2.5"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
-                {% else %}
-                  <span style="color:var(--gray-400)">—</span>
-                {% endif %}
-              </td>
-              <td onclick="event.stopPropagation()">
-                {% if current_user.tipo == 'admin' or r.responsavel == current_user.nome | upper %}
-                <button class="btn-del" onclick="deletarRegistro({{ r.id }}, this)" title="Excluir">
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/></svg>
-                </button>
-                {% endif %}
-              </td>
-            </tr>
-            {% else %}
-            <tr id="empty-row">
-              <td colspan="11" class="td-empty">Nenhum registro nesta semana. Cadastre o primeiro acima.</td>
-            </tr>
-            {% endfor %}
-          </tbody>
+          <tbody id="tbody-clientes"></tbody>
         </table>
       </div>
     </section>

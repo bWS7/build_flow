@@ -3,7 +3,7 @@ from flask_login import UserMixin
 import bcrypt
 
 
-TIPOS_VALIDOS = ('admin', 'comercial', 'financeiro', 'relacionamento', 'obra')
+TIPOS_VALIDOS = ('admin', 'comercial', 'financeiro', 'contas_a_receber', 'obra')
 DOMINIO_PERMITIDO = '@sousaaraujo.com.br'
 
 
@@ -14,7 +14,7 @@ class User(UserMixin, db.Model):
     nome = db.Column(db.String(120), nullable=False)
     email = db.Column(db.String(120), unique=True, nullable=False, index=True)
     senha_hash = db.Column(db.String(256), nullable=False)
-    tipo = db.Column(db.String(30), nullable=False, default='relacionamento')
+    tipo = db.Column(db.String(30), nullable=False, default='contas_a_receber')
     ativo = db.Column(db.Boolean, default=True, nullable=False)
 
     def set_password(self, senha: str):

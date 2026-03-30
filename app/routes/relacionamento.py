@@ -18,7 +18,7 @@ def requer_relacionamento_ou_admin(f):
     def decorated(*args, **kwargs):
         if not current_user.is_authenticated:
             abort(401)
-        if current_user.tipo not in ('relacionamento', 'admin'):
+        if current_user.tipo not in ('relacionamento', 'contas_a_receber', 'admin'):
             abort(403)
         return f(*args, **kwargs)
     return decorated
@@ -26,12 +26,12 @@ def requer_relacionamento_ou_admin(f):
 
 # ── Helpers ────────────────────────────────────────────────────────────────────
 
-def _calcular_indicadores(semana: int) -> dict:
+def _calcular_indicadores(semana: int, registros: list[Relacionamento] | None = None) -> dict:
     meta = MetaSemana.query.filter_by(semana=semana).first()
     acoes_planejadas = meta.acoes_planejadas if meta else 0
     valor_meta = float(meta.valor_meta) if meta else 0.0
 
-    todos = Relacionamento.query.filter_by(semana=semana).all()
+    todos = registros if registros is not None else Relacionamento.query.filter_by(semana=semana).all()
     acoes_realizadas = len(todos)
     registros_sim = [r for r in todos if r.situacao == 'SIM']
     soma_valores = sum(float(r.valor) for r in registros_sim if r.valor > 0)
@@ -52,9 +52,9 @@ def _calcular_indicadores(semana: int) -> dict:
 
 def _broadcast_update(semana: int):
     """Emite atualização via WebSocket para todos os clientes."""
-    indicadores = _calcular_indicadores(semana)
     registros = Relacionamento.query.filter_by(semana=semana)\
         .order_by(Relacionamento.criado_em.desc()).all()
+    indicadores = _calcular_indicadores(semana, registros)
     socketio.emit('dados_atualizados', {
         'indicadores': indicadores,
         'registros': [r.to_dict() for r in registros],
@@ -81,9 +81,9 @@ def _parse_semana(valor) -> int | None:
 def index():
     semana = _parse_semana(request.args.get('semana', 1)) or 1
     empreendimentos = Empreendimento.query.filter_by(ativo=True).order_by(Empreendimento.nome).all()
-    indicadores = _calcular_indicadores(semana)
     registros = Relacionamento.query.filter_by(semana=semana)\
         .order_by(Relacionamento.criado_em.desc()).all()
+    indicadores = _calcular_indicadores(semana, registros)
 
     return render_template(
         'relacionamento/index.html',

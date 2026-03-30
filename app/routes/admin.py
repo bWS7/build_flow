@@ -6,11 +6,14 @@ from sqlalchemy import func
 from app import db
 from app.models.user import User, DOMINIO_PERMITIDO, TIPOS_VALIDOS
 from app.models.empreendimento import Empreendimento
+from app.models.investidor import Investidor
 from app.models.meta import MetaSemana
+from app.models.meta_investidor import MetaInvestidor
 from app.models.meta_venda import MetaVendaVarejo
 from app.models.relacionamento import Relacionamento
+from app.routes.investidores import PERIODO_INVESTIDORES, montar_contexto_template_investidores
 from app.routes.vendas import MESES_VENDAS, montar_contexto_template_vendas
-from app.services.analytics_ai import analytics_ai_available, analytics_ai_enabled, ask_analytics_assistant
+from app.services.analytics_ai import analytics_ai_available, analytics_ai_enabled, ask_analytics_assistant, build_global_ai_context
 
 MESES_RELATORIO = [
     ('abril', 'Abril', 1),
@@ -26,7 +29,6 @@ MASTER_END_DATE = datetime(2026, 6, 30, 23, 59, 59)
 MASTER_METRICAS_FICTICIAS = (
     ('giro', 'Giro', 77.0, 100.0, 'Fluxo operacional projetado para o trimestre.'),
     ('medicao', 'Medição', 39.0, 100.0, 'Leitura fictícia até a entrada oficial do módulo.'),
-    ('investidor', 'Investidor', 68.0, 100.0, 'Captação consolidada em ambiente ilustrativo.'),
     ('fornecedores', 'Fornecedores', 12.0, 100.0, 'Status provisório enquanto o painel não recebe inputs reais.'),
     ('bancos', 'Bancos', 88.0, 100.0, 'Indicador fictício de relacionamento bancário.'),
 )
@@ -198,6 +200,7 @@ def _resumo_sistema_contexto_ia() -> dict:
         'empreendimentos_totais': Empreendimento.query.count(),
         'metas_cadastradas': MetaSemana.query.count(),
         'registros_relacionamento_totais': Relacionamento.query.count(),
+        'registros_investidores_totais': Investidor.query.count(),
     }
 
 
@@ -366,6 +369,7 @@ def _formatar_tempo_restante(total_segundos: int) -> str:
 def _montar_master_painel() -> dict:
     resumo_inadimplencia = _montar_relatorio_relacionamento('resumo_trimestral')
     resumo_vendas = montar_contexto_template_vendas('resumo_trimestral', incluir_resumo=True)
+    resumo_investidores = montar_contexto_template_investidores('resumo_trimestral', incluir_resumo=True)
 
     cards = [
         {
@@ -374,9 +378,21 @@ def _montar_master_painel() -> dict:
             'realizado': float(resumo_vendas['financeiro']['total_vendidas']),
             'meta': float(resumo_vendas['financeiro']['meta_quantidade']),
             'percentual': float(resumo_vendas['financeiro']['percentual_atingimento']),
-            'descricao': 'Total vendido frente à meta trimestral cadastrada no admin.',
+            'descricao': 'Total vendido frente ? meta trimestral cadastrada no admin.',
             'comparativo_label': 'vendas realizadas x vendas planejadas',
             'ficticio': False,
+            'monetario': False,
+        },
+        {
+            'slug': 'investidor',
+            'nome': 'Investidor',
+            'realizado': float(resumo_investidores['financeiro']['valor_realizado']),
+            'meta': float(resumo_investidores['financeiro']['meta_valor']),
+            'percentual': float(resumo_investidores['financeiro']['percentual_atingimento']),
+            'descricao': 'Valor realizado de investidores frente ? meta de valor cadastrada no admin.',
+            'comparativo_label': 'valor realizado x meta de investidores',
+            'ficticio': False,
+            'monetario': True,
         },
     ]
 
@@ -390,19 +406,21 @@ def _montar_master_painel() -> dict:
             'descricao': descricao,
             'comparativo_label': 'realizado x planejado',
             'ficticio': True,
+            'monetario': False,
         }
         for slug, nome, realizado, meta, descricao in MASTER_METRICAS_FICTICIAS
     ])
 
     cards.append({
         'slug': 'inadimplencia',
-        'nome': 'Inadimplência',
+        'nome': 'Inadimplencia',
         'realizado': float(resumo_inadimplencia['resumo_mensal']['valor_realizado']),
         'meta': float(resumo_inadimplencia['resumo_mensal']['valor_planejado']),
         'percentual': float(resumo_inadimplencia['resumo_mensal']['pct_valor']),
         'descricao': 'Valor realizado frente ao valor planejado do trimestre.',
         'comparativo_label': 'valor realizado x valor planejado',
         'ficticio': False,
+        'monetario': True,
     })
 
     cards_ordenados = sorted(cards, key=lambda item: (
@@ -456,6 +474,7 @@ def _montar_contexto_ia_master() -> dict:
                 'descricao': card['descricao'],
                 'comparativo_label': card['comparativo_label'],
                 'ficticio': card['ficticio'],
+                'monetario': card['monetario'],
             }
             for card in painel['cards_master']
         ],
@@ -486,12 +505,18 @@ def dashboard():
         meta.mes: meta
         for meta in MetaVendaVarejo.query.order_by(MetaVendaVarejo.mes).all()
     }
+    metas_investidores = {
+        meta.mes: meta
+        for meta in MetaInvestidor.query.order_by(MetaInvestidor.mes).all()
+    }
     return render_template('admin/dashboard.html',
                            usuarios=usuarios,
                            empreendimentos=empreendimentos,
                            metas=metas,
                            metas_vendas=metas_vendas,
+                           metas_investidores=metas_investidores,
                            meses_vendas=MESES_VENDAS,
+                           periodo_investidores=PERIODO_INVESTIDORES,
                            tipos=TIPOS_VALIDOS)
 
 
@@ -512,6 +537,15 @@ def vendas_painel():
     dados = montar_contexto_template_vendas(request.args.get('mes', 'abril'), incluir_resumo=True)
     dados['painel_admin_vendas'] = True
     return render_template('vendas/index.html', **dados)
+
+
+@admin_bp.route('/investidores')
+@login_required
+@requer_admin
+def investidores_painel():
+    dados = montar_contexto_template_investidores(request.args.get('mes', PERIODO_INVESTIDORES[0]), incluir_resumo=True)
+    dados['painel_admin_investidores'] = True
+    return render_template('investidores/index.html', **dados)
 
 
 @admin_bp.route('/master')
@@ -540,7 +574,11 @@ def master_ai_chat():
         return jsonify({'erro': 'Pergunta obrigatoria.'}), 400
 
     history = dados.get('history') or []
-    contexto = _montar_contexto_ia_master()
+    contexto = build_global_ai_context(
+        page='painel_master',
+        actor=current_user,
+        extra_context=_montar_contexto_ia_master(),
+    )
 
     try:
         resposta = ask_analytics_assistant(pergunta, history, contexto)
@@ -573,7 +611,11 @@ def relacionamento_ai_chat():
     filtros = _normalizar_filtros(dados)
     mes_slug = dados.get('mes') or 'resumo_trimestral'
     history = dados.get('history') or []
-    contexto = _montar_contexto_ia_relacionamento(mes_slug, filtros)
+    contexto = build_global_ai_context(
+        page='painel_inadimplencia',
+        actor=current_user,
+        extra_context=_montar_contexto_ia_relacionamento(mes_slug, filtros),
+    )
 
     try:
         resposta = ask_analytics_assistant(pergunta, history, contexto)
@@ -725,6 +767,31 @@ def salvar_meta():
         meta.valor_meta = valor
     else:
         meta = MetaSemana(semana=semana, acoes_planejadas=acoes, valor_meta=valor)
+        db.session.add(meta)
+    db.session.commit()
+    return jsonify({'sucesso': True})
+
+
+@admin_bp.route('/meta-investidor/salvar', methods=['POST'])
+@login_required
+@requer_admin
+def salvar_meta_investidor():
+    dados = request.get_json(silent=True) or request.form.to_dict()
+    mes = (dados.get('mes') or '').strip().lower()
+    if mes != PERIODO_INVESTIDORES[0]:
+        return jsonify({'erro': 'Periodo invalido.'}), 400
+
+    try:
+        valor = float(dados.get('valor_meta', 0) or 0)
+    except (ValueError, TypeError):
+        return jsonify({'erro': 'Valor invalido.'}), 400
+
+    meta = MetaInvestidor.query.filter_by(mes=mes).first()
+    if meta:
+        meta.valor_meta = max(valor, 0)
+        meta.quantidade_meta = 0
+    else:
+        meta = MetaInvestidor(mes=mes, valor_meta=max(valor, 0), quantidade_meta=0)
         db.session.add(meta)
     db.session.commit()
     return jsonify({'sucesso': True})

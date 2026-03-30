@@ -1,7 +1,7 @@
 'use strict';
 
-let vendasCache = [];
-let vendasFiltradasCache = [];
+let investidoresCache = [];
+let investidoresFiltradosCache = [];
 let activeSituacaoChart = '';
 let deleteState = { id: null, btnEl: null };
 
@@ -78,7 +78,7 @@ function escaparCsv(valor) {
 function baixarCsvAtual() {
   const linhas = [
     ['Reserva', 'Data', 'Situacao', 'Empreendimento', 'Bloco', 'Unidade', 'Cliente', 'Corretor', 'Imobiliaria', 'Valor Presente', 'Tipo de Venda'],
-    ...vendasFiltradasCache.map((item) => [
+    ...investidoresFiltradosCache.map((item) => [
       item.reserva,
       item.data,
       item.situacao,
@@ -97,7 +97,7 @@ function baixarCsvAtual() {
   const url = URL.createObjectURL(blob);
   const link = document.createElement('a');
   link.href = url;
-  link.download = `vendas_${MES_ATUAL}.csv`;
+  link.download = `investidores_${MES_ATUAL}.csv`;
   document.body.appendChild(link);
   link.click();
   link.remove();
@@ -143,7 +143,7 @@ function renderizarFunil(funil) {
   const segmentos = obterSegmentosFunil(funil);
   const itemAtivo = funil.find((item) => item.label === activeSituacaoChart);
 
-  document.getElementById('funil-total').textContent = `${total} reservas`;
+  document.getElementById('funil-total').textContent = `${total} investidores`;
 
   if (!chart || !legend) return;
 
@@ -151,7 +151,7 @@ function renderizarFunil(funil) {
     chart.className = 'sales-funnel__chart sales-funnel__chart--empty';
     chart.style.background = '#F6F0ED';
     chart.dataset.segments = '[]';
-    chart.innerHTML = '<span class="sales-funnel__center sales-funnel__center--empty">0<small>reservas</small></span>';
+    chart.innerHTML = '<span class="sales-funnel__center sales-funnel__center--empty">0<small>investidores</small></span>';
   } else {
     const gradiente = segmentos.map((segmento) => `${segmento.cor} ${segmento.inicio}deg ${segmento.fim}deg`).join(', ');
     chart.className = `sales-funnel__chart${activeSituacaoChart ? ' sales-funnel__chart--active' : ''}`;
@@ -160,7 +160,7 @@ function renderizarFunil(funil) {
     chart.innerHTML = `
       <span class="sales-funnel__center">
         <strong>${itemAtivo ? itemAtivo.quantidade : total}</strong>
-        <small>${itemAtivo ? itemAtivo.label : 'reservas'}</small>
+        <small>${itemAtivo ? itemAtivo.label : 'investidores'}</small>
       </span>
     `;
   }
@@ -170,37 +170,37 @@ function renderizarFunil(funil) {
       <span class="sales-funnel__dot" style="background:${item.cor}"></span>
       <div>
         <strong>${item.label}</strong>
-        <p>${item.quantidade} reservas | ${Number(item.percentual || 0).toFixed(1)}%</p>
+        <p>${item.quantidade} investidores | ${Number(item.percentual || 0).toFixed(1)}%</p>
       </div>
     </button>
   `).join('');
 }
 
 function atualizarInsights(financeiro) {
-  const meta = Number(financeiro.meta_quantidade || 0);
-  const vendidas = Number(financeiro.total_vendidas || 0);
+  const meta = Number(financeiro.meta_valor || 0);
   const valorRealizado = Number(financeiro.valor_realizado || 0);
-  const restante = Math.max(meta - vendidas, 0);
+  const vendidas = Number(financeiro.total_vendidas || 0);
+  const restante = Math.max(meta - valorRealizado, 0);
   const ticketMedio = vendidas > 0 ? valorRealizado / vendidas : 0;
   const ritmo = meta <= 0
     ? 'Meta pendente'
-    : vendidas >= meta
+    : valorRealizado >= meta
       ? 'Meta atingida'
-      : vendidas === 0
-        ? 'Sem vendas realizadas'
+    : vendidas === 0
+        ? 'Sem investidores realizados'
         : 'Meta em andamento';
 
   const restanteEl = document.getElementById('insight-restante');
   const ritmoEl = document.getElementById('insight-ritmo');
   const ticketEl = document.getElementById('insight-ticket');
 
-  if (restanteEl) restanteEl.textContent = String(restante);
+  if (restanteEl) restanteEl.textContent = fmtMoedaInteira(restante);
   if (ritmoEl) ritmoEl.textContent = ritmo;
   if (ticketEl) ticketEl.textContent = fmtMoedaInteira(ticketMedio);
 }
 
 function atualizarFinanceiro(financeiro) {
-  const metaEl = document.getElementById('meta-quantidade');
+  const metaEl = document.getElementById('meta-valor');
   const valorEl = document.getElementById('valor-realizado');
   const atingimentoEl = document.getElementById('atingimento-meta');
   const totalVendidasEl = document.getElementById('total-vendidas');
@@ -208,12 +208,12 @@ function atualizarFinanceiro(financeiro) {
   const txtEl = document.getElementById('txt-valor');
   const barEl = document.getElementById('bar-valor');
 
-  if (metaEl) metaEl.textContent = String(financeiro.meta_quantidade || 0);
+  if (metaEl) metaEl.textContent = fmtMoedaInteira(financeiro.meta_valor || 0);
   if (valorEl) valorEl.textContent = fmtMoedaInteira(financeiro.valor_realizado || 0);
   if (atingimentoEl) atingimentoEl.textContent = `${financeiro.percentual_atingimento || 0}%`;
   if (totalVendidasEl) totalVendidasEl.textContent = String(financeiro.total_vendidas || 0);
   if (pctEl) pctEl.textContent = `${financeiro.percentual_atingimento || 0}%`;
-  if (txtEl) txtEl.textContent = `${financeiro.total_vendidas || 0} de ${financeiro.meta_quantidade || 0} unidades vendidas`;
+  if (txtEl) txtEl.textContent = `${fmtMoedaInteira(financeiro.valor_realizado || 0)} de ${fmtMoedaInteira(financeiro.meta_valor || 0)} realizados`;
   if (barEl) barEl.style.width = `${Math.min(financeiro.percentual_atingimento || 0, 100)}%`;
 
   atualizarInsights(financeiro);
@@ -225,18 +225,18 @@ function badgeClass(situacao) {
 }
 
 function renderizarTabela(registros) {
-  const tbody = document.getElementById('tbody-vendas');
+  const tbody = document.getElementById('tbody-investidores');
   const totalRegistros = document.getElementById('total-registros');
-  if (totalRegistros) totalRegistros.textContent = `${registros.length} reservas`;
+  if (totalRegistros) totalRegistros.textContent = `${registros.length} investidores`;
   if (!tbody) return;
 
   if (!registros.length) {
-    tbody.innerHTML = '<tr id="empty-row"><td colspan="12" class="td-empty">Nenhuma reserva encontrada para os filtros atuais.</td></tr>';
+    tbody.innerHTML = '<tr id="empty-row"><td colspan="12" class="td-empty">Nenhum investidor encontrado para os filtros atuais.</td></tr>';
     return;
   }
 
   tbody.innerHTML = registros.map((r) => `
-    <tr data-id="${r.id}" onclick="abrirVenda(${r.id})">
+    <tr data-id="${r.id}" onclick="abrirInvestidor(${r.id})">
       <td>${r.reserva}</td>
       <td>${r.data}</td>
       <td><span class="badge ${badgeClass(r.situacao)}">${r.situacao}</span></td>
@@ -248,7 +248,7 @@ function renderizarTabela(registros) {
       <td>${r.imobiliaria || '—'}</td>
       <td>${r.valor_presente > 0 ? fmtMoeda(r.valor_presente) : '—'}</td>
       <td>${r.tipo_venda || ''}</td>
-      <td onclick="event.stopPropagation()"><button class="btn-del" onclick="deletarVenda(${r.id}, this)" title="Excluir"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/></svg></button></td>
+      <td onclick="event.stopPropagation()"><button class="btn-del" onclick="deletarInvestidor(${r.id}, this)" title="Excluir"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/></svg></button></td>
     </tr>
   `).join('');
 }
@@ -278,10 +278,10 @@ function calcularFinanceiroFiltrado(registros) {
   }));
 
   return {
-    meta_quantidade: INITIAL_FINANCEIRO.meta_quantidade || 0,
+    meta_valor: INITIAL_FINANCEIRO.meta_valor || 0,
     valor_realizado: valorRealizado,
-    percentual_atingimento: (INITIAL_FINANCEIRO.meta_quantidade || 0) > 0
-      ? Number(((totalVendidas / INITIAL_FINANCEIRO.meta_quantidade) * 100).toFixed(1))
+    percentual_atingimento: (INITIAL_FINANCEIRO.meta_valor || 0) > 0
+      ? Number(((valorRealizado / INITIAL_FINANCEIRO.meta_valor) * 100).toFixed(1))
       : 0,
     total_vendidas: totalVendidas,
     total_registros: total,
@@ -298,7 +298,7 @@ function aplicarFiltros() {
   const situacaoSelecionada = situacaoEl ? situacaoEl.value.trim().toUpperCase() : '';
   const empreendimentoSelecionado = empreendimentoEl ? empreendimentoEl.value.trim().toUpperCase() : '';
 
-  const filtrados = vendasCache.filter((item) => {
+  const filtrados = investidoresCache.filter((item) => {
     const labelGrafico = situacaoParaLabelGrafico(item.situacao);
     const matchChart = !activeSituacaoChart || labelGrafico === activeSituacaoChart;
     const matchSituacao = !situacaoSelecionada || normalizarSituacaoLabel(item.situacao) === situacaoSelecionada;
@@ -311,7 +311,7 @@ function aplicarFiltros() {
     return matchChart && matchSituacao && matchEmpreendimento && matchBusca;
   });
 
-  vendasFiltradasCache = filtrados;
+  investidoresFiltradosCache = filtrados;
   renderizarTabela(filtrados);
   atualizarFinanceiro(calcularFinanceiroFiltrado(filtrados));
 }
@@ -356,27 +356,27 @@ function closeDeleteModal() {
   document.getElementById('modal-delete')?.setAttribute('hidden', '');
 }
 
-function abrirVenda(id) {
-  const venda = vendasCache.find((item) => item.id === id);
-  if (!venda) return;
-  document.getElementById('vi-id').textContent = `#${venda.id}`;
-  document.getElementById('vi-reserva').value = venda.reserva;
-  document.getElementById('vi-data').value = venda.data_iso;
-  preencherSelect(document.getElementById('vi-situacao'), SITUACOES, venda.situacao);
-  preencherSelect(document.getElementById('vi-empreendimento'), EMPREENDIMENTOS, venda.empreendimento);
-  preencherSelect(document.getElementById('vi-tipo-venda'), TIPOS_VENDA, venda.tipo_venda);
-  document.getElementById('vi-bloco').value = venda.bloco || '';
-  document.getElementById('vi-unidade').value = venda.unidade || '';
-  document.getElementById('vi-cliente').value = venda.cliente;
-  document.getElementById('vi-corretor').value = venda.corretor || '';
-  document.getElementById('vi-imobiliaria').value = venda.imobiliaria || '';
-  document.getElementById('vi-valor').value = venda.valor_presente || 0;
-  document.getElementById('form-venda').dataset.id = String(venda.id);
-  document.getElementById('modal-venda').removeAttribute('hidden');
+function abrirInvestidor(id) {
+  const investidor = investidoresCache.find((item) => item.id === id);
+  if (!investidor) return;
+  document.getElementById('ii-id').textContent = `#${investidor.id}`;
+  document.getElementById('ii-reserva').value = investidor.reserva;
+  document.getElementById('ii-data').value = investidor.data_iso;
+  preencherSelect(document.getElementById('ii-situacao'), SITUACOES, investidor.situacao);
+  preencherSelect(document.getElementById('ii-tipo-venda'), TIPOS_VENDA, investidor.tipo_venda);
+  preencherSelect(document.getElementById('ii-empreendimento'), EMPREENDIMENTOS, investidor.empreendimento);
+  document.getElementById('ii-bloco').value = investidor.bloco || '';
+  document.getElementById('ii-unidade').value = investidor.unidade || '';
+  document.getElementById('ii-cliente').value = investidor.cliente;
+  document.getElementById('ii-corretor').value = investidor.corretor || '';
+  document.getElementById('ii-imobiliaria').value = investidor.imobiliaria || '';
+  document.getElementById('ii-valor').value = investidor.valor_presente || 0;
+  document.getElementById('form-investidor').dataset.id = String(investidor.id);
+  document.getElementById('modal-investidor').removeAttribute('hidden');
 }
 
-function closeVenda() {
-  document.getElementById('modal-venda')?.setAttribute('hidden', '');
+function closeInvestidor() {
+  document.getElementById('modal-investidor')?.setAttribute('hidden', '');
 }
 
 function coletarForm(form) {
@@ -390,55 +390,18 @@ function validarCamposBasicos(dados) {
 }
 
 function normalizarLinhaBulk(colunas) {
-  const valores = colunas.map((coluna) => (coluna || '').trim());
-
-  // Layout exportado do banco:
-  // id | reserva | data | situacao | empreendimento | bloco | unidade | cliente | corretor | imobiliaria | valor | criado_por | criado_em | tipo_venda
-  if (valores.length >= 14) {
-    return {
-      reserva: valores[1] || '',
-      data: valores[2] || '',
-      situacao: valores[3] || '',
-      empreendimento: valores[4] || '',
-      bloco: valores[5] || '',
-      unidade: valores[6] || '',
-      cliente: valores[7] || '',
-      corretor: valores[8] || '',
-      imobiliaria: valores[9] || '',
-      valor_presente: valores[10] || '',
-      tipo_venda: valores[13] || '',
-    };
-  }
-
-  // Layout com id no inicio e tipo_venda no fim.
-  if (valores.length >= 12) {
-    return {
-      reserva: valores[1] || '',
-      data: valores[2] || '',
-      situacao: valores[3] || '',
-      empreendimento: valores[4] || '',
-      bloco: valores[5] || '',
-      unidade: valores[6] || '',
-      cliente: valores[7] || '',
-      corretor: valores[8] || '',
-      imobiliaria: valores[9] || '',
-      valor_presente: valores[10] || '',
-      tipo_venda: valores[11] || '',
-    };
-  }
-
   return {
-    reserva: valores[0] || '',
-    data: valores[1] || '',
-    situacao: valores[2] || '',
-    empreendimento: valores[3] || '',
-    bloco: valores[4] || '',
-    unidade: valores[5] || '',
-    cliente: valores[6] || '',
-    corretor: valores[7] || '',
-    imobiliaria: valores[8] || '',
-    valor_presente: valores[9] || '',
-    tipo_venda: valores[10] || '',
+    reserva: (colunas[0] || '').trim(),
+    data: (colunas[1] || '').trim(),
+    situacao: (colunas[2] || '').trim(),
+    empreendimento: (colunas[3] || '').trim(),
+    bloco: (colunas[4] || '').trim(),
+    unidade: (colunas[5] || '').trim(),
+    cliente: (colunas[6] || '').trim(),
+    corretor: (colunas[7] || '').trim(),
+    imobiliaria: (colunas[8] || '').trim(),
+    valor_presente: (colunas[9] || '').trim(),
+    tipo_venda: (colunas[10] || '').trim(),
   };
 }
 
@@ -455,9 +418,9 @@ function parseBulkText(texto) {
 
 async function recarregarDados() {
   try {
-    const resp = await fetch(`/vendas/registros?mes=${MES_ATUAL}`);
+    const resp = await fetch(`/investidores/registros?mes=${MES_ATUAL}`);
     const json = await resp.json();
-    vendasCache = json.registros || [];
+    investidoresCache = json.registros || [];
     Object.assign(INITIAL_FINANCEIRO, json.financeiro || {});
     aplicarFiltros();
   } catch {
@@ -465,21 +428,21 @@ async function recarregarDados() {
   }
 }
 
-async function salvarVendaEditada() {
-  const id = document.getElementById('form-venda').dataset.id;
+async function salvarInvestidorEditado() {
+  const id = document.getElementById('form-investidor').dataset.id;
   const btn = document.getElementById('btn-salvar-modal');
   const dados = {
-    reserva: document.getElementById('vi-reserva').value.trim(),
-    data: document.getElementById('vi-data').value.trim(),
-    situacao: document.getElementById('vi-situacao').value.trim(),
-    empreendimento: document.getElementById('vi-empreendimento').value.trim(),
-    tipo_venda: document.getElementById('vi-tipo-venda').value.trim(),
-    bloco: document.getElementById('vi-bloco').value.trim(),
-    unidade: document.getElementById('vi-unidade').value.trim(),
-    cliente: document.getElementById('vi-cliente').value.trim(),
-    corretor: document.getElementById('vi-corretor').value.trim(),
-    imobiliaria: document.getElementById('vi-imobiliaria').value.trim(),
-    valor_presente: document.getElementById('vi-valor').value,
+    reserva: document.getElementById('ii-reserva').value.trim(),
+    data: document.getElementById('ii-data').value.trim(),
+    situacao: document.getElementById('ii-situacao').value.trim(),
+    tipo_venda: document.getElementById('ii-tipo-venda').value.trim(),
+    empreendimento: document.getElementById('ii-empreendimento').value.trim(),
+    bloco: document.getElementById('ii-bloco').value.trim(),
+    unidade: document.getElementById('ii-unidade').value.trim(),
+    cliente: document.getElementById('ii-cliente').value.trim(),
+    corretor: document.getElementById('ii-corretor').value.trim(),
+    imobiliaria: document.getElementById('ii-imobiliaria').value.trim(),
+    valor_presente: document.getElementById('ii-valor').value,
   };
   if (!validarCamposBasicos(dados)) {
     showToast('Preencha os campos obrigatórios.', 'error');
@@ -488,18 +451,18 @@ async function salvarVendaEditada() {
 
   btn.disabled = true;
   try {
-    const resp = await fetch(`/vendas/registro/${id}`, {
+    const resp = await fetch(`/investidores/registro/${id}`, {
       method: 'PUT',
       headers: csrfHeaders({ 'Content-Type': 'application/json' }),
       body: JSON.stringify(dados),
     });
     const json = await resp.json();
     if (resp.ok && json.sucesso) {
-      closeVenda();
-      showToast('Venda atualizada com sucesso!');
+      closeInvestidor();
+      showToast('Investidor atualizado com sucesso!');
       recarregarDados();
     } else {
-      showToast(json.erro || 'Erro ao atualizar venda.', 'error');
+      showToast(json.erro || 'Erro ao atualizar investidor.', 'error');
     }
   } catch {
     showToast('Falha de conexão.', 'error');
@@ -508,23 +471,23 @@ async function salvarVendaEditada() {
   }
 }
 
-async function deletarVenda(id, btnEl) {
+async function deletarInvestidor(id, btnEl) {
   openDeleteModal(id, btnEl);
 }
 
-async function confirmarExclusaoVenda() {
+async function confirmarExclusaoInvestidor() {
   const { id, btnEl } = deleteState;
   if (!id || !btnEl) return;
   closeDeleteModal();
   btnEl.disabled = true;
   try {
-    const resp = await fetch(`/vendas/registro/${id}`, {
+    const resp = await fetch(`/investidores/registro/${id}`, {
       method: 'DELETE',
       headers: csrfHeaders(),
     });
     const json = await resp.json();
     if (resp.ok && json.sucesso) {
-      showToast('Venda excluída.');
+      showToast('Investidor excluido.');
       recarregarDados();
     } else {
       showToast(json.erro || 'Erro ao excluir.', 'error');
@@ -546,16 +509,16 @@ function conectarSocket() {
     const badge = document.getElementById('live-badge');
     if (badge) badge.style.opacity = '.4';
   });
-  socket.on('vendas_atualizadas', (payload) => {
+  socket.on('investidores_atualizados', (payload) => {
     if (payload.mes !== MES_ATUAL) return;
-    vendasCache = payload.registros || [];
+    investidoresCache = payload.registros || [];
     Object.assign(INITIAL_FINANCEIRO, payload.financeiro || {});
     aplicarFiltros();
   });
 }
 
 document.addEventListener('DOMContentLoaded', () => {
-  vendasCache = Array.isArray(INITIAL_REGISTROS) ? INITIAL_REGISTROS : [];
+  investidoresCache = Array.isArray(INITIAL_REGISTROS) ? INITIAL_REGISTROS : [];
 
   const buscaEl = document.getElementById('filtro-busca');
   const situacaoEl = document.getElementById('filtro-situacao');
@@ -564,7 +527,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const limparEl = document.getElementById('btn-limpar-filtros');
   const confirmarDeleteEl = document.getElementById('confirm-delete-btn');
   const chartEl = document.getElementById('funil-chart');
-  const formCadastro = document.getElementById('form-cadastro-venda');
+  const formCadastro = document.getElementById('form-cadastro-investidor');
   const previewBulkEl = document.getElementById('btn-preview-bulk');
   const saveBulkEl = document.getElementById('btn-save-bulk');
   const toggleBtn = document.getElementById('toggle-form');
@@ -583,7 +546,7 @@ document.addEventListener('DOMContentLoaded', () => {
       aplicarFiltros();
     });
   }
-  if (confirmarDeleteEl) confirmarDeleteEl.addEventListener('click', confirmarExclusaoVenda);
+  if (confirmarDeleteEl) confirmarDeleteEl.addEventListener('click', confirmarExclusaoInvestidor);
   if (chartEl) chartEl.addEventListener('click', handleFunilChartClick);
 
   if (toggleBtn && formWrapper) {
@@ -600,7 +563,7 @@ document.addEventListener('DOMContentLoaded', () => {
   if (formCadastro) {
     formCadastro.addEventListener('submit', async (e) => {
       e.preventDefault();
-      const btn = document.getElementById('btn-salvar-venda');
+      const btn = document.getElementById('btn-salvar-investidor');
       const dados = coletarForm(formCadastro);
       if (!validarCamposBasicos(dados)) {
         showToast('Preencha os campos obrigatórios.', 'error');
@@ -610,7 +573,7 @@ document.addEventListener('DOMContentLoaded', () => {
       btn.disabled = true;
       btn.textContent = 'Salvando...';
       try {
-        const resp = await fetch('/vendas/cadastrar', {
+        const resp = await fetch('/investidores/cadastrar', {
           method: 'POST',
           headers: csrfHeaders({ 'Content-Type': 'application/json' }),
           body: JSON.stringify(dados),
@@ -618,16 +581,16 @@ document.addEventListener('DOMContentLoaded', () => {
         const json = await resp.json();
         if (resp.ok && json.sucesso) {
           formCadastro.reset();
-          showToast(json.ignorado ? (json.erro || 'Venda ignorada.') : 'Venda salva com sucesso!');
+          showToast(json.ignorado ? (json.erro || 'Investidor ignorado.') : 'Investidor salvo com sucesso!');
           recarregarDados();
         } else {
-          showToast(json.erro || 'Erro ao salvar venda.', 'error');
+          showToast(json.erro || 'Erro ao salvar investidor.', 'error');
         }
       } catch {
         showToast('Falha de conexão.', 'error');
       } finally {
         btn.disabled = false;
-        btn.textContent = 'Salvar Venda';
+        btn.textContent = 'Salvar Investidor';
       }
     });
   }
@@ -662,7 +625,7 @@ document.addEventListener('DOMContentLoaded', () => {
       }
 
       try {
-        const resp = await fetch('/vendas/bulk-cadastrar', {
+        const resp = await fetch('/investidores/bulk-cadastrar', {
           method: 'POST',
           headers: csrfHeaders({ 'Content-Type': 'application/json' }),
           body: JSON.stringify({ linhas }),

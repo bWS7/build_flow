@@ -5,6 +5,7 @@ from flask_sqlalchemy import SQLAlchemy
 from flask_login import LoginManager
 from flask_migrate import Migrate
 from flask_socketio import SocketIO
+from sqlalchemy import inspect, text
 from flask_wtf import CSRFProtect
 from flask_wtf.csrf import CSRFError
 from dotenv import load_dotenv
@@ -30,6 +31,18 @@ def _format_brl_int(value):
         return "0"
 
 
+def _format_user_type(value):
+    labels = {
+        'admin': 'ADMIN',
+        'comercial': 'COMERCIAL',
+        'financeiro': 'FINANCEIRO',
+        'relacionamento': 'CONTAS A RECEBER',
+        'contas_a_receber': 'CONTAS A RECEBER',
+        'obra': 'OBRA',
+    }
+    return labels.get(str(value or '').strip().lower(), str(value or '').upper())
+
+
 db = SQLAlchemy()
 login_manager = LoginManager()
 migrate = Migrate()
@@ -38,12 +51,12 @@ csrf = CSRFProtect()
 
 
 def _resolve_database_url():
-    database_url = (
-        os.environ.get('DATABASE_URL')
-        or os.environ.get('DATABASE_PUBLIC_URL')
-        or 'sqlite:///local_dev.db'
-    )
+    database_url = (os.environ.get('DATABASE_URL') or '').strip()
+    if not database_url:
+        raise RuntimeError('DATABASE_URL do Railway nao configurada. A aplicacao nao usa banco local.')
     database_url = database_url.replace('postgres://', 'postgresql://')
+    if not database_url.startswith('postgresql://'):
+        raise RuntimeError('DATABASE_URL invalida. A aplicacao aceita apenas PostgreSQL do Railway.')
     if database_url.startswith('postgresql://') and 'sslmode=' not in database_url:
         separator = '&' if '?' in database_url else '?'
         database_url = f'{database_url}{separator}sslmode=require'
@@ -67,6 +80,7 @@ def create_app():
     # ── Filtros Jinja ──────────────────────────────────────────────────────────
     app.jinja_env.filters['brl'] = _format_brl
     app.jinja_env.filters['brl_int'] = _format_brl_int
+    app.jinja_env.filters['user_type_label'] = _format_user_type
 
     # ── Configurações ──────────────────────────────────────────────────────────
     app.config['SECRET_KEY'] = _resolve_secret_key()
@@ -98,16 +112,19 @@ def create_app():
     from app.routes.auth import auth_bp
     from app.routes.relacionamento import relacionamento_bp
     from app.routes.admin import admin_bp
+    from app.routes.investidores import investidores_bp
     from app.routes.vendas import vendas_bp
 
     app.register_blueprint(auth_bp)
     app.register_blueprint(relacionamento_bp, url_prefix='/relacionamento')
     app.register_blueprint(admin_bp, url_prefix='/admin')
+    app.register_blueprint(investidores_bp, url_prefix='/investidores')
     app.register_blueprint(vendas_bp, url_prefix='/vendas')
 
     # ── Seed inicial ───────────────────────────────────────────────────────────
     with app.app_context():
         db.create_all()
+        _ensure_database_columns()
         _seed_initial_data()
 
     @app.after_request
@@ -178,3 +195,20 @@ def _seed_initial_data():
             db.session.add(Empreendimento(nome=nome))
 
     db.session.commit()
+
+
+def _ensure_database_columns():
+    inspector = inspect(db.engine)
+    tabelas = {
+        'vendas': {
+            'tipo_venda': "ALTER TABLE vendas ADD COLUMN tipo_venda VARCHAR(60) NOT NULL DEFAULT 'DIRETA'",
+        },
+    }
+
+    for tabela, colunas in tabelas.items():
+        existentes = {coluna['name'] for coluna in inspector.get_columns(tabela)}
+        for coluna, ddl in colunas.items():
+            if coluna in existentes:
+                continue
+            db.session.execute(text(ddl))
+            db.session.commit()

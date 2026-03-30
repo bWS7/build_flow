@@ -682,11 +682,40 @@ html[data-theme='dark'] .field__input {
   color: var(--text-primary);
   background: linear-gradient(180deg, rgba(33, 37, 46, 0.94), rgba(25, 28, 36, 0.98));
   border-color: var(--border-soft);
+  caret-color: var(--text-primary);
+  -webkit-text-fill-color: var(--text-primary);
 }
 html[data-theme='dark'] .field__input::placeholder { color: var(--gray-400); }
 html[data-theme='dark'] .field__input:focus { border-color: rgba(183, 85, 104, 0.65); box-shadow: 0 0 0 3px rgba(143, 50, 67, 0.18); }
 html[data-theme='dark'] .field__input[readonly],
 html[data-theme='dark'] .field__input:disabled { background: rgba(255,255,255,.03); color: var(--text-muted); }
+html[data-theme='dark'] .field__input:-webkit-autofill,
+html[data-theme='dark'] .field__input:-webkit-autofill:hover,
+html[data-theme='dark'] .field__input:-webkit-autofill:focus,
+html[data-theme='dark'] .field__input:-webkit-autofill:active,
+html[data-theme='dark'] .login-field__input:-webkit-autofill,
+html[data-theme='dark'] .login-field__input:-webkit-autofill:hover,
+html[data-theme='dark'] .login-field__input:-webkit-autofill:focus,
+html[data-theme='dark'] .login-field__input:-webkit-autofill:active {
+  -webkit-text-fill-color: var(--text-primary);
+  caret-color: var(--text-primary);
+  -webkit-box-shadow: 0 0 0 1000px #1c212b inset;
+  box-shadow: 0 0 0 1000px #1c212b inset;
+  transition: background-color 9999s ease-in-out 0s;
+}
+html[data-theme='dark'] select.field__input {
+  color: var(--text-primary);
+  background-color: #1c212b;
+}
+html[data-theme='dark'] select.field__input option,
+html[data-theme='dark'] select.field__input optgroup {
+  color: var(--text-primary);
+  background: #1c212b;
+}
+html[data-theme='dark'] select.field__input:disabled option,
+html[data-theme='dark'] select.field__input[readonly] option {
+  color: var(--text-muted);
+}
 html[data-theme='dark'] .field__eye { color: var(--text-muted); }
 html[data-theme='dark'] .field__eye:hover { color: var(--text-primary); }
 

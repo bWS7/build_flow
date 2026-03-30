@@ -8,24 +8,20 @@ from sqlalchemy import extract, func
 
 from app import db, socketio
 from app.models.empreendimento import Empreendimento
-from app.models.meta_venda import MetaVendaVarejo
-from app.models.venda import SITUACAO_VENDA_OPCOES, TIPO_VENDA_OPCOES, Venda
+from app.models.investidor import Investidor, SITUACAO_INVESTIDOR_OPCOES, TIPO_VENDA_OPCOES
+from app.models.meta_investidor import MetaInvestidor
 from app.services.analytics_ai import analytics_ai_available, analytics_ai_enabled, ask_analytics_assistant, build_global_ai_context
 
 
-vendas_bp = Blueprint('vendas', __name__)
+investidores_bp = Blueprint('investidores', __name__)
 
-MESES_VENDAS = [
-    ('abril', 'Abril', 4),
-    ('maio', 'Maio', 5),
-    ('junho', 'Junho', 6),
-]
-MESES_MAP = {slug: {'slug': slug, 'nome': nome, 'numero': numero} for slug, nome, numero in MESES_VENDAS}
-RESUMO_TRIMESTRAL = ('resumo_trimestral', 'Resumo Trimestral', None)
+PERIODO_INVESTIDORES = ('geral', 'Investidores', None)
+MESES_INVESTIDORES = [PERIODO_INVESTIDORES]
+MESES_MAP = {slug: {'slug': slug, 'nome': nome, 'numero': numero} for slug, nome, numero in MESES_INVESTIDORES}
 EMPREENDIMENTO_IGNORADO = 'J J NEGOCIOS IMOBILIARIOS'
 SITUACOES_FUNIL_AGRUPADAS = {
     'CANCELADA': 'Cancelada',
-    'CONFECCAO DE CONTRATO': 'Confecção de Contrato',
+    'CONFECCAO DE CONTRATO': 'Confeccao de Contrato',
     'CONTRATO ASSINADO': 'Contrato Assinado / Contrato Assinado Clientes',
     'CONTRATO ASSINADO CLIENTES': 'Contrato Assinado / Contrato Assinado Clientes',
     'ENVIO UAU': 'Envio UAU',
@@ -39,16 +35,13 @@ TIPO_VENDA_ALIAS = {
     'AVISTA / DIRETA': 'A VISTA / DIRETA',
     'AVISTA DIRETA': 'A VISTA / DIRETA',
     'DIRETA': 'DIRETA',
-    'FINANCIADA': 'FINANCIADA',
-    'FINANCIADO': 'FINANCIADA',
-    'FINANCIAMENTO': 'FINANCIADA',
     'INDIRETA': 'INDIRETA',
     'PARCERIA': 'PARCERIA',
     'REPASSE': 'REPASSE',
 }
 
 
-def requer_vendas(f):
+def requer_investidores(f):
     @wraps(f)
     def decorated(*args, **kwargs):
         if not current_user.is_authenticated:
@@ -60,35 +53,29 @@ def requer_vendas(f):
 
 
 def _mes_slug_atual() -> str:
-    mes = (request.args.get('mes') or request.form.get('mes') or '').strip().lower()
-    if mes == RESUMO_TRIMESTRAL[0]:
-        return mes
-    return mes if mes in MESES_MAP else 'abril'
+    mes = (request.args.get('mes') or request.form.get('mes') or PERIODO_INVESTIDORES[0]).strip().lower()
+    return mes if mes in MESES_MAP else PERIODO_INVESTIDORES[0]
 
 
-def montar_contexto_template_vendas(mes_slug: str, incluir_resumo: bool = False) -> dict:
-    if mes_slug == RESUMO_TRIMESTRAL[0] and not incluir_resumo:
-        mes_slug = 'abril'
-    mes_info = {'nome': RESUMO_TRIMESTRAL[1]} if mes_slug == RESUMO_TRIMESTRAL[0] else MESES_MAP[mes_slug]
+def montar_contexto_template_investidores(mes_slug: str, incluir_resumo: bool = False) -> dict:
+    mes_slug = PERIODO_INVESTIDORES[0]
+    mes_info = MESES_MAP[mes_slug]
     empreendimentos = Empreendimento.query.filter_by(ativo=True).order_by(Empreendimento.nome).all()
-    vendas = _consultar_vendas_periodo(mes_slug)
-    meses = list(MESES_VENDAS)
-    if incluir_resumo:
-        meses.append(RESUMO_TRIMESTRAL)
+    investidores = _consultar_investidores_periodo(mes_slug)
     return {
-        'meses': meses,
+        'meses': list(MESES_INVESTIDORES),
         'mes_atual': mes_slug,
         'mes_atual_nome': mes_info['nome'],
         'empreendimentos': empreendimentos,
-        'situacoes': SITUACAO_VENDA_OPCOES,
+        'situacoes': SITUACAO_INVESTIDOR_OPCOES,
         'tipos_venda': TIPO_VENDA_OPCOES,
-        'financeiro': _calcular_financeiro(mes_slug, vendas=vendas),
-        'registros': vendas,
-        'registros_json': [venda.to_dict() for venda in vendas],
-        'resumo_trimestral': mes_slug == RESUMO_TRIMESTRAL[0],
+        'financeiro': _calcular_financeiro(mes_slug, investidores=investidores),
+        'registros': investidores,
+        'registros_json': [investidor.to_dict() for investidor in investidores],
+        'resumo_trimestral': False,
         'analytics_ai_enabled': analytics_ai_enabled() and analytics_ai_available(),
         'incluir_resumo_tabs': incluir_resumo,
-        'painel_admin_vendas': False,
+        'painel_admin_investidores': False,
     }
 
 
@@ -136,50 +123,33 @@ def _normalizar_tipo_venda(valor: str | None, fallback: str = 'DIRETA') -> str:
     return TIPO_VENDA_ALIAS.get(texto, texto)
 
 
-def _consultar_vendas_por_mes(mes_numero: int):
+def _consultar_investidores_periodo(mes_slug: str):
     return (
-        Venda.query
-        .filter(extract('month', Venda.data_reserva) == mes_numero)
-        .filter(func.upper(Venda.empreendimento) != EMPREENDIMENTO_IGNORADO)
-        .order_by(Venda.data_reserva.desc(), Venda.id.desc())
+        Investidor.query
+        .filter(func.upper(Investidor.empreendimento) != EMPREENDIMENTO_IGNORADO)
+        .order_by(Investidor.data_reserva.desc(), Investidor.id.desc())
         .all()
     )
 
 
-def _consultar_vendas_periodo(mes_slug: str):
-    if mes_slug == RESUMO_TRIMESTRAL[0]:
-        return (
-            Venda.query
-            .filter(extract('month', Venda.data_reserva).in_([4, 5, 6]))
-            .filter(func.upper(Venda.empreendimento) != EMPREENDIMENTO_IGNORADO)
-            .order_by(Venda.data_reserva.desc(), Venda.id.desc())
-            .all()
-        )
-    return _consultar_vendas_por_mes(MESES_MAP[mes_slug]['numero'])
+def _obter_meta_geral() -> float:
+    meta = MetaInvestidor.query.filter_by(mes=PERIODO_INVESTIDORES[0]).first()
+    return float(meta.valor_meta or 0) if meta else 0.0
 
 
-def _obter_meta_mes(mes_slug: str) -> float:
-    meta = MetaVendaVarejo.query.filter_by(mes=mes_slug).first()
-    return int(meta.quantidade_meta) if meta else 0
-
-
-def _obter_meta_trimestral() -> int:
-    return sum(_obter_meta_mes(slug) for slug, _, _ in MESES_VENDAS)
-
-
-def _montar_funil(vendas: list[Venda]) -> list[dict]:
+def _montar_funil(investidores: list[Investidor]) -> list[dict]:
     agrupado: dict[str, int] = {
         'Vendida': 0,
         'Cancelada': 0,
-        'Confecção de Contrato': 0,
+        'Confeccao de Contrato': 0,
         'Contrato Assinado / Contrato Assinado Clientes': 0,
         'Envio UAU': 0,
         'Nova Reserva': 0,
         'Pendente de Assinatura': 0,
     }
     total = 0
-    for venda in vendas:
-        situacao = _normalizar_situacao(venda.situacao)
+    for investidor in investidores:
+        situacao = _normalizar_situacao(investidor.situacao)
         if situacao == 'VENDIDA':
             agrupado['Vendida'] += 1
             total += 1
@@ -193,7 +163,7 @@ def _montar_funil(vendas: list[Venda]) -> list[dict]:
     cores = {
         'Vendida': '#2A8A64',
         'Cancelada': '#B14D4D',
-        'Confecção de Contrato': '#C27D2C',
+        'Confeccao de Contrato': '#C27D2C',
         'Contrato Assinado / Contrato Assinado Clientes': '#6B1A2A',
         'Envio UAU': '#4A6FA5',
         'Nova Reserva': '#B89A57',
@@ -211,32 +181,32 @@ def _montar_funil(vendas: list[Venda]) -> list[dict]:
     return funil
 
 
-def _calcular_financeiro(mes_slug: str, vendas: list[Venda] | None = None) -> dict:
-    vendas = vendas if vendas is not None else _consultar_vendas_periodo(mes_slug)
-    meta_quantidade = _obter_meta_trimestral() if mes_slug == RESUMO_TRIMESTRAL[0] else _obter_meta_mes(mes_slug)
+def _calcular_financeiro(mes_slug: str, investidores: list[Investidor] | None = None) -> dict:
+    investidores = investidores if investidores is not None else _consultar_investidores_periodo(mes_slug)
+    meta_valor = _obter_meta_geral()
     valor_realizado = sum(
-        float(venda.valor_presente or 0)
-        for venda in vendas
-        if _normalizar_situacao(venda.situacao) == 'VENDIDA'
+        float(investidor.valor_presente or 0)
+        for investidor in investidores
+        if _normalizar_situacao(investidor.situacao) == 'VENDIDA'
     )
-    total_vendidas = sum(1 for venda in vendas if _normalizar_situacao(venda.situacao) == 'VENDIDA')
-    percentual = round((total_vendidas / meta_quantidade) * 100, 1) if meta_quantidade > 0 else 0.0
+    total_vendidas = sum(1 for investidor in investidores if _normalizar_situacao(investidor.situacao) == 'VENDIDA')
+    percentual = round((valor_realizado / meta_valor) * 100, 1) if meta_valor > 0 else 0.0
     return {
         'mes': mes_slug,
-        'meta_quantidade': meta_quantidade,
+        'meta_valor': meta_valor,
         'valor_realizado': valor_realizado,
         'percentual_atingimento': percentual,
-        'total_registros': len(vendas),
+        'total_registros': len(investidores),
         'total_vendidas': total_vendidas,
-        'funil': _montar_funil(vendas),
+        'funil': _montar_funil(investidores),
     }
 
 
-def _listar_opcoes_filtro_vendas(coluna) -> list[str]:
+def _listar_opcoes_filtro(coluna) -> list[str]:
     valores = (
         db.session.query(coluna)
         .filter(coluna.isnot(None))
-        .filter(func.upper(Venda.empreendimento) != EMPREENDIMENTO_IGNORADO)
+        .filter(func.upper(Investidor.empreendimento) != EMPREENDIMENTO_IGNORADO)
         .distinct()
         .order_by(coluna.asc())
         .all()
@@ -244,32 +214,31 @@ def _listar_opcoes_filtro_vendas(coluna) -> list[str]:
     return [valor[0] for valor in valores if valor[0]]
 
 
-def _montar_contexto_ia_vendas(mes_slug: str) -> dict:
-    vendas = _consultar_vendas_periodo(mes_slug)
-    financeiro = _calcular_financeiro(mes_slug)
+def _montar_contexto_ia_investidores(mes_slug: str) -> dict:
+    investidores = _consultar_investidores_periodo(mes_slug)
+    financeiro = _calcular_financeiro(mes_slug, investidores=investidores)
     return {
-        'periodo': 'Resumo Trimestral' if mes_slug == RESUMO_TRIMESTRAL[0] else MESES_MAP[mes_slug]['nome'],
+        'periodo': MESES_MAP[PERIODO_INVESTIDORES[0]]['nome'],
         'resumo_financeiro': financeiro,
-        'registros': [venda.to_dict() for venda in vendas[:500]],
+        'registros': [investidor.to_dict() for investidor in investidores[:500]],
         'situacoes': {item['label']: item['quantidade'] for item in financeiro['funil']},
-        'tipos_venda': _listar_opcoes_filtro_vendas(Venda.tipo_venda),
-        'empreendimentos': _listar_opcoes_filtro_vendas(Venda.empreendimento),
-        'corretores': _listar_opcoes_filtro_vendas(Venda.corretor),
-        'imobiliarias': _listar_opcoes_filtro_vendas(Venda.imobiliaria),
+        'tipos_venda': _listar_opcoes_filtro(Investidor.tipo_venda),
+        'empreendimentos': _listar_opcoes_filtro(Investidor.empreendimento),
+        'corretores': _listar_opcoes_filtro(Investidor.corretor),
+        'imobiliarias': _listar_opcoes_filtro(Investidor.imobiliaria),
     }
 
 
 def _broadcast_update(mes_slug: str):
-    mes_info = MESES_MAP[mes_slug]
-    vendas = _consultar_vendas_por_mes(mes_info['numero'])
-    socketio.emit('vendas_atualizadas', {
-        'mes': mes_slug,
-        'financeiro': _calcular_financeiro(mes_slug),
-        'registros': [venda.to_dict() for venda in vendas],
+    investidores = _consultar_investidores_periodo(PERIODO_INVESTIDORES[0])
+    socketio.emit('investidores_atualizados', {
+        'mes': PERIODO_INVESTIDORES[0],
+        'financeiro': _calcular_financeiro(PERIODO_INVESTIDORES[0], investidores=investidores),
+        'registros': [investidor.to_dict() for investidor in investidores],
     })
 
 
-def _validar_payload_venda(dados: dict) -> tuple[dict, str | None]:
+def _validar_payload_investidor(dados: dict) -> tuple[dict, str | None]:
     registro = {
         'reserva': _normalizar_texto(dados.get('reserva')),
         'data_reserva': _parse_data(dados.get('data')),
@@ -286,42 +255,39 @@ def _validar_payload_venda(dados: dict) -> tuple[dict, str | None]:
     obrigatorios = ('reserva', 'data_reserva', 'situacao', 'tipo_venda', 'empreendimento', 'cliente')
     for campo in obrigatorios:
         if not registro.get(campo):
-            return registro, f'Campo obrigatório ausente: {campo}'
+            return registro, f'Campo obrigatorio ausente: {campo}'
     if registro['empreendimento'] == EMPREENDIMENTO_IGNORADO:
-        return registro, 'Empreendimento desconsiderado para o Grid de Vendas.'
-    if registro['situacao'] not in SITUACAO_VENDA_OPCOES:
-        return registro, 'Situação inválida.'
+        return registro, 'Empreendimento desconsiderado para o Grid de Investidores.'
+    if registro['situacao'] not in SITUACAO_INVESTIDOR_OPCOES:
+        return registro, 'Situacao invalida.'
     if registro['tipo_venda'] not in TIPO_VENDA_OPCOES:
-        return registro, 'Tipo de venda inválido.'
-    mes_valido = any(registro['data_reserva'].month == info['numero'] for info in MESES_MAP.values())
-    if not mes_valido:
-        return registro, 'A data deve estar entre abril e junho.'
+        return registro, 'Tipo de venda invalido.'
     return registro, None
 
 
-@vendas_bp.route('/')
+@investidores_bp.route('/')
 @login_required
-@requer_vendas
+@requer_investidores
 def index():
-    return render_template('vendas/index.html', **montar_contexto_template_vendas(_mes_slug_atual(), incluir_resumo=False))
+    return render_template('investidores/index.html', **montar_contexto_template_investidores(_mes_slug_atual(), incluir_resumo=False))
 
 
-@vendas_bp.route('/registros')
+@investidores_bp.route('/registros')
 @login_required
-@requer_vendas
+@requer_investidores
 def listar_registros():
     mes_slug = _mes_slug_atual()
-    vendas = _consultar_vendas_periodo(mes_slug)
+    investidores = _consultar_investidores_periodo(mes_slug)
     return jsonify({
-        'registros': [venda.to_dict() for venda in vendas],
-        'financeiro': _calcular_financeiro(mes_slug),
+        'registros': [investidor.to_dict() for investidor in investidores],
+        'financeiro': _calcular_financeiro(mes_slug, investidores=investidores),
     })
 
 
-@vendas_bp.route('/ai-chat', methods=['POST'])
+@investidores_bp.route('/ai-chat', methods=['POST'])
 @login_required
-@requer_vendas
-def vendas_ai_chat():
+@requer_investidores
+def investidores_ai_chat():
     if current_user.tipo != 'admin':
         abort(403)
     if not analytics_ai_enabled():
@@ -334,17 +300,16 @@ def vendas_ai_chat():
     if not pergunta:
         return jsonify({'erro': 'Pergunta obrigatoria.'}), 400
 
-    mes_slug = (dados.get('mes') or RESUMO_TRIMESTRAL[0]).strip().lower()
-    if mes_slug != RESUMO_TRIMESTRAL[0] and mes_slug not in MESES_MAP:
-        mes_slug = RESUMO_TRIMESTRAL[0]
+    mes_slug = PERIODO_INVESTIDORES[0]
     history = dados.get('history') or []
-    financeiro = _calcular_financeiro(mes_slug)
+    investidores = _consultar_investidores_periodo(mes_slug)
+    financeiro = _calcular_financeiro(mes_slug, investidores=investidores)
     contexto = build_global_ai_context(
-        page='painel_vendas',
+        page='painel_investidores',
         actor=current_user,
         extra_context={
             'mes_atual': mes_slug,
-            'periodo': 'Resumo Trimestral' if mes_slug == RESUMO_TRIMESTRAL[0] else MESES_MAP[mes_slug]['nome'],
+            'periodo': MESES_MAP[mes_slug]['nome'],
             'resumo_painel': financeiro,
             'situacoes_funil': {item['label']: item['quantidade'] for item in financeiro['funil']},
         },
@@ -358,20 +323,21 @@ def vendas_ai_chat():
     return jsonify({'answer': resposta})
 
 
-@vendas_bp.route('/cadastrar', methods=['POST'])
+@investidores_bp.route('/cadastrar', methods=['POST'])
 @login_required
-@requer_vendas
+@requer_investidores
 def cadastrar():
     dados = request.get_json(silent=True) or request.form.to_dict()
-    registro, erro = _validar_payload_venda(dados)
+    registro, erro = _validar_payload_investidor(dados)
     if erro:
         status = 202 if 'desconsiderado' in erro.lower() else 400
         return jsonify({'sucesso': status == 202, 'ignorado': status == 202, 'erro': erro}), status
 
-    venda = Venda(
+    investidor = Investidor(
         reserva=registro['reserva'],
         data_reserva=registro['data_reserva'],
         situacao=registro['situacao'],
+        tipo_venda=registro['tipo_venda'],
         empreendimento=registro['empreendimento'],
         bloco=registro['bloco'] or None,
         unidade=registro['unidade'] or None,
@@ -379,40 +345,39 @@ def cadastrar():
         corretor=registro['corretor'] or None,
         imobiliaria=registro['imobiliaria'] or None,
         valor_presente=registro['valor_presente'],
-        tipo_venda=registro['tipo_venda'],
         criado_por=current_user.nome.upper(),
     )
-    db.session.add(venda)
+    db.session.add(investidor)
     db.session.commit()
 
-    mes_slug = next(slug for slug, _, numero in MESES_VENDAS if numero == venda.data_reserva.month)
-    _broadcast_update(mes_slug)
-    return jsonify({'sucesso': True, 'id': venda.id}), 201
+    _broadcast_update(PERIODO_INVESTIDORES[0])
+    return jsonify({'sucesso': True, 'id': investidor.id}), 201
 
 
-@vendas_bp.route('/bulk-cadastrar', methods=['POST'])
+@investidores_bp.route('/bulk-cadastrar', methods=['POST'])
 @login_required
-@requer_vendas
+@requer_investidores
 def bulk_cadastrar():
     dados = request.get_json(silent=True) or {}
     linhas = dados.get('linhas') or []
     if not isinstance(linhas, list) or not linhas:
-        return jsonify({'erro': 'Nenhuma linha informada para importação.'}), 400
+        return jsonify({'erro': 'Nenhuma linha informada para importacao.'}), 400
 
-    vendas: list[Venda] = []
+    investidores: list[Investidor] = []
     meses_afetados: set[str] = set()
     ignoradas = 0
     for indice, linha in enumerate(linhas, start=1):
-        registro, erro = _validar_payload_venda(linha or {})
+        registro, erro = _validar_payload_investidor(linha or {})
         if erro:
             if 'desconsiderado' in erro.lower():
                 ignoradas += 1
                 continue
             return jsonify({'erro': f'Linha {indice}: {erro}'}), 400
-        venda = Venda(
+        investidor = Investidor(
             reserva=registro['reserva'],
             data_reserva=registro['data_reserva'],
             situacao=registro['situacao'],
+            tipo_venda=registro['tipo_venda'],
             empreendimento=registro['empreendimento'],
             bloco=registro['bloco'] or None,
             unidade=registro['unidade'] or None,
@@ -420,64 +385,62 @@ def bulk_cadastrar():
             corretor=registro['corretor'] or None,
             imobiliaria=registro['imobiliaria'] or None,
             valor_presente=registro['valor_presente'],
-            tipo_venda=registro['tipo_venda'],
             criado_por=current_user.nome.upper(),
         )
-        vendas.append(venda)
-        meses_afetados.add(next(slug for slug, _, numero in MESES_VENDAS if numero == venda.data_reserva.month))
+        investidores.append(investidor)
+        meses_afetados.add(PERIODO_INVESTIDORES[0])
 
-    if vendas:
-        db.session.add_all(vendas)
+    if investidores:
+        db.session.add_all(investidores)
         db.session.commit()
         for mes_slug in meses_afetados:
             _broadcast_update(mes_slug)
 
-    return jsonify({'sucesso': True, 'quantidade': len(vendas), 'ignoradas': ignoradas}), 201
+    return jsonify({'sucesso': True, 'quantidade': len(investidores), 'ignoradas': ignoradas}), 201
 
 
-@vendas_bp.route('/registro/<int:reg_id>', methods=['PUT'])
+@investidores_bp.route('/registro/<int:reg_id>', methods=['PUT'])
 @login_required
-@requer_vendas
+@requer_investidores
 def editar_registro(reg_id):
-    venda = db.session.get(Venda, reg_id)
-    if not venda:
-        return jsonify({'erro': 'Registro não encontrado.'}), 404
+    investidor = db.session.get(Investidor, reg_id)
+    if not investidor:
+        return jsonify({'erro': 'Registro nao encontrado.'}), 404
 
     dados = request.get_json(silent=True) or request.form.to_dict()
-    registro, erro = _validar_payload_venda(dados)
+    registro, erro = _validar_payload_investidor(dados)
     if erro:
         return jsonify({'erro': erro}), 400
 
-    mes_anterior = next(slug for slug, _, numero in MESES_VENDAS if numero == venda.data_reserva.month)
-    venda.reserva = registro['reserva']
-    venda.data_reserva = registro['data_reserva']
-    venda.situacao = registro['situacao']
-    venda.empreendimento = registro['empreendimento']
-    venda.bloco = registro['bloco'] or None
-    venda.unidade = registro['unidade'] or None
-    venda.cliente = registro['cliente']
-    venda.corretor = registro['corretor'] or None
-    venda.imobiliaria = registro['imobiliaria'] or None
-    venda.valor_presente = registro['valor_presente']
-    venda.tipo_venda = registro['tipo_venda']
+    mes_anterior = PERIODO_INVESTIDORES[0]
+    investidor.reserva = registro['reserva']
+    investidor.data_reserva = registro['data_reserva']
+    investidor.situacao = registro['situacao']
+    investidor.tipo_venda = registro['tipo_venda']
+    investidor.empreendimento = registro['empreendimento']
+    investidor.bloco = registro['bloco'] or None
+    investidor.unidade = registro['unidade'] or None
+    investidor.cliente = registro['cliente']
+    investidor.corretor = registro['corretor'] or None
+    investidor.imobiliaria = registro['imobiliaria'] or None
+    investidor.valor_presente = registro['valor_presente']
     db.session.commit()
 
-    mes_atual = next(slug for slug, _, numero in MESES_VENDAS if numero == venda.data_reserva.month)
+    mes_atual = PERIODO_INVESTIDORES[0]
     _broadcast_update(mes_atual)
     if mes_atual != mes_anterior:
         _broadcast_update(mes_anterior)
-    return jsonify({'sucesso': True, 'registro': venda.to_dict()})
+    return jsonify({'sucesso': True, 'registro': investidor.to_dict()})
 
 
-@vendas_bp.route('/registro/<int:reg_id>', methods=['DELETE'])
+@investidores_bp.route('/registro/<int:reg_id>', methods=['DELETE'])
 @login_required
-@requer_vendas
+@requer_investidores
 def deletar_registro(reg_id):
-    venda = db.session.get(Venda, reg_id)
-    if not venda:
-        return jsonify({'erro': 'Registro não encontrado.'}), 404
-    mes_slug = next(slug for slug, _, numero in MESES_VENDAS if numero == venda.data_reserva.month)
-    db.session.delete(venda)
+    investidor = db.session.get(Investidor, reg_id)
+    if not investidor:
+        return jsonify({'erro': 'Registro nao encontrado.'}), 404
+    db.session.delete(investidor)
     db.session.commit()
-    _broadcast_update(mes_slug)
+    _broadcast_update(PERIODO_INVESTIDORES[0])
     return jsonify({'sucesso': True})

@@ -6,7 +6,7 @@
 
 const META_LOCK_PREFIX = 'meta-locked-s';
 const MESES = ['abril', 'maio', 'junho'];
-const ADMIN_COLLAPSIBLES = ['metas-varejo', 'metas-relacionamento'];
+const ADMIN_COLLAPSIBLES = ['metas-varejo', 'metas-investidores', 'metas-relacionamento'];
 
 function csrfHeaders(extra = {}) {
   return { 'X-CSRFToken': window.APP_CSRF_TOKEN || '', ...extra };
@@ -333,6 +333,12 @@ document.addEventListener('DOMContentLoaded', () => {
     if (lockedByServer) renderizarMetaVendaBloqueada(mes);
   });
 
+  document.querySelectorAll('.meta-item[data-meta-investidor]').forEach((item) => {
+    const mes = item.dataset.metaInvestidor;
+    const lockedByServer = item.dataset.locked === 'true';
+    if (lockedByServer) renderizarMetaInvestidorBloqueada(mes);
+  });
+
   ADMIN_COLLAPSIBLES.forEach((cardId) => {
     const body = document.getElementById(`body-${cardId}`);
     const arrow = document.getElementById(`arrow-${cardId}`);
@@ -351,6 +357,65 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 });
+
+function obterMetaInvestidorEls(mes) {
+  return {
+    item: document.querySelector(`.meta-item[data-meta-investidor="${mes}"]`),
+    input: document.getElementById(`meta-investidor-${mes}`),
+    btn: document.getElementById(`btn-meta-investidor-${mes}`),
+  };
+}
+
+function renderizarMetaInvestidorBloqueada(mes) {
+  const { item, input, btn } = obterMetaInvestidorEls(mes);
+  if (!input || !btn) return;
+  input.readOnly = true;
+  input.oninput = null;
+  btn.innerHTML = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg> Editar';
+  btn.classList.remove('btn--primary');
+  btn.classList.add('btn--ghost');
+  btn.onclick = () => editarMetaInvestidor(mes, btn);
+  if (item) item.dataset.locked = 'true';
+}
+
+function renderizarMetaInvestidorEditavel(mes) {
+  const { item, input, btn } = obterMetaInvestidorEls(mes);
+  if (!input || !btn) return;
+  input.readOnly = false;
+  input.oninput = function () { formatarValorBR(this); };
+  btn.textContent = 'Salvar Meta';
+  btn.classList.remove('btn--ghost');
+  btn.classList.add('btn--primary');
+  btn.onclick = () => salvarMetaInvestidor(mes, btn);
+  if (item) item.dataset.locked = 'false';
+}
+
+async function salvarMetaInvestidor(mes, btn) {
+  const input = document.getElementById(`meta-investidor-${mes}`);
+  const valor = Math.max(parsearValorBR(input ? input.value : '0') || 0, 0);
+
+  try {
+    const resp = await fetch('/admin/meta-investidor/salvar', {
+      method: 'POST',
+      headers: csrfHeaders({ 'Content-Type': 'application/json' }),
+      body: JSON.stringify({ mes, valor_meta: valor }),
+    });
+    const raw = await resp.text();
+    const json = raw ? JSON.parse(raw) : {};
+    if (resp.ok) {
+      showToast(`Meta de ${mes} salva com sucesso!`, 'success');
+      renderizarMetaInvestidorBloqueada(mes);
+    } else {
+      showToast(json.erro || 'Erro ao salvar meta de investidores.', 'error');
+    }
+  } catch (error) {
+    showToast('Erro ao salvar meta de investidores.', 'error');
+  }
+}
+
+function editarMetaInvestidor(mes, btn) {
+  renderizarMetaInvestidorEditavel(mes);
+}
 
 function editarMetaVenda(mes, btn) {
   renderizarMetaVendaEditavel(mes);
