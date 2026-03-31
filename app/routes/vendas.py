@@ -10,7 +10,7 @@ from app import db, socketio
 from app.models.empreendimento import Empreendimento
 from app.models.meta_venda import MetaVendaVarejo
 from app.models.venda import SITUACAO_VENDA_OPCOES, TIPO_VENDA_OPCOES, Venda
-from app.services.analytics_ai import analytics_ai_available, analytics_ai_enabled, ask_analytics_assistant, build_global_ai_context
+from app.services.analytics_ai import analytics_ai_available, analytics_ai_enabled, ask_analytics_assistant, build_global_ai_context, fallback_analytics_answer
 
 
 vendas_bp = Blueprint('vendas', __name__)
@@ -353,7 +353,7 @@ def vendas_ai_chat():
     try:
         resposta = ask_analytics_assistant(pergunta, history, contexto)
     except Exception:
-        return jsonify({'erro': 'Nao foi possivel consultar a assistente analitica no momento.'}), 502
+        resposta = fallback_analytics_answer(pergunta, contexto)
 
     return jsonify({'answer': resposta})
 

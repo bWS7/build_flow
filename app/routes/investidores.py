@@ -10,7 +10,7 @@ from app import db, socketio
 from app.models.empreendimento import Empreendimento
 from app.models.investidor import Investidor, SITUACAO_INVESTIDOR_OPCOES, TIPO_VENDA_OPCOES
 from app.models.meta_investidor import MetaInvestidor
-from app.services.analytics_ai import analytics_ai_available, analytics_ai_enabled, ask_analytics_assistant, build_global_ai_context
+from app.services.analytics_ai import analytics_ai_available, analytics_ai_enabled, ask_analytics_assistant, build_global_ai_context, fallback_analytics_answer
 
 
 investidores_bp = Blueprint('investidores', __name__)
@@ -318,7 +318,7 @@ def investidores_ai_chat():
     try:
         resposta = ask_analytics_assistant(pergunta, history, contexto)
     except Exception:
-        return jsonify({'erro': 'Nao foi possivel consultar a assistente analitica no momento.'}), 502
+        resposta = fallback_analytics_answer(pergunta, contexto)
 
     return jsonify({'answer': resposta})
 

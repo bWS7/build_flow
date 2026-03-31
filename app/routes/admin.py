@@ -13,7 +13,7 @@ from app.models.meta_venda import MetaVendaVarejo
 from app.models.relacionamento import Relacionamento
 from app.routes.investidores import PERIODO_INVESTIDORES, montar_contexto_template_investidores
 from app.routes.vendas import MESES_VENDAS, montar_contexto_template_vendas
-from app.services.analytics_ai import analytics_ai_available, analytics_ai_enabled, ask_analytics_assistant, build_global_ai_context
+from app.services.analytics_ai import analytics_ai_available, analytics_ai_enabled, ask_analytics_assistant, build_global_ai_context, fallback_analytics_answer
 
 MESES_RELATORIO = [
     ('abril', 'Abril', 1),
@@ -607,9 +607,7 @@ def master_ai_chat():
     try:
         resposta = ask_analytics_assistant(pergunta, history, contexto)
     except Exception:
-        return jsonify({
-            'erro': 'Nao foi possivel consultar a assistente analitica no momento.',
-        }), 502
+        resposta = fallback_analytics_answer(pergunta, contexto)
 
     return jsonify({'answer': resposta})
 
@@ -644,9 +642,7 @@ def relacionamento_ai_chat():
     try:
         resposta = ask_analytics_assistant(pergunta, history, contexto)
     except Exception:
-        return jsonify({
-            'erro': 'Nao foi possivel consultar a assistente analitica no momento.',
-        }), 502
+        resposta = fallback_analytics_answer(pergunta, contexto)
 
     return jsonify({'answer': resposta})
 
