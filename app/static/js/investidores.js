@@ -3,7 +3,7 @@
 let investidoresCache = [];
 let investidoresFiltradosCache = [];
 let activeSituacaoChart = '';
-let deleteState = { id: null, btnEl: null };
+let deleteState = { id: null, btnEl: null, mode: 'single' };
 
 function csrfHeaders(extra = {}) {
   return { 'X-CSRFToken': window.APP_CSRF_TOKEN || '', ...extra };
@@ -347,13 +347,30 @@ function handleFunilChartClick(event) {
 }
 
 function openDeleteModal(id, btnEl) {
-  deleteState = { id, btnEl };
+  deleteState = { id, btnEl, mode: 'single' };
+  const titleEl = document.getElementById('delete-modal-title');
+  const textEl = document.getElementById('delete-modal-text');
+  const confirmEl = document.getElementById('confirm-delete-btn');
+  if (titleEl) titleEl.textContent = 'Excluir investidor';
+  if (textEl) textEl.textContent = 'Deseja excluir este investidor? Essa ação não poderá ser desfeita.';
+  if (confirmEl) confirmEl.textContent = 'Excluir';
   document.getElementById('modal-delete')?.removeAttribute('hidden');
 }
 
 function closeDeleteModal() {
-  deleteState = { id: null, btnEl: null };
+  deleteState = { id: null, btnEl: null, mode: 'single' };
   document.getElementById('modal-delete')?.setAttribute('hidden', '');
+}
+
+function openDeleteAllModal() {
+  deleteState = { id: null, btnEl: document.getElementById('btn-delete-all'), mode: 'all' };
+  const titleEl = document.getElementById('delete-modal-title');
+  const textEl = document.getElementById('delete-modal-text');
+  const confirmEl = document.getElementById('confirm-delete-btn');
+  if (titleEl) titleEl.textContent = 'Excluir todos os investidores';
+  if (textEl) textEl.textContent = 'Deseja realmente excluir todos os registros de investidores? Essa ação apagará todas as informações e não poderá ser desfeita.';
+  if (confirmEl) confirmEl.textContent = 'Excluir tudo';
+  document.getElementById('modal-delete')?.removeAttribute('hidden');
 }
 
 function abrirInvestidor(id) {
@@ -476,18 +493,16 @@ async function deletarInvestidor(id, btnEl) {
 }
 
 async function confirmarExclusaoInvestidor() {
-  const { id, btnEl } = deleteState;
-  if (!id || !btnEl) return;
+  const { id, btnEl, mode } = deleteState;
+  if (!btnEl) return;
   closeDeleteModal();
   btnEl.disabled = true;
   try {
-    const resp = await fetch(`/investidores/registro/${id}`, {
-      method: 'DELETE',
-      headers: csrfHeaders(),
-    });
+    const url = mode === 'all' ? '/investidores/registros' : `/investidores/registro/${id}`;
+    const resp = await fetch(url, { method: 'DELETE', headers: csrfHeaders() });
     const json = await resp.json();
     if (resp.ok && json.sucesso) {
-      showToast('Investidor excluido.');
+      showToast(mode === 'all' ? 'Todos os registros de investidores foram excluídos.' : 'Investidor excluido.');
       recarregarDados();
     } else {
       showToast(json.erro || 'Erro ao excluir.', 'error');
@@ -495,6 +510,8 @@ async function confirmarExclusaoInvestidor() {
     }
   } catch {
     showToast('Falha de conexão.', 'error');
+    btnEl.disabled = false;
+  } finally {
     btnEl.disabled = false;
   }
 }
@@ -525,6 +542,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const empreendimentoEl = document.getElementById('filtro-empreendimento');
   const exportarEl = document.getElementById('btn-exportar-grid');
   const limparEl = document.getElementById('btn-limpar-filtros');
+  const deleteAllEl = document.getElementById('btn-delete-all');
   const confirmarDeleteEl = document.getElementById('confirm-delete-btn');
   const chartEl = document.getElementById('funil-chart');
   const formCadastro = document.getElementById('form-cadastro-investidor');
@@ -546,6 +564,7 @@ document.addEventListener('DOMContentLoaded', () => {
       aplicarFiltros();
     });
   }
+  if (deleteAllEl) deleteAllEl.addEventListener('click', openDeleteAllModal);
   if (confirmarDeleteEl) confirmarDeleteEl.addEventListener('click', confirmarExclusaoInvestidor);
   if (chartEl) chartEl.addEventListener('click', handleFunilChartClick);
 

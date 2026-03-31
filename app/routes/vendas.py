@@ -481,3 +481,28 @@ def deletar_registro(reg_id):
     db.session.commit()
     _broadcast_update(mes_slug)
     return jsonify({'sucesso': True})
+
+
+@vendas_bp.route('/registros', methods=['DELETE'])
+@login_required
+@requer_vendas
+def deletar_todos_registros():
+    vendas = Venda.query.all()
+    if not vendas:
+        return jsonify({'sucesso': True, 'quantidade': 0})
+
+    meses_afetados = {
+        slug
+        for venda in vendas
+        for slug, _, numero in MESES_VENDAS
+        if venda.data_reserva and venda.data_reserva.month == numero
+    }
+
+    for venda in vendas:
+        db.session.delete(venda)
+    db.session.commit()
+
+    for mes_slug in meses_afetados:
+        _broadcast_update(mes_slug)
+
+    return jsonify({'sucesso': True, 'quantidade': len(vendas)})

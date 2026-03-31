@@ -458,6 +458,23 @@ def _montar_master_painel() -> dict:
     }
 
 
+def _serializar_master_painel() -> dict:
+    painel = _montar_master_painel()
+    return {
+        'cards_master': painel['cards_master'],
+        'objetivo_geral': painel['objetivo_geral'],
+        'objetivo_realizado_total': painel['objetivo_realizado_total'],
+        'objetivo_meta_total': painel['objetivo_meta_total'],
+        'tempo_pct': painel['tempo_pct'],
+        'tempo_restante_label': painel['tempo_restante_label'],
+        'data_limite_label': painel['data_limite_label'],
+        'timer_started_at_iso': painel['timer_started_at_iso'],
+        'timer_deadline_at_iso': painel['timer_deadline_at_iso'],
+        'destaque_principal': painel['destaque_principal'],
+        'alerta_principal': painel['alerta_principal'],
+    }
+
+
 def _montar_contexto_ia_master() -> dict:
     painel = _montar_master_painel()
     return {
@@ -553,6 +570,13 @@ def investidores_painel():
 @requer_admin
 def master_painel():
     return render_template('admin/master_painel.html', **_montar_master_painel())
+
+
+@admin_bp.route('/master/data')
+@login_required
+@requer_admin
+def master_painel_data():
+    return jsonify(_serializar_master_painel())
 
 
 @admin_bp.route('/master/ai-chat', methods=['POST'])

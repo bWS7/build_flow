@@ -444,3 +444,18 @@ def deletar_registro(reg_id):
     db.session.commit()
     _broadcast_update(PERIODO_INVESTIDORES[0])
     return jsonify({'sucesso': True})
+
+
+@investidores_bp.route('/registros', methods=['DELETE'])
+@login_required
+@requer_investidores
+def deletar_todos_registros():
+    investidores = Investidor.query.all()
+    if not investidores:
+        return jsonify({'sucesso': True, 'quantidade': 0})
+
+    for investidor in investidores:
+        db.session.delete(investidor)
+    db.session.commit()
+    _broadcast_update(PERIODO_INVESTIDORES[0])
+    return jsonify({'sucesso': True, 'quantidade': len(investidores)})

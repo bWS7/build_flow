@@ -97,23 +97,23 @@
         </div>
       </section>
 
-      <section class="master-strip">
+      <section class="master-strip" data-master-strip>
         {% for card in cards_master %}
-        <article class="master-chip {% if card.ficticio %}master-chip--ficticio{% endif %}">
+        <article class="master-chip {% if card.ficticio %}master-chip--ficticio{% endif %}" data-master-card="{{ card.slug }}">
           <div class="master-chip__topline">
             <span class="master-chip__label">{{ card.nome }}</span>
           </div>
-          <strong class="master-chip__value">{{ card.percentual }}%</strong>
-          <div class="master-chip__meta">
+          <strong class="master-chip__value" data-master-card-percentual>{{ card.percentual }}%</strong>
+          <div class="master-chip__meta" data-master-card-meta>
             {% if card.monetario %}
             R$ {{ card.realizado | brl_int }} x R$ {{ card.meta | brl_int }}
             {% else %}
             {{ card.realizado | round(0) | int }} x {{ card.meta | round(0) | int }}
             {% endif %}
           </div>
-          <div class="master-chip__meta master-chip__meta--context">{{ card.comparativo_label }}</div>
+          <div class="master-chip__meta master-chip__meta--context" data-master-card-context>{{ card.comparativo_label }}</div>
           <div class="master-chip__track">
-            <span class="master-chip__fill" style="width: {{ card.percentual if card.percentual <= 100 else 100 }}%"></span>
+            <span class="master-chip__fill" data-master-card-fill style="width: {{ card.percentual if card.percentual <= 100 else 100 }}%"></span>
           </div>
         </article>
         {% endfor %}
@@ -124,7 +124,7 @@
           <div class="master-panel__rail">Objetivo Alcançado</div>
           <div class="master-panel__body">
             <strong class="master-panel__metric"><span data-master-goal-value>{{ objetivo_geral }}</span>%</strong>
-            <p>{{ objetivo_realizado_total | round(1) }} de {{ objetivo_meta_total | round(0) | int }} pontos percentuais rumo aos 100% em cada frente.</p>
+            <p data-master-goal-copy>{{ objetivo_realizado_total | round(1) }} de {{ objetivo_meta_total | round(0) | int }} pontos percentuais rumo aos 100% em cada frente.</p>
           </div>
         </article>
 
@@ -148,13 +148,13 @@
       <section class="master-summary-grid">
         <article class="master-card">
           <span class="master-card__eyebrow">Maior avanço</span>
-          <strong class="master-card__title">{{ destaque_principal.nome if destaque_principal else 'Sem dados' }}</strong>
-          <p>{{ destaque_principal.percentual if destaque_principal else 0 }}% da meta trimestral.</p>
+          <strong class="master-card__title" data-master-highlight-name>{{ destaque_principal.nome if destaque_principal else 'Sem dados' }}</strong>
+          <p data-master-highlight-copy>{{ destaque_principal.percentual if destaque_principal else 0 }}% da meta trimestral.</p>
         </article>
         <article class="master-card master-card--alert">
           <span class="master-card__eyebrow">Maior atenção</span>
-          <strong class="master-card__title">{{ alerta_principal.nome if alerta_principal else 'Sem dados' }}</strong>
-          <p>{{ alerta_principal.percentual if alerta_principal else 0 }}% da meta atual.</p>
+          <strong class="master-card__title" data-master-alert-name>{{ alerta_principal.nome if alerta_principal else 'Sem dados' }}</strong>
+          <p data-master-alert-copy>{{ alerta_principal.percentual if alerta_principal else 0 }}% da meta atual.</p>
         </article>
       </section>
 
@@ -174,7 +174,7 @@
                 <th>Observação</th>
               </tr>
             </thead>
-            <tbody>
+            <tbody data-master-table-body>
               {% for card in cards_master %}
               <tr>
                 <td>{{ card.nome }}</td>
@@ -236,6 +236,7 @@
   </section>
 </div>
 
+<script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.5/socket.io.min.js"></script>
 <script>
 (function () {
   const btn = document.getElementById('menu-btn');
@@ -247,6 +248,9 @@
   overlay.addEventListener('click', shut);
   document.getElementById('drawer-close').addEventListener('click', shut);
 })();
+</script>
+<script>
+  window.MASTER_DATA_URL = "{{ url_for('admin.master_painel_data') }}";
 </script>
 <script src="{{ url_for('static', filename='js/master.js') }}"></script>
 <script src="{{ url_for('static', filename='js/analytics_ai.js') }}"></script>

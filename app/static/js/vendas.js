@@ -3,7 +3,7 @@
 let vendasCache = [];
 let vendasFiltradasCache = [];
 let activeSituacaoChart = '';
-let deleteState = { id: null, btnEl: null };
+let deleteState = { id: null, btnEl: null, mode: 'single' };
 
 function csrfHeaders(extra = {}) {
   return { 'X-CSRFToken': window.APP_CSRF_TOKEN || '', ...extra };
@@ -347,13 +347,30 @@ function handleFunilChartClick(event) {
 }
 
 function openDeleteModal(id, btnEl) {
-  deleteState = { id, btnEl };
+  deleteState = { id, btnEl, mode: 'single' };
+  const titleEl = document.getElementById('delete-modal-title');
+  const textEl = document.getElementById('delete-modal-text');
+  const confirmEl = document.getElementById('confirm-delete-btn');
+  if (titleEl) titleEl.textContent = 'Excluir venda';
+  if (textEl) textEl.textContent = 'Deseja excluir esta venda? Essa ação não poderá ser desfeita.';
+  if (confirmEl) confirmEl.textContent = 'Excluir';
   document.getElementById('modal-delete')?.removeAttribute('hidden');
 }
 
 function closeDeleteModal() {
-  deleteState = { id: null, btnEl: null };
+  deleteState = { id: null, btnEl: null, mode: 'single' };
   document.getElementById('modal-delete')?.setAttribute('hidden', '');
+}
+
+function openDeleteAllModal() {
+  deleteState = { id: null, btnEl: document.getElementById('btn-delete-all'), mode: 'all' };
+  const titleEl = document.getElementById('delete-modal-title');
+  const textEl = document.getElementById('delete-modal-text');
+  const confirmEl = document.getElementById('confirm-delete-btn');
+  if (titleEl) titleEl.textContent = 'Excluir todas as vendas';
+  if (textEl) textEl.textContent = 'Deseja realmente excluir todos os registros de vendas? Essa ação apagará todas as informações e não poderá ser desfeita.';
+  if (confirmEl) confirmEl.textContent = 'Excluir tudo';
+  document.getElementById('modal-delete')?.removeAttribute('hidden');
 }
 
 function abrirVenda(id) {
@@ -513,18 +530,16 @@ async function deletarVenda(id, btnEl) {
 }
 
 async function confirmarExclusaoVenda() {
-  const { id, btnEl } = deleteState;
-  if (!id || !btnEl) return;
+  const { id, btnEl, mode } = deleteState;
+  if (!btnEl) return;
   closeDeleteModal();
   btnEl.disabled = true;
   try {
-    const resp = await fetch(`/vendas/registro/${id}`, {
-      method: 'DELETE',
-      headers: csrfHeaders(),
-    });
+    const url = mode === 'all' ? '/vendas/registros' : `/vendas/registro/${id}`;
+    const resp = await fetch(url, { method: 'DELETE', headers: csrfHeaders() });
     const json = await resp.json();
     if (resp.ok && json.sucesso) {
-      showToast('Venda excluída.');
+      showToast(mode === 'all' ? 'Todos os registros de vendas foram excluídos.' : 'Venda excluída.');
       recarregarDados();
     } else {
       showToast(json.erro || 'Erro ao excluir.', 'error');
@@ -532,6 +547,8 @@ async function confirmarExclusaoVenda() {
     }
   } catch {
     showToast('Falha de conexão.', 'error');
+    btnEl.disabled = false;
+  } finally {
     btnEl.disabled = false;
   }
 }
@@ -562,6 +579,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const empreendimentoEl = document.getElementById('filtro-empreendimento');
   const exportarEl = document.getElementById('btn-exportar-grid');
   const limparEl = document.getElementById('btn-limpar-filtros');
+  const deleteAllEl = document.getElementById('btn-delete-all');
   const confirmarDeleteEl = document.getElementById('confirm-delete-btn');
   const chartEl = document.getElementById('funil-chart');
   const formCadastro = document.getElementById('form-cadastro-venda');
@@ -583,6 +601,7 @@ document.addEventListener('DOMContentLoaded', () => {
       aplicarFiltros();
     });
   }
+  if (deleteAllEl) deleteAllEl.addEventListener('click', openDeleteAllModal);
   if (confirmarDeleteEl) confirmarDeleteEl.addEventListener('click', confirmarExclusaoVenda);
   if (chartEl) chartEl.addEventListener('click', handleFunilChartClick);
 

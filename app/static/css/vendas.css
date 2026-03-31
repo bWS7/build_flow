@@ -235,6 +235,18 @@
   cursor: pointer;
 }
 
+.section-header__tools {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-left: auto;
+}
+
+.btn-del--subtle {
+  padding: 6px;
+  border-radius: 999px;
+}
+
 .sales-filters {
   display: grid;
   grid-template-columns: 1.4fr 1fr 1fr auto auto;
@@ -282,6 +294,11 @@
 
   .sales-filters {
     grid-template-columns: 1fr;
+  }
+
+  .section-header__tools {
+    width: 100%;
+    justify-content: space-between;
   }
 
   .progress-insights {
