@@ -53,10 +53,10 @@ csrf = CSRFProtect()
 def _resolve_database_url():
     database_url = (os.environ.get('DATABASE_URL') or '').strip()
     if not database_url:
-        raise RuntimeError('DATABASE_URL do Railway nao configurada. A aplicacao nao usa banco local.')
+        raise RuntimeError('DATABASE_URL nao configurada. A aplicacao requer um banco PostgreSQL externo.')
     database_url = database_url.replace('postgres://', 'postgresql://')
     if not database_url.startswith('postgresql://'):
-        raise RuntimeError('DATABASE_URL invalida. A aplicacao aceita apenas PostgreSQL do Railway.')
+        raise RuntimeError('DATABASE_URL invalida. A aplicacao aceita apenas conexoes PostgreSQL.')
     if database_url.startswith('postgresql://') and 'sslmode=' not in database_url:
         separator = '&' if '?' in database_url else '?'
         database_url = f'{database_url}{separator}sslmode=require'
