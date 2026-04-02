@@ -27,6 +27,10 @@
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
       </button>
     </div>
+    {% set active_panel = 'vendas' if painel_admin_vendas else '' %}
+    {% set active_page = '' if painel_admin_vendas else 'vendas' %}
+    {% include "partials/app_drawer_nav.html" %}
+    {% if false %}
     <div class="drawer__nav">
       {% if current_user.tipo == 'admin' %}
       <a href="{{ url_for('admin.dashboard') }}" class="drawer__link">
@@ -45,6 +49,22 @@
       <a href="{{ url_for('investidores.index') }}" class="drawer__link">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3h18v18H3z"/><path d="M8 14l3-3 2 2 4-5"/></svg>
         Investidores
+      </a>
+      <a href="{{ url_for('financeiro.index') }}" class="drawer__link">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 1v22"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+        Financeiro
+      </a>
+      <a href="{{ url_for('giro.index') }}" class="drawer__link">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19h16"/><path d="M7 15l3-3 3 2 4-6"/><circle cx="7" cy="15" r="1"/><circle cx="10" cy="12" r="1"/><circle cx="13" cy="14" r="1"/><circle cx="17" cy="8" r="1"/></svg>
+        Giro
+      </a>
+      <a href="{{ url_for('fornecedores.index') }}" class="drawer__link">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 21h18"/><path d="M5 21V8l7-5 7 5v13"/><path d="M9 21v-6h6v6"/></svg>
+        Fornecedores
+      </a>
+      <a href="{{ url_for('medicao.index') }}" class="drawer__link">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 20h18"/><path d="M6 16h12"/><path d="M8 12h8"/><path d="M10 4h4v8h-4z"/></svg>
+        Medição
       </a>
       {% if current_user.tipo == 'admin' %}
       <details class="drawer-subnav" {% if painel_admin_vendas %}open{% endif %}>
@@ -72,10 +92,27 @@
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"/><path d="M7 14l3-3 3 2 4-5"/></svg>
             Painel Investidores
           </a>
+          <a href="{{ url_for('admin.financeiro_painel') }}" class="drawer__sublink">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"/><path d="M7 14l3-3 3 2 4-5"/></svg>
+            Painel Financeiro
+          </a>
+          <a href="{{ url_for('admin.giro_painel') }}" class="drawer__sublink">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"/><path d="M7 14l3-3 3 2 4-5"/></svg>
+            Painel Giro
+          </a>
+          <a href="{{ url_for('admin.fornecedores_painel') }}" class="drawer__sublink">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"/><path d="M7 14l3-3 3 2 4-5"/></svg>
+            Painel Fornecedores
+          </a>
+          <a href="{{ url_for('admin.medicao_painel') }}" class="drawer__sublink">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"/><path d="M7 14l3-3 3 2 4-5"/></svg>
+            Painel Medicao
+          </a>
         </div>
       </details>
       {% endif %}
     </div>
+    {% endif %}
     <div class="drawer__theme-slot">
       {% include "partials/theme_control.html" %}
     </div>
@@ -101,19 +138,32 @@
           <span class="topbar__pulse"></span> AO VIVO
         </span>
       </div>
-      <div class="topbar__weeks topbar__weeks--months">
-        {% for slug, nome, _ in meses %}
-        <a href="{% if painel_admin_vendas %}{{ url_for('admin.vendas_painel', mes=slug) }}{% else %}{{ url_for('vendas.index', mes=slug) }}{% endif %}" class="week-pill {% if slug == mes_atual %}week-pill--active{% endif %}">
-          {{ nome }}
-        </a>
+      <div class="topbar__weeks">
+        {% for mes_nome, mes_ini, mes_id in [('Abril', 1, 'abril'), ('Maio', 5, 'maio'), ('Junho', 9, 'junho')] %}
+        <div class="week-month">
+          <button class="week-month__toggle" type="button" onclick="toggleMesVendas('{{ mes_id }}')">
+            <span>{{ mes_nome }}</span>
+            <svg class="week-month__arrow week-month__arrow--collapsed" id="arrow-{{ mes_id }}" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+          </button>
+          <div class="week-month__body week-month__body--collapsed" id="body-{{ mes_id }}">
+            {% for s in range(1, 5) %}
+            <a href="{% if painel_admin_vendas %}{{ url_for('admin.vendas_painel', mes=mes_id, semana=s) }}{% else %}{{ url_for('vendas.index', mes=mes_id, semana=s) }}{% endif %}" class="week-pill {% if mes_id == mes_atual and s == semana_atual %}week-pill--active{% endif %}">
+              S{{ s }}
+            </a>
+            {% endfor %}
+          </div>
+        </div>
         {% endfor %}
+        {% if resumo_trimestral %}
+        <a href="{{ url_for('admin.vendas_painel', mes='resumo_trimestral') }}" class="week-pill week-pill--active">Resumo Trimestral</a>
+        {% endif %}
       </div>
     </header>
 
     <section class="indicators">
       <div class="kpi-card">
         <div class="kpi-card__body">
-          <span class="kpi-card__label">{% if resumo_trimestral %}Meta do Trimestre{% else %}Meta do Mês{% endif %}</span>
+          <span class="kpi-card__label">{% if resumo_trimestral %}Meta do Trimestre{% else %}Meta da Semana{% endif %}</span>
           <span class="kpi-card__value" id="meta-quantidade">{{ financeiro.meta_quantidade }}</span>
         </div>
         <div class="kpi-card__icon kpi-card__icon--target">
@@ -201,7 +251,7 @@
       <div class="section-header">
         <h3 class="section-header__title">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
-          Nova Venda - {{ mes_atual_nome }}
+          Nova Venda - {{ mes_atual_nome }}{% if not resumo_trimestral %} S{{ semana_atual }}{% endif %}
         </h3>
         <button class="btn btn--sm btn--ghost" id="toggle-form">▼ Expandir</button>
       </div>
@@ -248,7 +298,7 @@
       <div class="section-header">
         <h3 class="section-header__title">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M3 15h18"/></svg>
-          Grid de Vendas - {{ mes_atual_nome }}
+          Grid de Vendas - {{ mes_atual_nome }}{% if not resumo_trimestral %} S{{ semana_atual }}{% endif %}
         </h3>
         <div class="section-header__tools">
           <span class="section-header__count" id="total-registros">{{ registros|length }} reservas</span>
@@ -399,6 +449,7 @@
 {% endif %}
 <script>
   const MES_ATUAL = {{ mes_atual | tojson }};
+  const SEMANA_ATUAL = {{ semana_atual | tojson }};
   const INITIAL_REGISTROS = {{ registros_json | tojson }};
   const INITIAL_FINANCEIRO = {{ financeiro | tojson }};
   const EMPREENDIMENTOS = {{ empreendimentos | map(attribute='nome') | list | tojson }};

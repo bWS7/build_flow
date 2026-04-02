@@ -3,6 +3,32 @@
 {% block extra_css %}
 <link rel="stylesheet" href="{{ url_for('static', filename='css/admin.css') }}" />
 <link rel="stylesheet" href="{{ url_for('static', filename='css/master.css') }}" />
+<style>
+  .master-intro { display:flex; justify-content:space-between; align-items:flex-start; gap:16px; flex-wrap:wrap; }
+  .master-intro__subtitle { margin-top:8px; color:var(--gray-600); font-weight:700; }
+  .master-toolbar { display:flex; flex-direction:column; gap:10px; align-items:flex-end; }
+  .master-toolbar__group { display:flex; gap:10px; flex-wrap:wrap; justify-content:flex-end; }
+  .master-toolbar__months { display:flex; gap:10px; flex-wrap:wrap; justify-content:flex-end; }
+  .master-week-grid { display:grid; grid-template-columns:repeat(3, minmax(0, 1fr)); gap:12px; width:100%; }
+  .master-week-card { background:#171b21; border:1px solid rgba(255,255,255,.08); border-radius:18px; padding:10px 12px; min-width:220px; box-shadow:0 10px 24px rgba(0,0,0,.18); }
+  .master-week-card--active { border-color:rgba(195,79,103,.55); box-shadow:0 12px 28px rgba(154,48,72,.16); }
+  .master-week-card__title { display:flex; align-items:center; justify-content:flex-start; margin-bottom:10px; font-size:12px; font-weight:800; letter-spacing:.08em; text-transform:uppercase; color:#d8c1b6; }
+  .master-week-card__buttons { display:flex; gap:8px; flex-wrap:wrap; }
+  .master-week-btn { min-width:42px; min-height:34px; padding:0 12px; border-radius:999px; border:1px solid rgba(255,255,255,.08); background:#222730; color:#f3ece8; text-decoration:none; display:inline-flex; align-items:center; justify-content:center; font-size:12px; font-weight:800; letter-spacing:.04em; transition:background .18s ease, border-color .18s ease, color .18s ease, transform .18s ease; }
+  .master-week-btn:hover { border-color:rgba(195,79,103,.35); transform:translateY(-1px); }
+  .master-week-btn--active { background:linear-gradient(135deg, #c34f67 0%, #9a3048 100%); border-color:#c34f67; color:#fff; }
+  .master-chip__topline { display:flex; justify-content:space-between; align-items:center; gap:10px; }
+  .master-chip__signal { font-size:15px; font-weight:900; line-height:1; }
+  .master-chip__signal--positivo { color:#2f8f5b; }
+  .master-chip__signal--negativo { color:#c84b4b; }
+  .master-chip__signal--neutro { color:#9f948e; }
+  @media (max-width: 900px) {
+    .master-toolbar { align-items:stretch; width:100%; }
+    .master-toolbar__group { justify-content:flex-start; }
+    .master-toolbar__months { justify-content:flex-start; }
+    .master-week-grid { grid-template-columns:1fr; }
+  }
+</style>
 {% endblock %}
 
 {% set logo_svg %}<img src="{{ url_for('static', filename='images/logo2.webp') }}" alt="Sousa Ara&uacute;jo" />{% endset %}
@@ -26,6 +52,9 @@
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
       </button>
     </div>
+    {% set active_panel = 'master' %}
+    {% include "partials/app_drawer_nav.html" %}
+    {% if false %}
     <div class="drawer__nav">
       <a href="{{ url_for('admin.dashboard') }}" class="drawer__link">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
@@ -42,6 +71,22 @@
       <a href="{{ url_for('investidores.index') }}" class="drawer__link">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3h18v18H3z"/><path d="M8 14l3-3 2 2 4-5"/></svg>
         Investidores
+      </a>
+      <a href="{{ url_for('financeiro.index') }}" class="drawer__link">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 1v22"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+        Financeiro
+      </a>
+      <a href="{{ url_for('giro.index') }}" class="drawer__link">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19h16"/><path d="M7 15l3-3 3 2 4-6"/><circle cx="7" cy="15" r="1"/><circle cx="10" cy="12" r="1"/><circle cx="13" cy="14" r="1"/><circle cx="17" cy="8" r="1"/></svg>
+        Giro
+      </a>
+      <a href="{{ url_for('fornecedores.index') }}" class="drawer__link">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 21h18"/><path d="M5 21V8l7-5 7 5v13"/><path d="M9 21v-6h6v6"/></svg>
+        Fornecedores
+      </a>
+      <a href="{{ url_for('medicao.index') }}" class="drawer__link">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 20h18"/><path d="M6 16h12"/><path d="M8 12h8"/><path d="M10 4h4v8h-4z"/></svg>
+        Medição
       </a>
       <details class="drawer-subnav" open>
         <summary class="drawer-subnav__toggle">
@@ -68,9 +113,26 @@
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"/><path d="M7 14l3-3 3 2 4-5"/></svg>
             Painel Investidores
           </a>
+          <a href="{{ url_for('admin.financeiro_painel') }}" class="drawer__sublink">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"/><path d="M7 14l3-3 3 2 4-5"/></svg>
+            Painel Financeiro
+          </a>
+          <a href="{{ url_for('admin.giro_painel') }}" class="drawer__sublink">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"/><path d="M7 14l3-3 3 2 4-5"/></svg>
+            Painel Giro
+          </a>
+          <a href="{{ url_for('admin.fornecedores_painel') }}" class="drawer__sublink">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"/><path d="M7 14l3-3 3 2 4-5"/></svg>
+            Painel Fornecedores
+          </a>
+          <a href="{{ url_for('admin.medicao_painel') }}" class="drawer__sublink">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"/><path d="M7 14l3-3 3 2 4-5"/></svg>
+            Painel Medicao
+          </a>
         </div>
       </details>
     </div>
+    {% endif %}
     <div class="drawer__theme-slot">
       {% include "partials/theme_control.html" %}
     </div>
@@ -94,6 +156,57 @@
       <section class="master-intro">
         <div>
           <h1 class="master-intro__title">Painel Master</h1>
+          {% if master_view != 'trimestral' %}
+          <p class="master-intro__subtitle">{{ master_period_label }}</p>
+          {% endif %}
+        </div>
+        <div class="master-toolbar">
+          <div class="master-toolbar__group">
+            <a href="{{ url_for('admin.master_painel', view='trimestral') }}"
+               class="analytics-month {% if master_view == 'trimestral' %}analytics-month--active{% endif %}">Trimestre</a>
+            <a href="{{ url_for('admin.master_painel', view='mensal', period=(master_period if master_view == 'mensal' else 'abril')) }}"
+               class="analytics-month {% if master_view == 'mensal' %}analytics-month--active{% endif %}">Meses</a>
+            <a href="{{ url_for('admin.master_painel', view='semanal', period=(master_period if master_view == 'semanal' else 's1')) }}"
+               class="analytics-month {% if master_view == 'semanal' %}analytics-month--active{% endif %}">Semanas</a>
+          </div>
+          {% if master_view == 'mensal' %}
+          <div class="master-toolbar__months">
+            {% for option in master_period_options %}
+            <a href="{{ url_for('admin.master_painel', view=master_view, period=option.slug) }}"
+               class="analytics-month {% if option.slug == master_period %}analytics-month--active{% endif %}">{{ option.label }}</a>
+            {% endfor %}
+          </div>
+          {% elif master_view == 'semanal' %}
+          <div class="master-week-grid">
+            <div class="master-week-card {% if master_period in ['s1', 's2', 's3', 's4'] %}master-week-card--active{% endif %}">
+              <div class="master-week-card__title"><span>Abril</span></div>
+              <div class="master-week-card__buttons">
+                <a href="{{ url_for('admin.master_painel', view='semanal', period='s1') }}" class="master-week-btn {% if master_period == 's1' %}master-week-btn--active{% endif %}">S1</a>
+                <a href="{{ url_for('admin.master_painel', view='semanal', period='s2') }}" class="master-week-btn {% if master_period == 's2' %}master-week-btn--active{% endif %}">S2</a>
+                <a href="{{ url_for('admin.master_painel', view='semanal', period='s3') }}" class="master-week-btn {% if master_period == 's3' %}master-week-btn--active{% endif %}">S3</a>
+                <a href="{{ url_for('admin.master_painel', view='semanal', period='s4') }}" class="master-week-btn {% if master_period == 's4' %}master-week-btn--active{% endif %}">S4</a>
+              </div>
+            </div>
+            <div class="master-week-card {% if master_period in ['s5', 's6', 's7', 's8'] %}master-week-card--active{% endif %}">
+              <div class="master-week-card__title"><span>Maio</span></div>
+              <div class="master-week-card__buttons">
+                <a href="{{ url_for('admin.master_painel', view='semanal', period='s5') }}" class="master-week-btn {% if master_period == 's5' %}master-week-btn--active{% endif %}">S1</a>
+                <a href="{{ url_for('admin.master_painel', view='semanal', period='s6') }}" class="master-week-btn {% if master_period == 's6' %}master-week-btn--active{% endif %}">S2</a>
+                <a href="{{ url_for('admin.master_painel', view='semanal', period='s7') }}" class="master-week-btn {% if master_period == 's7' %}master-week-btn--active{% endif %}">S3</a>
+                <a href="{{ url_for('admin.master_painel', view='semanal', period='s8') }}" class="master-week-btn {% if master_period == 's8' %}master-week-btn--active{% endif %}">S4</a>
+              </div>
+            </div>
+            <div class="master-week-card {% if master_period in ['s9', 's10', 's11', 's12'] %}master-week-card--active{% endif %}">
+              <div class="master-week-card__title"><span>Junho</span></div>
+              <div class="master-week-card__buttons">
+                <a href="{{ url_for('admin.master_painel', view='semanal', period='s9') }}" class="master-week-btn {% if master_period == 's9' %}master-week-btn--active{% endif %}">S1</a>
+                <a href="{{ url_for('admin.master_painel', view='semanal', period='s10') }}" class="master-week-btn {% if master_period == 's10' %}master-week-btn--active{% endif %}">S2</a>
+                <a href="{{ url_for('admin.master_painel', view='semanal', period='s11') }}" class="master-week-btn {% if master_period == 's11' %}master-week-btn--active{% endif %}">S3</a>
+                <a href="{{ url_for('admin.master_painel', view='semanal', period='s12') }}" class="master-week-btn {% if master_period == 's12' %}master-week-btn--active{% endif %}">S4</a>
+              </div>
+            </div>
+          </div>
+          {% endif %}
         </div>
       </section>
 
@@ -102,6 +215,9 @@
         <article class="master-chip {% if card.ficticio %}master-chip--ficticio{% endif %}" data-master-card="{{ card.slug }}">
           <div class="master-chip__topline">
             <span class="master-chip__label">{{ card.nome }}</span>
+            <span class="master-chip__signal master-chip__signal--{{ card.desempenho_status }}" data-master-card-signal>
+              {% if card.desempenho_status == 'positivo' %}↑{% elif card.desempenho_status == 'negativo' %}↓{% else %}•{% endif %}
+            </span>
           </div>
           <strong class="master-chip__value" data-master-card-percentual>{{ card.percentual }}%</strong>
           <div class="master-chip__meta" data-master-card-meta>
@@ -161,7 +277,7 @@
       <section class="master-table-card">
         <div class="master-table-card__header">
           <h2>Resumo das Frentes</h2>
-          <span>Dados reais em Inadimplencia, Venda Varejo e Investidor; demais frentes provisorias.</span>
+          <span>{{ master_period_label }}</span>
         </div>
         <div class="table-wrap">
           <table class="data-table">
@@ -198,6 +314,8 @@
   data-enabled="{{ 'true' if analytics_ai_enabled else 'false' }}"
   data-chat-url="{{ url_for('admin.master_ai_chat') }}"
   data-mes="master"
+  data-view="{{ master_view }}"
+  data-period="{{ master_period }}"
   data-empreendimento=""
   data-responsavel=""
   data-tipo-contato=""
@@ -250,7 +368,7 @@
 })();
 </script>
 <script>
-  window.MASTER_DATA_URL = "{{ url_for('admin.master_painel_data') }}";
+  window.MASTER_DATA_URL = "{{ url_for('admin.master_painel_data', view=master_view, period=master_period) }}";
 </script>
 <script src="{{ url_for('static', filename='js/master.js') }}"></script>
 <script src="{{ url_for('static', filename='js/analytics_ai.js') }}"></script>

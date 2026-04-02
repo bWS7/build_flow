@@ -4,7 +4,7 @@ from collections import defaultdict, deque
 from flask import Blueprint, flash, redirect, render_template, request, url_for
 from flask_login import current_user, login_required, login_user, logout_user
 
-from app.models.user import DOMINIO_PERMITIDO, User
+from app.models.user import DOMINIO_PERMITIDO, TIPOS_LEGADOS_MAP, User
 
 auth_bp = Blueprint('auth', __name__)
 
@@ -16,11 +16,16 @@ _login_locks = {}
 
 REDIRECT_MAP = {
     'admin': 'admin.dashboard',
-    'relacionamento': 'relacionamento.index',
-    'contas_a_receber': 'relacionamento.index',
-    'comercial': 'vendas.index',
-    'financeiro': 'auth.em_construcao',
-    'obra': 'auth.em_construcao',
+    'gestor_financeiro': 'financeiro.index',
+    'gestor_engenharia': 'medicao.index',
+    'gestor_comercial': 'vendas.index',
+    'gestor_suprimentos': 'fornecedores.index',
+    'gestor_credito': 'relacionamento.index',
+    'usuario_financeiro': 'financeiro.index',
+    'usuario_engenharia': 'medicao.index',
+    'usuario_comercial': 'vendas.index',
+    'usuario_suprimentos': 'fornecedores.index',
+    'usuario_credito': 'relacionamento.index',
 }
 
 
@@ -92,5 +97,6 @@ def em_construcao():
 
 
 def _redirecionar(tipo: str):
-    destino = REDIRECT_MAP.get(tipo, 'auth.login')
+    tipo_normalizado = TIPOS_LEGADOS_MAP.get(str(tipo or '').strip().lower(), str(tipo or '').strip().lower())
+    destino = REDIRECT_MAP.get(tipo_normalizado, 'auth.login')
     return redirect(url_for(destino))

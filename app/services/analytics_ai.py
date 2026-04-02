@@ -148,15 +148,91 @@ def _formatar_moeda_brl(valor: float) -> str:
     return 'R$ ' + texto.replace(',', 'X').replace('.', ',').replace('X', '.')
 
 
+def _rotulo_dataset(dataset: str) -> str:
+    labels = {
+        'vendas': 'das vendas',
+        'investidores': 'dos investidores',
+        'consolidado': 'somando vendas varejo e investidores',
+        'inadimplencia': 'da inadimplencia',
+        'financeiro': 'do financeiro',
+        'giro': 'do giro',
+        'medicao': 'da medicao',
+        'fornecedores': 'de fornecedores',
+        'master': 'do painel master',
+    }
+    return labels.get(dataset, 'do periodo')
+
+
+def _rotulo_dimensao(dataset: str, campo: str) -> str:
+    mapa = {
+        'vendas': {
+            'imobiliaria': 'A imobiliaria que mais vendeu',
+            'corretor': 'O corretor com maior numero de vendas',
+            'empreendimento': 'O empreendimento com maior numero de vendas',
+        },
+        'investidores': {
+            'imobiliaria': 'A imobiliaria que mais vendeu em investidores',
+            'corretor': 'O corretor com maior numero de investidores vendidos',
+            'empreendimento': 'O empreendimento com maior numero de investidores vendidos',
+        },
+        'financeiro': {
+            'banco': 'O banco com maior numero de negociacoes',
+            'responsavel': 'O responsavel com maior numero de negociacoes no financeiro',
+            'referencia': 'A referencia com maior numero de negociacoes no financeiro',
+            'tipo_negociacao': 'O tipo de negociacao mais recorrente no financeiro',
+        },
+        'giro': {
+            'origem': 'A origem com maior numero de captacoes',
+            'responsavel': 'O responsavel com maior numero de captacoes no giro',
+            'referencia': 'A referencia com maior numero de captacoes no giro',
+            'tipo_negociacao': 'O tipo de negociacao mais recorrente no giro',
+        },
+        'medicao': {
+            'empreendimento': 'O empreendimento com maior numero de medicoes',
+            'responsavel': 'O responsavel com maior numero de medicoes',
+        },
+        'fornecedores': {
+            'empreendimento': 'O empreendimento com maior numero de negociacoes com fornecedores',
+            'nome_fornecedor': 'O fornecedor com maior numero de negociacoes',
+            'servico_prestado': 'O servico mais recorrente em fornecedores',
+            'responsavel': 'O responsavel com maior numero de negociacoes em fornecedores',
+            'situacao': 'A situacao mais recorrente em fornecedores',
+        },
+        'inadimplencia': {
+            'responsavel': 'O responsavel com maior numero de conversoes',
+            'tipo_contato': 'O tipo de contato com maior numero de registros',
+            'empreendimento': 'O empreendimento com maior numero de registros',
+            'situacao': 'A situacao mais recorrente',
+        },
+    }
+    return (mapa.get(dataset, {}) or {}).get(campo, f'O item com maior volume em {campo}')
+
+
 def _obter_valor_registro(registro: dict) -> float:
     if 'valor_presente' in registro:
         return float(registro.get('valor_presente') or 0)
+    if 'valor_arrecadado' in registro:
+        return float(registro.get('valor_arrecadado') or 0)
+    if 'valor_captado' in registro:
+        return float(registro.get('valor_captado') or 0)
+    if 'valor_medicao' in registro:
+        return float(registro.get('valor_medicao') or 0)
+    if 'valor_negociado' in registro:
+        return float(registro.get('valor_negociado') or 0)
     return float(registro.get('valor') or 0)
 
 
 def _dataset_principal_pergunta(question: str, context: dict) -> str:
     pergunta = _normalizar_pergunta_analitica(question)
     pagina = str(context.get('pagina_atual') or '').strip().lower()
+    if any(termo in pergunta for termo in ('financeiro', 'banco', 'bancos', 'arrecadacao', 'negociacao bancaria')):
+        return 'financeiro'
+    if any(termo in pergunta for termo in ('giro', 'captacao', 'captacoes', 'caixa', 'origem')):
+        return 'giro'
+    if any(termo in pergunta for termo in ('medicao', 'medição')):
+        return 'medicao'
+    if any(termo in pergunta for termo in ('fornecedor', 'fornecedores', 'servico prestado', 'serviço prestado', 'suprimentos')):
+        return 'fornecedores'
     if any(termo in pergunta for termo in ('inadimplencia', 'relacionamento', 'contas a receber', 'tipo de contato', 'responsavel', 'responsável')):
         return 'inadimplencia'
     if any(termo in pergunta for termo in ('master', 'objetivo geral', 'frente', 'cards do master')):
@@ -180,6 +256,14 @@ def _dataset_principal_pergunta(question: str, context: dict) -> str:
         return 'investidores'
     if pagina == 'painel_vendas':
         return 'vendas'
+    if pagina == 'painel_financeiro':
+        return 'financeiro'
+    if pagina == 'painel_giro':
+        return 'giro'
+    if pagina == 'painel_medicao':
+        return 'medicao'
+    if pagina == 'painel_fornecedores':
+        return 'fornecedores'
     if pagina == 'painel_inadimplencia':
         return 'inadimplencia'
     if pagina == 'painel_master':
@@ -192,12 +276,28 @@ def _registros_contexto_consulta(question: str, context: dict) -> tuple[list[dic
     dados = context.get('dados') or {}
     dataset = _dataset_principal_pergunta(question, context)
 
+    if dataset == 'financeiro':
+        return list(painel.get('registros_detalhados_periodo') or dados.get('financeiro') or []), 'financeiro'
+    if dataset == 'giro':
+        return list(painel.get('registros_detalhados_periodo') or dados.get('giro') or []), 'giro'
+    if dataset == 'medicao':
+        return list(painel.get('registros_detalhados_periodo') or dados.get('medicao') or []), 'medicao'
+    if dataset == 'fornecedores':
+        return list(painel.get('registros_detalhados_periodo') or dados.get('fornecedores') or []), 'fornecedores'
     if dataset == 'investidores':
         return list(painel.get('registros') or dados.get('investidores') or []), 'investidores'
     if dataset == 'inadimplencia':
         return list(painel.get('registros_detalhados_periodo') or dados.get('inadimplencia') or []), 'inadimplencia'
     if dataset == 'master':
-        return list(dados.get('vendas') or []) + list(dados.get('investidores') or []) + list(dados.get('inadimplencia') or []), 'master'
+        return (
+            list(dados.get('vendas') or [])
+            + list(dados.get('investidores') or [])
+            + list(dados.get('inadimplencia') or [])
+            + list(dados.get('financeiro') or [])
+            + list(dados.get('giro') or [])
+            + list(dados.get('medicao') or [])
+            + list(dados.get('fornecedores') or [])
+        ), 'master'
     if dataset == 'consolidado':
         return list(dados.get('vendas') or []) + list(dados.get('investidores') or []), 'consolidado'
     return list(painel.get('registros') or dados.get('vendas') or []), 'vendas'
@@ -242,6 +342,14 @@ def _campos_dimensionais_contexto(registros: list[dict], context: dict) -> tuple
         base.extend(['tipo_venda', 'bloco', 'criado_por'])
     if pagina == 'painel_inadimplencia':
         base.extend(['responsavel', 'tipo_contato', 'semana', 'telefone', 'email_cliente'])
+    if pagina == 'painel_financeiro':
+        base.extend(['banco', 'responsavel', 'tipo_negociacao', 'referencia', 'negociacao'])
+    if pagina == 'painel_giro':
+        base.extend(['origem', 'responsavel', 'tipo_negociacao', 'referencia', 'negociacao'])
+    if pagina == 'painel_medicao':
+        base.extend(['empreendimento', 'responsavel', 'semana'])
+    if pagina == 'painel_fornecedores':
+        base.extend(['empreendimento', 'nome_fornecedor', 'servico_prestado', 'responsavel', 'situacao', 'semana'])
     campos_presentes = []
     for campo in base:
         if any(str(registro.get(campo) or '').strip() for registro in registros):
@@ -481,6 +589,18 @@ def _comparativos_sistema(context: dict) -> dict:
             'total_convertidos': int((resumos.get('inadimplencia') or {}).get('total_convertidos') or 0),
             'valor_realizado': float((resumos.get('inadimplencia') or {}).get('valor_realizado') or 0),
         },
+        'financeiro': {
+            'valor_realizado': float(((painel.get('resumo_mensal') or {}).get('valor_realizado') or 0)) if context.get('pagina_atual') == 'painel_financeiro' else 0.0,
+        },
+        'giro': {
+            'valor_realizado': float(((painel.get('resumo_mensal') or {}).get('valor_realizado') or 0)) if context.get('pagina_atual') == 'painel_giro' else 0.0,
+        },
+        'medicao': {
+            'valor_realizado': float(((painel.get('resumo_mensal') or {}).get('valor_realizado') or 0)) if context.get('pagina_atual') == 'painel_medicao' else 0.0,
+        },
+        'fornecedores': {
+            'valor_realizado': float(((painel.get('resumo_mensal') or {}).get('valor_realizado') or 0)) if context.get('pagina_atual') == 'painel_fornecedores' else 0.0,
+        },
         'master': [
             {
                 'frente': card.get('frente') or card.get('nome'),
@@ -534,6 +654,26 @@ def _catalogar_perguntas_previsiveis(context: dict) -> dict:
             'Qual responsavel converteu mais?',
             'Qual tipo de contato gera mais valor?',
             'Qual semana ficou mais distante da meta?',
+        ],
+        'painel_financeiro': [
+            'Qual banco concentra mais negociacoes?',
+            'Qual referencia trouxe maior valor arrecadado?',
+            'Qual responsavel lidera o financeiro no periodo?',
+        ],
+        'painel_giro': [
+            'Qual origem concentra mais captacoes?',
+            'Qual referencia trouxe mais caixa?',
+            'Qual responsavel lidera o giro no periodo?',
+        ],
+        'painel_medicao': [
+            'Qual empreendimento concentra mais medicoes?',
+            'Qual responsavel lidera as medicoes?',
+            'Qual semana ficou mais distante da meta?',
+        ],
+        'painel_fornecedores': [
+            'Qual fornecedor aparece com maior frequencia?',
+            'Qual servico prestado lidera as negociacoes?',
+            'Qual empreendimento concentra mais negociacoes com fornecedores?',
         ],
         'painel_master': [
             'Qual frente esta mais avancada no trimestre?',
@@ -668,6 +808,11 @@ def _responder_consulta_banco_deterministica(question: str, context: dict) -> st
             if status_mencionado:
                 return f'O valor total somando vendas varejo e investidores com status {status_mencionado} e de {_formatar_moeda_brl(valor_total)}.'
             return f'O valor total somando vendas varejo e investidores e de {_formatar_moeda_brl(valor_total)}.'
+        if dataset in {'financeiro', 'giro', 'medicao', 'fornecedores', 'inadimplencia', 'master'}:
+            sujeito = _rotulo_dataset(dataset)
+            if status_mencionado:
+                return f'O valor total {sujeito} com status {status_mencionado} e de {_formatar_moeda_brl(valor_total)}.'
+            return f'O valor total {sujeito} e de {_formatar_moeda_brl(valor_total)}.'
         if status_mencionado:
             return f'O valor total das vendas com status {status_mencionado} e de {_formatar_moeda_brl(valor_total)}.'
         return f'O valor total das vendas e de {_formatar_moeda_brl(valor_total)}.'
@@ -694,6 +839,8 @@ def _responder_consulta_banco_deterministica(question: str, context: dict) -> st
             return f'O corretor com maior numero de vendas foi {top["nome"]}, com {int(top["quantidade"])} vendas.'
         if campo == 'empreendimento' and dataset == 'investidores':
             return f'O empreendimento com maior numero de investidores vendidos foi {top["nome"]}, com {int(top["quantidade"])} investidores vendidos.'
+        if dataset in {'financeiro', 'giro', 'medicao', 'fornecedores', 'inadimplencia'}:
+            return f'{_rotulo_dimensao(dataset, campo)} foi {top["nome"]}, com {int(top["quantidade"])} registros.'
         return f'O empreendimento com maior numero de vendas foi {top["nome"]}, com {int(top["quantidade"])} vendas.'
 
     return None
@@ -851,6 +998,10 @@ def _compact_context_for_prompt(context: dict) -> dict:
             'vendas': len(dados.get('vendas') or []),
             'investidores': len(dados.get('investidores') or []),
             'inadimplencia': len(dados.get('inadimplencia') or []),
+            'financeiro': len(dados.get('financeiro') or []),
+            'giro': len(dados.get('giro') or []),
+            'medicao': len(dados.get('medicao') or []),
+            'fornecedores': len(dados.get('fornecedores') or []),
         },
         'perguntas_previsiveis': _catalogar_perguntas_previsiveis(context),
     }
@@ -892,7 +1043,7 @@ def _resposta_canonica_da_consulta(question: str, consulta_orientada: dict) -> s
 
     if interpretacao.get('intencao_principal') == 'agregacao' and interpretacao.get('metrica_principal') == 'valor':
         status = filtros.get('situacao')
-        sujeito = 'dos investidores' if dataset == 'investidores' else 'somando vendas varejo e investidores' if dataset == 'consolidado' else 'das vendas'
+        sujeito = 'dos investidores' if dataset == 'investidores' else 'somando vendas varejo e investidores' if dataset == 'consolidado' else _rotulo_dataset(dataset)
         if 'unidade' in pergunta:
             sujeito = 'das unidades'
         if status:
@@ -912,6 +1063,8 @@ def _resposta_canonica_da_consulta(question: str, consulta_orientada: dict) -> s
             'tipo_contato': 'O tipo de contato com maior volume',
             'tipo_venda': 'O tipo de venda com maior volume',
         }.get(dimensao, 'O lider do ranking')
+        if dataset in {'financeiro', 'giro', 'medicao', 'fornecedores', 'inadimplencia'}:
+            rotulo = _rotulo_dimensao(dataset, dimensao)
         unidade = 'vendas' if filtros.get('situacao') == 'VENDIDA' or interpretacao.get('fala_de_venda') else 'registros'
         if dataset == 'inadimplencia' and dimensao in {'responsavel', 'tipo_contato', 'situacao', 'empreendimento'}:
             unidade = 'registros'
@@ -1001,10 +1154,18 @@ def fallback_analytics_answer(question: str, context: dict) -> str:
 
 
 def build_global_ai_context(*, page: str, actor=None, extra_context: dict | None = None) -> dict:
+    from app.models.financeiro import FinanceiroBanco
+    from app.models.fornecedor import FornecedorRegistro
+    from app.models.giro import GiroCaptacao
+    from app.models.medicao import MedicaoRegistro
     from app.models.empreendimento import Empreendimento
     from app.models.investidor import Investidor
     from app.models.meta import MetaSemana
+    from app.models.meta_financeiro import MetaFinanceiroSemana
+    from app.models.meta_fornecedor import MetaFornecedorSemana
+    from app.models.meta_giro import MetaGiroSemana
     from app.models.meta_investidor import MetaInvestidor
+    from app.models.meta_medicao import MetaMedicaoSemana
     from app.models.meta_venda import MetaVendaVarejo
     from app.models.relacionamento import Relacionamento
     from app.models.user import User
@@ -1017,9 +1178,17 @@ def build_global_ai_context(*, page: str, actor=None, extra_context: dict | None
     metas_semana = MetaSemana.query.order_by(MetaSemana.semana.asc()).all()
     metas_venda = MetaVendaVarejo.query.order_by(MetaVendaVarejo.mes.asc()).all()
     metas_investidor = MetaInvestidor.query.order_by(MetaInvestidor.mes.asc()).all()
+    metas_financeiro = MetaFinanceiroSemana.query.order_by(MetaFinanceiroSemana.semana.asc()).all()
+    metas_giro = MetaGiroSemana.query.order_by(MetaGiroSemana.semana.asc()).all()
+    metas_medicao = MetaMedicaoSemana.query.order_by(MetaMedicaoSemana.semana.asc()).all()
+    metas_fornecedores = MetaFornecedorSemana.query.order_by(MetaFornecedorSemana.semana.asc()).all()
     vendas = Venda.query.order_by(Venda.data_reserva.desc(), Venda.id.desc()).all()
     investidores = Investidor.query.order_by(Investidor.data_reserva.desc(), Investidor.id.desc()).all()
     relacionamentos = Relacionamento.query.order_by(Relacionamento.criado_em.desc(), Relacionamento.id.desc()).all()
+    financeiro = FinanceiroBanco.query.order_by(FinanceiroBanco.criado_em.desc(), FinanceiroBanco.id.desc()).all()
+    giro = GiroCaptacao.query.order_by(GiroCaptacao.criado_em.desc(), GiroCaptacao.id.desc()).all()
+    medicao = MedicaoRegistro.query.order_by(MedicaoRegistro.criado_em.desc(), MedicaoRegistro.id.desc()).all()
+    fornecedores = FornecedorRegistro.query.order_by(FornecedorRegistro.criado_em.desc(), FornecedorRegistro.id.desc()).all()
 
     vendas_vendidas = [item for item in vendas if (item.situacao or '').upper() == 'VENDIDA']
     investidores_vendidos = [item for item in investidores if (item.situacao or '').upper() == 'VENDIDA']
@@ -1042,9 +1211,17 @@ def build_global_ai_context(*, page: str, actor=None, extra_context: dict | None
             'metas_semana_totais': len(metas_semana),
             'metas_venda_totais': len(metas_venda),
             'metas_investidor_totais': len(metas_investidor),
+            'metas_financeiro_totais': len(metas_financeiro),
+            'metas_giro_totais': len(metas_giro),
+            'metas_medicao_totais': len(metas_medicao),
+            'metas_fornecedores_totais': len(metas_fornecedores),
             'vendas_totais': len(vendas),
             'investidores_totais': len(investidores),
             'inadimplencia_total_registros': len(relacionamentos),
+            'financeiro_total_registros': len(financeiro),
+            'giro_total_registros': len(giro),
+            'medicao_total_registros': len(medicao),
+            'fornecedores_total_registros': len(fornecedores),
         },
         'resumos': {
             'vendas': {
@@ -1067,6 +1244,30 @@ def build_global_ai_context(*, page: str, actor=None, extra_context: dict | None
                 'total_registros': len(relacionamentos),
                 'total_convertidos': len(relacionamentos_convertidos),
                 'valor_realizado': round(sum(float(item.valor or 0) for item in relacionamentos_convertidos), 2),
+            },
+            'financeiro': {
+                'total_registros': len(financeiro),
+                'valor_realizado': round(sum(float(item.valor_arrecadado or 0) for item in financeiro), 2),
+                'top_bancos': _agrupar_top_registros(financeiro, 'banco', valor_field='valor_arrecadado')[:10],
+                'top_responsaveis': _agrupar_top_registros(financeiro, 'responsavel', valor_field='valor_arrecadado')[:10],
+            },
+            'giro': {
+                'total_registros': len(giro),
+                'valor_realizado': round(sum(float(item.valor_captado or 0) for item in giro), 2),
+                'top_origens': _agrupar_top_registros(giro, 'origem', valor_field='valor_captado')[:10],
+                'top_responsaveis': _agrupar_top_registros(giro, 'responsavel', valor_field='valor_captado')[:10],
+            },
+            'medicao': {
+                'total_registros': len(medicao),
+                'valor_realizado': round(sum(float(item.valor_medicao or 0) for item in medicao), 2),
+                'top_empreendimentos': _agrupar_top_registros(medicao, 'empreendimento', valor_field='valor_medicao')[:10],
+                'top_responsaveis': _agrupar_top_registros(medicao, 'responsavel', valor_field='valor_medicao')[:10],
+            },
+            'fornecedores': {
+                'total_registros': len(fornecedores),
+                'valor_realizado': round(sum(float(item.valor_negociado or 0) for item in fornecedores), 2),
+                'top_empreendimentos': _agrupar_top_registros(fornecedores, 'empreendimento', valor_field='valor_negociado')[:10],
+                'top_fornecedores': _agrupar_top_registros(fornecedores, 'nome_fornecedor', valor_field='valor_negociado')[:10],
             },
             'consolidado_comercial': {
                 'top_imobiliarias_vendidas': _agrupar_top_registros(
@@ -1108,9 +1309,17 @@ def build_global_ai_context(*, page: str, actor=None, extra_context: dict | None
             'metas_semana': [item.to_dict() for item in metas_semana],
             'metas_venda_varejo': [item.to_dict() for item in metas_venda],
             'metas_venda_investidor': [item.to_dict() for item in metas_investidor],
+            'metas_financeiro': [item.to_dict() for item in metas_financeiro],
+            'metas_giro': [item.to_dict() for item in metas_giro],
+            'metas_medicao': [item.to_dict() for item in metas_medicao],
+            'metas_fornecedores': [item.to_dict() for item in metas_fornecedores],
             'vendas': [item.to_dict() for item in vendas],
             'investidores': [item.to_dict() for item in investidores],
             'inadimplencia': [item.to_dict() for item in relacionamentos],
+            'financeiro': [item.to_dict() for item in financeiro],
+            'giro': [item.to_dict() for item in giro],
+            'medicao': [item.to_dict() for item in medicao],
+            'fornecedores': [item.to_dict() for item in fornecedores],
         },
         'contexto_painel': extra_context,
     }

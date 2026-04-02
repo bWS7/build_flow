@@ -15,10 +15,18 @@
   const config = {
     url: root.dataset.chatUrl,
     mes: root.dataset.mes,
+    view: root.dataset.view || '',
+    period: root.dataset.period || '',
     empreendimento: root.dataset.empreendimento || '',
     responsavel: root.dataset.responsavel || '',
     tipoContato: root.dataset.tipoContato || '',
     situacao: root.dataset.situacao || '',
+    banco: root.dataset.banco || '',
+    origem: root.dataset.origem || '',
+    tipoNegociacao: root.dataset.tipoNegociacao || '',
+    referencia: root.dataset.referencia || '',
+    fornecedor: root.dataset.fornecedor || '',
+    servico: root.dataset.servico || '',
   };
 
   const history = [];
@@ -59,10 +67,18 @@
           message,
           history,
           mes: config.mes,
+          view: config.view,
+          period: config.period,
           empreendimento: config.empreendimento,
           responsavel: config.responsavel,
           tipo_contato: config.tipoContato,
           situacao: config.situacao,
+          banco: config.banco,
+          origem: config.origem,
+          tipo_negociacao: config.tipoNegociacao,
+          referencia: config.referencia,
+          fornecedor: config.fornecedor,
+          servico_prestado: config.servico,
         }),
       });
 

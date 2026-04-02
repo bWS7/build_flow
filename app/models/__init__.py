@@ -4,5 +4,16 @@ from .relacionamento import Relacionamento
 from .meta import MetaSemana
 from .venda import Venda
 from .meta_venda import MetaVendaVarejo
+from .meta_venda_semana import MetaVendaSemana
 from .investidor import Investidor
 from .meta_investidor import MetaInvestidor
+from .meta_investidor_semana import MetaInvestidorSemana
+from .financeiro import FinanceiroBanco
+from .meta_financeiro import MetaFinanceiroSemana
+from .giro import GiroCaptacao
+from .meta_giro import MetaGiroSemana
+from .medicao import MedicaoRegistro
+from .meta_medicao import MetaMedicaoSemana
+from .fornecedor import FornecedorRegistro
+from .meta_fornecedor import MetaFornecedorSemana
+from .meta_liberacao import MetaLiberacaoSemana

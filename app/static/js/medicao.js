@@ -2,17 +2,13 @@
 
 let registrosCache = [];
 let deleteState = { id: null, btnEl: null };
-const MESES_RELACIONAMENTO = ['abril', 'maio', 'junho'];
+const MESES_MEDICAO = ['abril', 'maio', 'junho'];
 
 function csrfHeaders(extra = {}) {
   return { 'X-CSRFToken': window.APP_CSRF_TOKEN || '', ...extra };
 }
 
-function podeExcluirRegistro(registro) {
-  return IS_ADMIN || registro.responsavel === CURRENT_USER_NOME;
-}
-
-function podeEditarRegistro(registro) {
+function podeGerenciarRegistro(registro) {
   return IS_ADMIN || registro.responsavel === CURRENT_USER_NOME;
 }
 
@@ -22,14 +18,6 @@ function preencherSelect(el, options, selectedValue) {
     const selected = option === selectedValue ? ' selected' : '';
     return `<option value="${option}"${selected}>${option}</option>`;
   }).join('');
-}
-
-function isSituacaoRejeitada(situacao) {
-  return ['NÃO', 'NAO', 'CONTATO REJEITADO'].includes(situacao);
-}
-
-function isSituacaoPositiva(situacao) {
-  return ['SIM', 'SIM (INTEGRAL)', 'SIM (PARCIAL)'].includes(situacao);
 }
 
 let toastTimer;
@@ -42,67 +30,40 @@ function showToast(msg, tipo = 'success') {
 }
 
 function fmtValor(v) {
-  return v > 0
-    ? 'R$ ' + v.toLocaleString('pt-BR', { minimumFractionDigits: 2 })
-    : '—';
+  return 'R$ ' + Number(v || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 });
 }
 
 function atualizarIndicadores(ind) {
-  document.getElementById('acoes-planejadas').textContent = ind.acoes_planejadas;
-  document.getElementById('acoes-realizadas').textContent = ind.acoes_realizadas;
-  document.getElementById('valor-meta').textContent =
-    'R$ ' + Math.round(ind.valor_meta).toLocaleString('pt-BR');
-  document.getElementById('valor-realizado').textContent =
-    'R$ ' + Math.round(ind.soma_valores).toLocaleString('pt-BR');
-
-  document.getElementById('bar-acoes').style.width = ind.pct_acoes + '%';
-  document.getElementById('pct-acoes').textContent = ind.pct_acoes + '%';
-  document.getElementById('txt-acoes').textContent =
-    `${ind.acoes_realizadas} de ${ind.acoes_planejadas} ações`;
-
-  document.getElementById('bar-valor').style.width = ind.pct_valor + '%';
-  document.getElementById('pct-valor').textContent = ind.pct_valor + '%';
-  document.getElementById('txt-valor').textContent =
-    `R$ ${ind.soma_valores.toLocaleString('pt-BR', { minimumFractionDigits: 2 })} de R$ ${ind.valor_meta.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`;
-}
-
-function statusIcon(situacao) {
-  if (isSituacaoPositiva(situacao)) {
-    return '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#059669" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>';
-  }
-  if (isSituacaoRejeitada(situacao)) {
-    return '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#DC2626" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>';
-  }
-  if (situacao === 'LIGAR EM OUTRO MOMENTO') {
-    return '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#D97706" stroke-width="2.5"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>';
-  }
-  return '<span style="color:#ccc">—</span>';
+  document.getElementById('valor-meta').textContent = 'R$ ' + Math.round(ind.valor_meta || 0).toLocaleString('pt-BR');
+  document.getElementById('valor-realizado').textContent = 'R$ ' + Math.round(ind.valor_realizado || 0).toLocaleString('pt-BR');
+  document.getElementById('pct-atingimento').textContent = `${ind.pct_valor || 0}%`;
+  document.getElementById('total-medicoes').textContent = String(ind.total_medicoes || 0);
+  document.getElementById('bar-valor').style.width = `${ind.pct_valor || 0}%`;
+  document.getElementById('pct-valor').textContent = `${ind.pct_valor || 0}%`;
+  document.getElementById('txt-valor').textContent = `${fmtValor(ind.valor_realizado || 0)} de ${fmtValor(ind.valor_meta || 0)}`;
+  document.getElementById('pct-empreendimentos').textContent = String(ind.total_empreendimentos || 0);
+  document.getElementById('bar-empreendimentos').style.width = `${ind.total_empreendimentos ? 100 : 0}%`;
+  document.getElementById('txt-empreendimentos').textContent = `${ind.total_empreendimentos || 0} empreendimentos com medição na semana`;
 }
 
 function abrirFicha(id) {
-  const r = registrosCache.find(x => x.id === id);
+  const r = registrosCache.find((item) => item.id === id);
   if (!r) return;
-  const podeEditar = podeEditarRegistro(r);
+  const podeEditar = podeGerenciarRegistro(r);
   document.getElementById('fi-id').textContent = `#${r.id}`;
-  document.getElementById('fi-cliente').value = r.cliente;
-  preencherSelect(document.getElementById('fi-emp'), EMPREENDIMENTOS, r.empreendimento);
-  document.getElementById('fi-tel').value = r.telefone;
-  document.getElementById('fi-email').value = r.email_cliente || '';
-  preencherSelect(document.getElementById('fi-tipo'), TIPOS_CONTATO, r.tipo_contato);
-  preencherSelect(document.getElementById('fi-situacao'), SITUACOES, r.situacao);
-  document.getElementById('fi-valor').value = r.valor || 0;
-  document.getElementById('fi-resp').value = r.responsavel;
+  preencherSelect(document.getElementById('fi-empreendimento'), EMPREENDIMENTOS, r.empreendimento);
+  document.getElementById('fi-valor').value = r.valor_medicao || 0;
+  document.getElementById('fi-resp').value = r.responsavel || '';
   document.getElementById('fi-semana').value = `Semana ${r.semana}`;
-  document.getElementById('fi-data').value = r.criado_em;
+  document.getElementById('fi-data').value = r.criado_em || '';
   document.getElementById('fi-obs').value = r.observacao || '';
   document.getElementById('form-ficha').dataset.id = String(r.id);
   document.getElementById('fi-permissao').textContent = podeEditar ? '' : 'Somente o responsável ou admin pode editar este registro.';
   document.getElementById('btn-salvar-ficha').hidden = !podeEditar;
-  ['fi-cliente', 'fi-emp', 'fi-tel', 'fi-email', 'fi-tipo', 'fi-situacao', 'fi-valor', 'fi-obs']
-    .forEach((idCampo) => {
-      const campo = document.getElementById(idCampo);
-      if (campo) campo.disabled = !podeEditar;
-    });
+  ['fi-empreendimento', 'fi-valor', 'fi-obs'].forEach((idCampo) => {
+    const campo = document.getElementById(idCampo);
+    if (campo) campo.disabled = !podeEditar;
+  });
   document.getElementById('modal-ficha').removeAttribute('hidden');
 }
 
@@ -120,7 +81,7 @@ function closeDeleteModal() {
   document.getElementById('modal-delete').setAttribute('hidden', '');
 }
 
-function toggleMesRelacionamento(mesId) {
+function toggleMesMedicao(mesId) {
   const body = document.getElementById(`body-${mesId}`);
   const arrow = document.getElementById(`arrow-${mesId}`);
   if (!body || !arrow) return;
@@ -130,24 +91,17 @@ function toggleMesRelacionamento(mesId) {
 
 function renderizarTabela(registros) {
   registrosCache = registros;
-  const tbody = document.getElementById('tbody-clientes');
+  const tbody = document.getElementById('tbody-medicoes');
   const counter = document.getElementById('total-registros');
-  counter.textContent = registros.length + ' registros';
+  counter.textContent = `${registros.length} registros`;
 
   if (!registros.length) {
-    tbody.innerHTML = '<tr id="empty-row"><td colspan="11" class="td-empty">Nenhum registro nesta semana. Cadastre o primeiro acima.</td></tr>';
+    tbody.innerHTML = '<tr id="empty-row"><td colspan="6" class="td-empty">Nenhum registro nesta semana. Cadastre o primeiro acima.</td></tr>';
     return;
   }
 
   tbody.innerHTML = registros.map((r) => {
-    const classeRow = isSituacaoPositiva(r.situacao) ? 'row--sim'
-      : isSituacaoRejeitada(r.situacao) ? 'row--rejeitado'
-      : r.situacao === 'LIGAR EM OUTRO MOMENTO' ? 'row--ligar' : '';
-    const classeBadge = isSituacaoPositiva(r.situacao) ? 'badge--sim'
-      : isSituacaoRejeitada(r.situacao) ? 'badge--contato-rejeitado'
-      : r.situacao === 'LIGAR EM OUTRO MOMENTO' ? 'badge--ligar-em-outro-momento'
-      : 'badge--não';
-    const acaoExcluir = podeExcluirRegistro(r)
+    const acaoExcluir = podeGerenciarRegistro(r)
       ? `<button class="btn-del" onclick="deletarRegistro(${r.id}, this)" title="Excluir">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <polyline points="3 6 5 6 21 6"/>
@@ -159,17 +113,12 @@ function renderizarTabela(registros) {
       : '';
 
     return `
-      <tr data-id="${r.id}" class="${classeRow}" style="cursor:pointer" onclick="abrirFicha(${r.id})">
+      <tr data-id="${r.id}" style="cursor:pointer" onclick="abrirFicha(${r.id})">
         <td class="td-id">${r.id}</td>
         <td>${r.empreendimento}</td>
-        <td class="td-nome">${r.cliente}</td>
-        <td>${r.telefone}</td>
-        <td>${r.tipo_contato}</td>
-        <td><span class="badge ${classeBadge}">${r.situacao}</span></td>
-        <td class="td-valor">${fmtValor(r.valor)}</td>
+        <td class="td-valor">${fmtValor(r.valor_medicao)}</td>
         <td>${r.responsavel}</td>
-        <td class="td-data">${r.criado_em.split(' ')[0]}</td>
-        <td class="td-icon">${statusIcon(r.situacao)}</td>
+        <td class="td-data">${(r.criado_em || '').split(' ')[0] || '—'}</td>
         <td onclick="event.stopPropagation()">${acaoExcluir}</td>
       </tr>`;
   }).join('');
@@ -184,10 +133,10 @@ function conectarSocket() {
   socket.on('disconnect', () => {
     document.getElementById('live-badge').style.opacity = '.4';
   });
-  socket.on('dados_atualizados', (payload) => {
+  socket.on('medicao_atualizada', (payload) => {
     if (payload.indicadores && payload.indicadores.semana === SEMANA_ATUAL) {
       atualizarIndicadores(payload.indicadores);
-      renderizarTabela(payload.registros);
+      renderizarTabela(payload.registros || []);
     }
   });
 }
@@ -199,7 +148,7 @@ document.getElementById('form-cadastro').addEventListener('submit', async (e) =>
   const dados = {};
   new FormData(form).forEach((v, k) => { dados[k] = v.trim(); });
 
-  if (!dados.empreendimento || !dados.cliente || !dados.telefone || !dados.tipo_contato || !dados.situacao) {
+  if (!dados.empreendimento || !dados.valor_medicao) {
     showToast('Preencha todos os campos obrigatórios.', 'error');
     return;
   }
@@ -208,7 +157,7 @@ document.getElementById('form-cadastro').addEventListener('submit', async (e) =>
   btn.textContent = 'Salvando...';
 
   try {
-    const resp = await fetch('/relacionamento/cadastrar', {
+    const resp = await fetch('/medicao/cadastrar', {
       method: 'POST',
       headers: csrfHeaders({ 'Content-Type': 'application/json' }),
       body: JSON.stringify(dados),
@@ -241,7 +190,7 @@ async function confirmarExclusaoRegistro() {
   btnEl.disabled = true;
 
   try {
-    const resp = await fetch(`/relacionamento/registro/${id}`, {
+    const resp = await fetch(`/medicao/registro/${id}`, {
       method: 'DELETE',
       headers: csrfHeaders(),
     });
@@ -260,31 +209,26 @@ async function salvarFicha() {
   const form = document.getElementById('form-ficha');
   const id = form.dataset.id;
   const registro = registrosCache.find((item) => item.id === Number(id));
-  if (!registro || !podeEditarRegistro(registro)) {
+  if (!registro || !podeGerenciarRegistro(registro)) {
     showToast('Você não pode editar este registro.', 'error');
     return;
   }
 
   const btn = document.getElementById('btn-salvar-ficha');
   const dados = {
-    empreendimento: document.getElementById('fi-emp').value.trim(),
-    cliente: document.getElementById('fi-cliente').value.trim(),
-    telefone: document.getElementById('fi-tel').value.trim(),
-    email_cliente: document.getElementById('fi-email').value.trim(),
-    tipo_contato: document.getElementById('fi-tipo').value.trim(),
-    situacao: document.getElementById('fi-situacao').value.trim(),
-    valor: document.getElementById('fi-valor').value,
+    empreendimento: document.getElementById('fi-empreendimento').value.trim(),
+    valor_medicao: document.getElementById('fi-valor').value,
     observacao: document.getElementById('fi-obs').value.trim(),
   };
 
-  if (!dados.empreendimento || !dados.cliente || !dados.telefone || !dados.tipo_contato || !dados.situacao) {
+  if (!dados.empreendimento || !dados.valor_medicao) {
     showToast('Preencha todos os campos obrigatórios.', 'error');
     return;
   }
 
   btn.disabled = true;
   try {
-    const resp = await fetch(`/relacionamento/registro/${id}`, {
+    const resp = await fetch(`/medicao/registro/${id}`, {
       method: 'PUT',
       headers: csrfHeaders({ 'Content-Type': 'application/json' }),
       body: JSON.stringify(dados),
@@ -306,10 +250,10 @@ async function salvarFicha() {
 
 async function _buscarAtualizacao() {
   try {
-    const resp = await fetch(`/relacionamento/registros?semana=${SEMANA_ATUAL}`);
+    const resp = await fetch(`/medicao/registros?semana=${SEMANA_ATUAL}`);
     const json = await resp.json();
-    atualizarIndicadores(json.indicadores);
-    renderizarTabela(json.registros);
+    atualizarIndicadores(json.indicadores || {});
+    renderizarTabela(json.registros || []);
   } catch {
     // websocket cobre esse fluxo na maior parte do tempo
   }
@@ -331,7 +275,7 @@ document.addEventListener('DOMContentLoaded', () => {
   if (confirmDeleteBtn) {
     confirmDeleteBtn.addEventListener('click', confirmarExclusaoRegistro);
   }
-  MESES_RELACIONAMENTO.forEach((mesId) => {
+  MESES_MEDICAO.forEach((mesId) => {
     const body = document.getElementById(`body-${mesId}`);
     const arrow = document.getElementById(`arrow-${mesId}`);
     if (!body || !arrow) return;

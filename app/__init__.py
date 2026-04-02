@@ -32,15 +32,22 @@ def _format_brl_int(value):
 
 
 def _format_user_type(value):
+    from app.models.user import TIPOS_LEGADOS_MAP
+    normalized = TIPOS_LEGADOS_MAP.get(str(value or '').strip().lower(), str(value or '').strip().lower())
     labels = {
         'admin': 'ADMIN',
-        'comercial': 'COMERCIAL',
-        'financeiro': 'FINANCEIRO',
-        'relacionamento': 'CONTAS A RECEBER',
-        'contas_a_receber': 'CONTAS A RECEBER',
-        'obra': 'OBRA',
+        'gestor_financeiro': 'GESTOR FINANCEIRO',
+        'gestor_engenharia': 'GESTOR ENGENHARIA',
+        'gestor_comercial': 'GESTOR COMERCIAL',
+        'gestor_suprimentos': 'GESTOR SUPRIMENTOS',
+        'gestor_credito': 'GESTOR CREDITO',
+        'usuario_financeiro': 'USUARIO FINANCEIRO',
+        'usuario_engenharia': 'USUARIO ENGENHARIA',
+        'usuario_comercial': 'USUARIO COMERCIAL',
+        'usuario_suprimentos': 'USUARIO SUPRIMENTOS',
+        'usuario_credito': 'USUARIO CREDITO',
     }
-    return labels.get(str(value or '').strip().lower(), str(value or '').upper())
+    return labels.get(normalized, str(value or '').upper())
 
 
 db = SQLAlchemy()
@@ -125,12 +132,20 @@ def create_app():
     from app.routes.admin import admin_bp
     from app.routes.investidores import investidores_bp
     from app.routes.vendas import vendas_bp
+    from app.routes.financeiro import financeiro_bp
+    from app.routes.giro import giro_bp
+    from app.routes.medicao import medicao_bp
+    from app.routes.fornecedores import fornecedores_bp
 
     app.register_blueprint(auth_bp)
     app.register_blueprint(relacionamento_bp, url_prefix='/relacionamento')
     app.register_blueprint(admin_bp, url_prefix='/admin')
     app.register_blueprint(investidores_bp, url_prefix='/investidores')
     app.register_blueprint(vendas_bp, url_prefix='/vendas')
+    app.register_blueprint(financeiro_bp, url_prefix='/financeiro')
+    app.register_blueprint(giro_bp, url_prefix='/giro')
+    app.register_blueprint(fornecedores_bp, url_prefix='/fornecedores')
+    app.register_blueprint(medicao_bp, url_prefix='/medicao')
 
     # ── Seed inicial ───────────────────────────────────────────────────────────
     with app.app_context():
@@ -151,7 +166,15 @@ def create_app():
     @app.errorhandler(CSRFError)
     def _handle_csrf_error(error):
         mensagem = 'Requisição bloqueada por validação de segurança. Atualize a página e tente novamente.'
-        wants_json = request.path.startswith('/admin/') or request.path.startswith('/relacionamento/') or request.is_json
+        wants_json = (
+            request.path.startswith('/admin/')
+            or request.path.startswith('/relacionamento/')
+            or request.path.startswith('/financeiro/')
+            or request.path.startswith('/giro/')
+            or request.path.startswith('/fornecedores/')
+            or request.path.startswith('/medicao/')
+            or request.is_json
+        )
         if wants_json:
             return {'erro': mensagem, 'detalhe': error.description}, 400
         flash(mensagem, 'error')
@@ -213,6 +236,9 @@ def _ensure_database_columns():
     tabelas = {
         'vendas': {
             'tipo_venda': "ALTER TABLE vendas ADD COLUMN tipo_venda VARCHAR(60) NOT NULL DEFAULT 'DIRETA'",
+        },
+        'financeiro_bancos': {
+            'negociacao': "ALTER TABLE financeiro_bancos ADD COLUMN negociacao VARCHAR(20) NOT NULL DEFAULT 'PARCIAL'",
         },
     }
 

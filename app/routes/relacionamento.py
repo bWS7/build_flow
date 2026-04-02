@@ -13,12 +13,22 @@ TIPOS_CONTATO = ['LIGAÇÃO', 'VISITA', 'WHATSAPP', 'E-MAIL', 'REUNIÃO']
 SEMANAS_VALIDAS = set(range(1, 13))
 
 
+def _situacao_conta_como_sim(situacao: str | None) -> bool:
+    situacao_normalizada = (situacao or '').upper().strip()
+    return situacao_normalizada in {'SIM', 'SIM (INTEGRAL)', 'SIM (PARCIAL)'}
+
+
+def _normalizar_situacao(situacao: str | None) -> str:
+    situacao_normalizada = (situacao or '').upper().strip()
+    return 'SIM (INTEGRAL)' if situacao_normalizada == 'SIM' else situacao_normalizada
+
+
 def requer_relacionamento_ou_admin(f):
     @wraps(f)
     def decorated(*args, **kwargs):
         if not current_user.is_authenticated:
             abort(401)
-        if current_user.tipo not in ('relacionamento', 'contas_a_receber', 'admin'):
+        if not current_user.can_access_page('relacionamento'):
             abort(403)
         return f(*args, **kwargs)
     return decorated
@@ -33,7 +43,7 @@ def _calcular_indicadores(semana: int, registros: list[Relacionamento] | None = 
 
     todos = registros if registros is not None else Relacionamento.query.filter_by(semana=semana).all()
     acoes_realizadas = len(todos)
-    registros_sim = [r for r in todos if r.situacao == 'SIM']
+    registros_sim = [r for r in todos if _situacao_conta_como_sim(r.situacao)]
     soma_valores = sum(float(r.valor) for r in registros_sim if r.valor > 0)
 
     pct_acoes = (acoes_realizadas / acoes_planejadas * 100) if acoes_planejadas > 0 else 0
@@ -62,7 +72,7 @@ def _broadcast_update(semana: int):
 
 
 def _pode_gerenciar_registro(registro: Relacionamento) -> bool:
-    return current_user.tipo == 'admin' or registro.responsavel == current_user.nome.upper()
+    return current_user.can_manage_admin() or registro.responsavel == current_user.nome.upper()
 
 
 def _parse_semana(valor) -> int | None:
@@ -108,7 +118,7 @@ def cadastrar():
         if not dados.get(campo):
             return jsonify({'erro': f'Campo obrigatório ausente: {campo}'}), 400
 
-    situacao = dados['situacao'].upper().strip()
+    situacao = _normalizar_situacao(dados.get('situacao'))
     tipo_contato = dados['tipo_contato'].upper().strip()
     if situacao not in SITUACAO_OPCOES:
         return jsonify({'erro': 'Situação inválida.'}), 400
@@ -161,7 +171,7 @@ def editar_registro(reg_id):
         if not dados.get(campo):
             return jsonify({'erro': f'Campo obrigatório ausente: {campo}'}), 400
 
-    situacao = (dados.get('situacao') or '').upper().strip()
+    situacao = _normalizar_situacao(dados.get('situacao'))
     tipo_contato = (dados.get('tipo_contato') or '').upper().strip()
     if situacao not in SITUACAO_OPCOES:
         return jsonify({'erro': 'Situação inválida.'}), 400

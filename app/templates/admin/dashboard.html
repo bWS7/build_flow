@@ -2,6 +2,37 @@
 {% block title %}Admin - Dashboard{% endblock %}
 {% block extra_css %}
 <link rel="stylesheet" href="{{ url_for('static', filename='css/admin.css') }}" />
+<style>
+  .admin-scroll-area {
+    overflow-y: auto;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(183, 85, 104, 0.72) rgba(255, 255, 255, 0.04);
+  }
+  .admin-scroll-area--usuarios {
+    max-height: 320px;
+  }
+  .admin-scroll-area--empreendimentos {
+    max-height: 280px;
+  }
+  .admin-scroll-area::-webkit-scrollbar {
+    width: 10px;
+  }
+  .admin-scroll-area::-webkit-scrollbar-track {
+    background: rgba(255, 255, 255, 0.04);
+    border-radius: 999px;
+  }
+  .admin-scroll-area::-webkit-scrollbar-thumb {
+    background: linear-gradient(180deg, rgba(215, 108, 128, 0.92), rgba(154, 48, 72, 0.92));
+    border-radius: 999px;
+    border: 2px solid transparent;
+    background-clip: padding-box;
+  }
+  .admin-scroll-area::-webkit-scrollbar-thumb:hover {
+    background: linear-gradient(180deg, rgba(236, 136, 155, 0.96), rgba(183, 85, 104, 0.96));
+    border: 2px solid transparent;
+    background-clip: padding-box;
+  }
+</style>
 {% endblock %}
 
 {% set logo_svg %}<img src="{{ url_for('static', filename='images/logo2.webp') }}" alt="Sousa Ara&uacute;jo" />{% endset %}
@@ -23,51 +54,8 @@
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
       </button>
     </div>
-    <div class="drawer__nav">
-      <a href="{{ url_for('admin.dashboard') }}" class="drawer__link drawer__link--active">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
-        Admin
-      </a>
-      <a href="{{ url_for('relacionamento.index') }}" class="drawer__link">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
-        Inadimplencia
-      </a>
-      <a href="{{ url_for('vendas.index') }}" class="drawer__link">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3h18v18H3z"/><path d="M8 14l3-3 2 2 4-5"/></svg>
-        Vendas Varejo
-      </a>
-      <a href="{{ url_for('investidores.index') }}" class="drawer__link">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3h18v18H3z"/><path d="M8 14l3-3 2 2 4-5"/></svg>
-        Investidores
-      </a>
-      <details class="drawer-subnav">
-        <summary class="drawer-subnav__toggle">
-          <span class="drawer-subnav__label">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 7h7l2 2h9v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7z"/></svg>
-            Painéis
-          </span>
-          <svg class="drawer-subnav__arrow" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
-        </summary>
-        <div class="drawer-subnav__items">
-          <a href="{{ url_for('admin.master_painel') }}" class="drawer__sublink">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 12h16"/><path d="M12 4v16"/></svg>
-            Painel Master
-          </a>
-          <a href="{{ url_for('admin.relacionamento_painel') }}" class="drawer__sublink">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"/><path d="M7 14l3-3 3 2 4-5"/></svg>
-            Painel Inadimplencia
-          </a>
-          <a href="{{ url_for('admin.vendas_painel') }}" class="drawer__sublink">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"/><path d="M7 14l3-3 3 2 4-5"/></svg>
-            Painel de Vendas Varejo
-          </a>
-          <a href="{{ url_for('admin.investidores_painel') }}" class="drawer__sublink">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"/><path d="M7 14l3-3 3 2 4-5"/></svg>
-            Painel Investidores
-          </a>
-        </div>
-      </details>
-    </div>
+    {% set active_page = 'dashboard' %}
+    {% include "partials/app_drawer_nav.html" %}
     <div class="drawer__theme-slot">
       {% include "partials/theme_control.html" %}
     </div>
@@ -75,7 +63,7 @@
       <div class="drawer__avatar">{{ current_user.nome[0] }}</div>
       <div class="drawer__user-info">
         <span class="drawer__user-name">{{ current_user.nome | title }}</span>
-        <span class="drawer__user-role">Admin</span>
+        <span class="drawer__user-role">{{ current_user.tipo | user_type_label }}</span>
       </div>
       <form method="POST" action="{{ url_for('auth.logout') }}">
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
@@ -94,6 +82,7 @@
     </header>
 
     <div class="admin-grid">
+      {% if is_admin_dashboard %}
       <section class="admin-card">
         <div class="admin-card__header">
           <h3>Usuários</h3>
@@ -101,7 +90,7 @@
             <span class="btn btn--sm btn--primary" onclick="event.stopPropagation(); openModal('modal-usuario')">+ Novo</span>
           </span>
         </div>
-        <div>
+        <div class="admin-scroll-area admin-scroll-area--usuarios">
         <table class="data-table">
           <thead><tr><th>Nome</th><th>Tipo</th><th>Status</th><th></th></tr></thead>
           <tbody>
@@ -111,7 +100,7 @@
               <td><span class="badge badge--tipo">{{ u.tipo | user_type_label }}</span></td>
               <td><span class="badge {% if u.ativo %}badge--sim{% else %}badge--contato-rejeitado{% endif %}">{{ 'ATIVO' if u.ativo else 'INATIVO' }}</span></td>
               <td class="admin-table__actions">
-                <button class="btn btn--xs btn--ghost" onclick='abrirEdicaoUsuario({{ u.id }}, {{ u.nome|tojson }}, {{ u.email|tojson }}, {{ ('contas_a_receber' if u.tipo == 'relacionamento' else u.tipo)|tojson }})'>Editar</button>
+                <button class="btn btn--xs btn--ghost" onclick='abrirEdicaoUsuario({{ u.id }}, {{ u.nome|tojson }}, {{ u.email|tojson }}, {{ u.tipo|tojson }})'>Editar</button>
                 <button class="btn btn--xs btn--ghost" onclick="toggleUsuario({{ u.id }}, this)">{{ 'Desativar' if u.ativo else 'Ativar' }}</button>
               </td>
             </tr>
@@ -127,7 +116,7 @@
             <span class="btn btn--sm btn--primary" onclick="event.stopPropagation(); openModal('modal-empreendimento')">+ Novo</span>
           </span>
         </div>
-        <div style="max-height:280px;overflow-y:auto">
+        <div class="admin-scroll-area admin-scroll-area--empreendimentos">
           <table class="data-table">
             <thead><tr><th>Nome</th><th>Status</th><th></th></tr></thead>
             <tbody id="tbody-empreendimentos">
@@ -144,74 +133,369 @@
           </table>
         </div>
       </section>
+      {% endif %}
+      {% if 'vendas' in meta_scopes %}
       <section class="admin-card admin-card--full admin-collapsible">
         <button class="admin-card__header admin-card__header--toggle" type="button" onclick="toggleAdminCard('metas-varejo')">
           <h3>Metas de Venda Varejo</h3>
           <svg class="admin-card__arrow" id="arrow-metas-varejo" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
         </button>
         <div class="admin-card__body" id="body-metas-varejo">
-        <div class="sales-admin-grid">
-          {% for mes_slug, mes_nome, _ in meses_vendas %}
-          {% set meta_venda = metas_vendas.get(mes_slug) %}
-          {% set is_saved_meta_venda = meta_venda is not none %}
-          <div class="meta-item {% if is_saved_meta_venda %}meta-item--saved{% endif %}" data-meta-venda="{{ mes_slug }}" data-locked="{{ 'true' if is_saved_meta_venda else 'false' }}">
-            <span class="meta-item__label">{{ mes_nome }}</span>
-            <div class="field">
-              <label class="field__label">Meta mensal (unidades)</label>
-              <input class="field__input" type="number" min="0" step="1" id="meta-venda-{{ mes_slug }}"
-                     value="{{ meta_venda.quantidade_meta if meta_venda else 0 }}"
-                     placeholder="0"
-                     {% if is_saved_meta_venda %}readonly{% endif %} />
+        {% for mes_nome, mes_ini, mes_id in [('Abril', 1, 'vendas-abril'), ('Maio', 5, 'vendas-maio'), ('Junho', 9, 'vendas-junho')] %}
+        <div class="mes-group" id="mes-{{ mes_id }}">
+          <button class="mes-label" type="button" onclick="toggleMesVendas('{{ mes_id }}')">
+            {{ mes_nome }}
+            <svg class="mes-arrow mes-arrow--collapsed" id="arrow-{{ mes_id }}" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+          </button>
+          <div class="mes-body mes-body--collapsed" id="body-{{ mes_id }}">
+            <div class="metas-grid">
+              {% for s in range(mes_ini, mes_ini + 4) %}
+              {% set meta_venda = metas_vendas.get(s) %}
+              {% set is_saved_meta_venda = meta_venda is not none and (meta_venda.quantidade_meta or 0) > 0 %}
+              {% set is_released_meta_venda = s in metas_liberadas.get('vendas', []) %}
+              <div class="meta-item {% if is_saved_meta_venda %}meta-item--saved{% endif %}" data-meta-venda="{{ s }}" data-locked="{{ 'true' if is_saved_meta_venda else 'false' }}">
+                <span class="meta-item__label">Semana {{ loop.index }}</span>
+                <div class="field">
+                  <label class="field__label">Meta semanal (unidades)</label>
+                  <input class="field__input" type="number" min="0" step="1" id="meta-venda-{{ s }}"
+                         value="{{ meta_venda.quantidade_meta if meta_venda else 0 }}"
+                         placeholder="0"
+                         {% if is_saved_meta_venda or (not current_user.can_manage_admin() and not is_released_meta_venda) %}readonly{% endif %} />
+                </div>
+                <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px">
+                  <button class="btn btn--sm {% if is_saved_meta_venda or (not current_user.can_manage_admin() and not is_released_meta_venda) %}btn--ghost{% else %}btn--primary{% endif %}" type="button" id="btn-meta-venda-{{ s }}"
+                          onclick="{% if is_saved_meta_venda and current_user.can_manage_admin() %}editarMetaVenda('{{ s }}', this){% elif not is_saved_meta_venda and (current_user.can_manage_admin() or is_released_meta_venda) %}salvarMetaVenda('{{ s }}', this){% endif %}"
+                          {% if (is_saved_meta_venda and not current_user.can_manage_admin()) or (not is_saved_meta_venda and not current_user.can_manage_admin() and not is_released_meta_venda) %}disabled{% endif %}>
+                    {% if is_saved_meta_venda and current_user.can_manage_admin() %}
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                    Editar
+                    {% elif is_saved_meta_venda %}
+                    Preenchido
+                    {% elif not current_user.can_manage_admin() and not is_released_meta_venda %}
+                    Aguardando liberação
+                    {% else %}
+                    Salvar
+                    {% endif %}
+                  </button>
+                  {% if current_user.can_manage_admin() %}
+                  <button class="btn btn--xs {% if is_released_meta_venda or is_saved_meta_venda %}btn--ghost{% else %}btn--primary{% endif %}" type="button"
+                          onclick="disponibilizarMeta('vendas', {{ s }}, this)"
+                          {% if is_released_meta_venda or is_saved_meta_venda %}disabled{% endif %}>
+                    {% if is_released_meta_venda or is_saved_meta_venda %}Disponibilizada{% else %}Disponibilizar Meta{% endif %}
+                  </button>
+                  {% endif %}
+                </div>
+              </div>
+              {% endfor %}
             </div>
-            <button class="btn btn--sm {% if is_saved_meta_venda %}btn--ghost{% else %}btn--primary{% endif %}" type="button" id="btn-meta-venda-{{ mes_slug }}"
-                    onclick="{% if is_saved_meta_venda %}editarMetaVenda('{{ mes_slug }}', this){% else %}salvarMetaVenda('{{ mes_slug }}', this){% endif %}">
-              {% if is_saved_meta_venda %}
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-              Editar
-              {% else %}
-              Salvar Meta
-              {% endif %}
-            </button>
           </div>
-          {% endfor %}
         </div>
+        {% endfor %}
         </div>
       </section>
+      {% endif %}
 
+      {% if 'investidores' in meta_scopes %}
       <section class="admin-card admin-card--full admin-collapsible">
         <button class="admin-card__header admin-card__header--toggle" type="button" onclick="toggleAdminCard('metas-investidores')">
           <h3>Metas de Investidores</h3>
           <svg class="admin-card__arrow" id="arrow-metas-investidores" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
         </button>
         <div class="admin-card__body" id="body-metas-investidores">
-        <div class="sales-admin-grid">
-          {% set periodo_slug = periodo_investidores[0] %}
-          {% set periodo_nome = periodo_investidores[1] %}
-          {% set meta_investidor = metas_investidores.get(periodo_slug) %}
-          {% set is_saved_meta_investidor = meta_investidor is not none %}
-          <div class="meta-item {% if is_saved_meta_investidor %}meta-item--saved{% endif %}" data-meta-investidor="{{ periodo_slug }}" data-locked="{{ 'true' if is_saved_meta_investidor else 'false' }}">
-            <span class="meta-item__label">{{ periodo_nome }}</span>
-            <div class="field">
-              <label class="field__label">Meta de valor (R$)</label>
-              <input class="field__input" type="text" id="meta-investidor-{{ periodo_slug }}"
-                     value="{{ meta_investidor.valor_meta | brl if meta_investidor else '0,00' }}"
-                     placeholder="0,00"
-                     {% if is_saved_meta_investidor %}readonly{% endif %} />
+        {% for mes_nome, mes_ini, mes_id in [('Abril', 1, 'investidores-abril'), ('Maio', 5, 'investidores-maio'), ('Junho', 9, 'investidores-junho')] %}
+        <div class="mes-group" id="mes-{{ mes_id }}">
+          <button class="mes-label" type="button" onclick="toggleMesInvestidores('{{ mes_id }}')">
+            {{ mes_nome }}
+            <svg class="mes-arrow mes-arrow--collapsed" id="arrow-{{ mes_id }}" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+          </button>
+          <div class="mes-body mes-body--collapsed" id="body-{{ mes_id }}">
+            <div class="metas-grid">
+              {% for s in range(mes_ini, mes_ini + 4) %}
+              {% set meta_investidor = metas_investidores.get(s) %}
+              {% set is_saved_meta_investidor = meta_investidor is not none and (meta_investidor.valor_meta or 0) > 0 %}
+              {% set is_released_meta_investidor = s in metas_liberadas.get('investidores', []) %}
+              <div class="meta-item {% if is_saved_meta_investidor %}meta-item--saved{% endif %}" data-meta-investidor="{{ s }}" data-locked="{{ 'true' if is_saved_meta_investidor else 'false' }}">
+                <span class="meta-item__label">Semana {{ loop.index }}</span>
+                <div class="field">
+                  <label class="field__label">Meta semanal (R$)</label>
+                  <input class="field__input" type="text" id="meta-investidor-{{ s }}"
+                         value="{{ meta_investidor.valor_meta | brl if meta_investidor else '0,00' }}"
+                         placeholder="0,00"
+                         {% if is_saved_meta_investidor or (not current_user.can_manage_admin() and not is_released_meta_investidor) %}readonly{% else %}oninput="formatarValorBR(this)"{% endif %} />
+                </div>
+                <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px">
+                  <button class="btn btn--sm {% if is_saved_meta_investidor or (not current_user.can_manage_admin() and not is_released_meta_investidor) %}btn--ghost{% else %}btn--primary{% endif %}" type="button" id="btn-meta-investidor-{{ s }}"
+                          onclick="{% if is_saved_meta_investidor and current_user.can_manage_admin() %}editarMetaInvestidor('{{ s }}', this){% elif not is_saved_meta_investidor and (current_user.can_manage_admin() or is_released_meta_investidor) %}salvarMetaInvestidor('{{ s }}', this){% endif %}"
+                          {% if (is_saved_meta_investidor and not current_user.can_manage_admin()) or (not is_saved_meta_investidor and not current_user.can_manage_admin() and not is_released_meta_investidor) %}disabled{% endif %}>
+                    {% if is_saved_meta_investidor and current_user.can_manage_admin() %}
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                    Editar
+                    {% elif is_saved_meta_investidor %}
+                    Preenchido
+                    {% elif not current_user.can_manage_admin() and not is_released_meta_investidor %}
+                    Aguardando liberação
+                    {% else %}
+                    Salvar
+                    {% endif %}
+                  </button>
+                  {% if current_user.can_manage_admin() %}
+                  <button class="btn btn--xs {% if is_released_meta_investidor or is_saved_meta_investidor %}btn--ghost{% else %}btn--primary{% endif %}" type="button"
+                          onclick="disponibilizarMeta('investidores', {{ s }}, this)"
+                          {% if is_released_meta_investidor or is_saved_meta_investidor %}disabled{% endif %}>
+                    {% if is_released_meta_investidor or is_saved_meta_investidor %}Disponibilizada{% else %}Disponibilizar Meta{% endif %}
+                  </button>
+                  {% endif %}
+                </div>
+              </div>
+              {% endfor %}
             </div>
-            <button class="btn btn--sm {% if is_saved_meta_investidor %}btn--ghost{% else %}btn--primary{% endif %}" type="button" id="btn-meta-investidor-{{ periodo_slug }}"
-                    onclick="{% if is_saved_meta_investidor %}editarMetaInvestidor('{{ periodo_slug }}', this){% else %}salvarMetaInvestidor('{{ periodo_slug }}', this){% endif %}">
-              {% if is_saved_meta_investidor %}
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-              Editar
-              {% else %}
-              Salvar Meta
-              {% endif %}
-            </button>
           </div>
         </div>
+        {% endfor %}
         </div>
       </section>
+      {% endif %}
 
+      {% if 'financeiro' in meta_scopes %}
+      <section class="admin-card admin-card--full admin-collapsible">
+        <button class="admin-card__header admin-card__header--toggle" type="button" onclick="toggleAdminCard('metas-financeiro')">
+          <h3>Metas Financeiro - Bancos</h3>
+          <svg class="admin-card__arrow" id="arrow-metas-financeiro" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+        </button>
+        <div class="admin-card__body" id="body-metas-financeiro">
+        {% for mes_nome, mes_ini, mes_id in [('Abril', 1, 'financeiro-abril'), ('Maio', 5, 'financeiro-maio'), ('Junho', 9, 'financeiro-junho')] %}
+        <div class="mes-group" id="mes-{{ mes_id }}">
+          <button class="mes-label" type="button" onclick="toggleMesFinanceiro('{{ mes_id }}')">
+            {{ mes_nome }}
+            <svg class="mes-arrow mes-arrow--collapsed" id="arrow-{{ mes_id }}" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+          </button>
+          <div class="mes-body mes-body--collapsed" id="body-{{ mes_id }}">
+            <div class="metas-grid">
+              {% for s in range(mes_ini, mes_ini + 4) %}
+              {% set meta_fin = metas_financeiro.get(s) %}
+              {% set is_saved_fin = meta_fin is not none and (meta_fin.valor_meta or 0) > 0 %}
+              {% set is_released_fin = s in metas_liberadas.get('financeiro', []) %}
+              <div class="meta-item {% if is_saved_fin %}meta-item--saved{% endif %}" data-meta-financeiro="{{ s }}" data-locked="{{ 'true' if is_saved_fin else 'false' }}">
+                <span class="meta-item__label">Semana {{ loop.index }}</span>
+                <div class="field">
+                  <label class="field__label">Meta bancos (R$)</label>
+                  <input class="field__input" type="text" id="meta-financeiro-s{{ s }}"
+                         value="{{ meta_fin.valor_meta | brl if meta_fin else '0,00' }}"
+                         placeholder="0,00"
+                         {% if is_saved_fin or (not current_user.can_manage_admin() and not is_released_fin) %}readonly{% else %}oninput="formatarValorBR(this)"{% endif %} />
+                </div>
+                <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px">
+                  <button class="btn btn--sm {% if is_saved_fin or (not current_user.can_manage_admin() and not is_released_fin) %}btn--ghost{% else %}btn--primary{% endif %}"
+                          id="btn-meta-financeiro-s{{ s }}"
+                          onclick="{% if is_saved_fin and current_user.can_manage_admin() %}editarMetaFinanceiro({{ s }}, this){% elif not is_saved_fin and (current_user.can_manage_admin() or is_released_fin) %}salvarMetaFinanceiro({{ s }}, this){% endif %}"
+                          {% if (is_saved_fin and not current_user.can_manage_admin()) or (not is_saved_fin and not current_user.can_manage_admin() and not is_released_fin) %}disabled{% endif %}>
+                    {% if is_saved_fin and current_user.can_manage_admin() %}
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                    Editar
+                    {% elif is_saved_fin %}
+                    Preenchido
+                    {% elif not current_user.can_manage_admin() and not is_released_fin %}
+                    Aguardando liberação
+                    {% else %}
+                    Salvar
+                    {% endif %}
+                  </button>
+                  {% if current_user.can_manage_admin() %}
+                  <button class="btn btn--xs {% if is_released_fin or is_saved_fin %}btn--ghost{% else %}btn--primary{% endif %}" type="button"
+                          onclick="disponibilizarMeta('financeiro', {{ s }}, this)"
+                          {% if is_released_fin or is_saved_fin %}disabled{% endif %}>
+                    {% if is_released_fin or is_saved_fin %}Disponibilizada{% else %}Disponibilizar Meta{% endif %}
+                  </button>
+                  {% endif %}
+                </div>
+              </div>
+              {% endfor %}
+            </div>
+          </div>
+        </div>
+        {% endfor %}
+        </div>
+      </section>
+      {% endif %}
+
+      {% if 'giro' in meta_scopes %}
+      <section class="admin-card admin-card--full admin-collapsible">
+          <button class="admin-card__header admin-card__header--toggle" type="button" onclick="toggleAdminCard('metas-giro')">
+            <h3>Metas Giro</h3>
+            <svg class="admin-card__arrow" id="arrow-metas-giro" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+          </button>
+          <div class="admin-card__body" id="body-metas-giro">
+          {% for mes_nome, mes_ini, mes_id in [('Abril', 1, 'giro-abril'), ('Maio', 5, 'giro-maio'), ('Junho', 9, 'giro-junho')] %}
+          <div class="mes-group" id="mes-{{ mes_id }}">
+            <button class="mes-label" type="button" onclick="toggleMesGiro('{{ mes_id }}')">
+              {{ mes_nome }}
+              <svg class="mes-arrow mes-arrow--collapsed" id="arrow-{{ mes_id }}" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+            </button>
+            <div class="mes-body mes-body--collapsed" id="body-{{ mes_id }}">
+              <div class="metas-grid">
+                {% for s in range(mes_ini, mes_ini + 4) %}
+                {% set meta_giro = metas_giro.get(s) %}
+                {% set is_saved_giro = meta_giro is not none and (meta_giro.valor_meta or 0) > 0 %}
+                {% set is_released_giro = s in metas_liberadas.get('giro', []) %}
+                <div class="meta-item {% if is_saved_giro %}meta-item--saved{% endif %}" data-meta-giro="{{ s }}" data-locked="{{ 'true' if is_saved_giro else 'false' }}">
+                  <span class="meta-item__label">Semana {{ loop.index }}</span>
+                  <div class="field">
+                    <label class="field__label">Meta giro (R$)</label>
+                    <input class="field__input" type="text" id="meta-giro-s{{ s }}"
+                           value="{{ meta_giro.valor_meta | brl if meta_giro else '0,00' }}"
+                           placeholder="0,00"
+                           {% if is_saved_giro or (not current_user.can_manage_admin() and not is_released_giro) %}readonly{% else %}oninput="formatarValorBR(this)"{% endif %} />
+                  </div>
+                  <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px">
+                    <button class="btn btn--sm {% if is_saved_giro or (not current_user.can_manage_admin() and not is_released_giro) %}btn--ghost{% else %}btn--primary{% endif %}"
+                            id="btn-meta-giro-s{{ s }}"
+                            onclick="{% if is_saved_giro and current_user.can_manage_admin() %}editarMetaGiro({{ s }}, this){% elif not is_saved_giro and (current_user.can_manage_admin() or is_released_giro) %}salvarMetaGiro({{ s }}, this){% endif %}"
+                            {% if (is_saved_giro and not current_user.can_manage_admin()) or (not is_saved_giro and not current_user.can_manage_admin() and not is_released_giro) %}disabled{% endif %}>
+                      {% if is_saved_giro and current_user.can_manage_admin() %}
+                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                      Editar
+                      {% elif is_saved_giro %}
+                      Preenchido
+                      {% elif not current_user.can_manage_admin() and not is_released_giro %}
+                      Aguardando liberação
+                      {% else %}
+                      Salvar
+                      {% endif %}
+                    </button>
+                    {% if current_user.can_manage_admin() %}
+                    <button class="btn btn--xs {% if is_released_giro or is_saved_giro %}btn--ghost{% else %}btn--primary{% endif %}" type="button"
+                            onclick="disponibilizarMeta('giro', {{ s }}, this)"
+                            {% if is_released_giro or is_saved_giro %}disabled{% endif %}>
+                      {% if is_released_giro or is_saved_giro %}Disponibilizada{% else %}Disponibilizar Meta{% endif %}
+                    </button>
+                    {% endif %}
+                  </div>
+                </div>
+                {% endfor %}
+              </div>
+            </div>
+          </div>
+          {% endfor %}
+          </div>
+      </section>
+      {% endif %}
+
+      {% if 'fornecedores' in meta_scopes %}
+      <section class="admin-card admin-card--full admin-collapsible">
+          <button class="admin-card__header admin-card__header--toggle" type="button" onclick="toggleAdminCard('metas-fornecedores')">
+            <h3>Metas Fornecedores</h3>
+            <svg class="admin-card__arrow" id="arrow-metas-fornecedores" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+          </button>
+          <div class="admin-card__body" id="body-metas-fornecedores">
+          {% for mes_nome, mes_ini, mes_id in [('Abril', 1, 'fornecedores-abril'), ('Maio', 5, 'fornecedores-maio'), ('Junho', 9, 'fornecedores-junho')] %}
+          <div class="mes-group" id="mes-{{ mes_id }}">
+            <button class="mes-label" type="button" onclick="toggleMesFornecedores('{{ mes_id }}')">
+              {{ mes_nome }}
+              <svg class="mes-arrow mes-arrow--collapsed" id="arrow-{{ mes_id }}" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+            </button>
+            <div class="mes-body mes-body--collapsed" id="body-{{ mes_id }}">
+              <div class="metas-grid">
+                {% for s in range(mes_ini, mes_ini + 4) %}
+                {% set meta_fornecedor = metas_fornecedores.get(s) %}
+                {% set is_saved_fornecedor = meta_fornecedor is not none and (meta_fornecedor.valor_meta or 0) > 0 %}
+                {% set is_released_fornecedor = s in metas_liberadas.get('fornecedores', []) %}
+                <div class="meta-item {% if is_saved_fornecedor %}meta-item--saved{% endif %}" data-meta-fornecedor="{{ s }}" data-locked="{{ 'true' if is_saved_fornecedor else 'false' }}">
+                  <span class="meta-item__label">Semana {{ loop.index }}</span>
+                  <div class="field">
+                    <label class="field__label">Meta fornecedores (R$)</label>
+                    <input class="field__input" type="text" id="meta-fornecedor-s{{ s }}"
+                           value="{{ meta_fornecedor.valor_meta | brl if meta_fornecedor else '0,00' }}"
+                           placeholder="0,00"
+                           {% if is_saved_fornecedor or (not current_user.can_manage_admin() and not is_released_fornecedor) %}readonly{% else %}oninput="formatarValorBR(this)"{% endif %} />
+                  </div>
+                  <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px">
+                    <button class="btn btn--sm {% if is_saved_fornecedor or (not current_user.can_manage_admin() and not is_released_fornecedor) %}btn--ghost{% else %}btn--primary{% endif %}"
+                            id="btn-meta-fornecedor-s{{ s }}"
+                            onclick="{% if is_saved_fornecedor and current_user.can_manage_admin() %}editarMetaFornecedor({{ s }}, this){% elif not is_saved_fornecedor and (current_user.can_manage_admin() or is_released_fornecedor) %}salvarMetaFornecedor({{ s }}, this){% endif %}"
+                            {% if (is_saved_fornecedor and not current_user.can_manage_admin()) or (not is_saved_fornecedor and not current_user.can_manage_admin() and not is_released_fornecedor) %}disabled{% endif %}>
+                      {% if is_saved_fornecedor and current_user.can_manage_admin() %}Editar{% elif is_saved_fornecedor %}Preenchido{% elif not current_user.can_manage_admin() and not is_released_fornecedor %}Aguardando liberação{% else %}Salvar{% endif %}
+                    </button>
+                    {% if current_user.can_manage_admin() %}
+                    <button class="btn btn--xs {% if is_released_fornecedor or is_saved_fornecedor %}btn--ghost{% else %}btn--primary{% endif %}" type="button"
+                            onclick="disponibilizarMeta('fornecedores', {{ s }}, this)"
+                            {% if is_released_fornecedor or is_saved_fornecedor %}disabled{% endif %}>
+                      {% if is_released_fornecedor or is_saved_fornecedor %}Disponibilizada{% else %}Disponibilizar Meta{% endif %}
+                    </button>
+                    {% endif %}
+                  </div>
+                </div>
+                {% endfor %}
+              </div>
+            </div>
+          </div>
+          {% endfor %}
+          </div>
+      </section>
+      {% endif %}
+
+      {% if 'medicao' in meta_scopes %}
+      <section class="admin-card admin-card--full admin-collapsible">
+          <button class="admin-card__header admin-card__header--toggle" type="button" onclick="toggleAdminCard('metas-medicao')">
+            <h3>Metas Medição</h3>
+            <svg class="admin-card__arrow" id="arrow-metas-medicao" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+          </button>
+          <div class="admin-card__body" id="body-metas-medicao">
+          {% for mes_nome, mes_ini, mes_id in [('Abril', 1, 'medicao-abril'), ('Maio', 5, 'medicao-maio'), ('Junho', 9, 'medicao-junho')] %}
+          <div class="mes-group" id="mes-{{ mes_id }}">
+            <button class="mes-label" type="button" onclick="toggleMesMedicao('{{ mes_id }}')">
+              {{ mes_nome }}
+              <svg class="mes-arrow mes-arrow--collapsed" id="arrow-{{ mes_id }}" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+            </button>
+            <div class="mes-body mes-body--collapsed" id="body-{{ mes_id }}">
+              <div class="metas-grid">
+                {% for s in range(mes_ini, mes_ini + 4) %}
+                {% set meta_medicao = metas_medicao.get(s) %}
+                {% set is_saved_medicao = meta_medicao is not none and (meta_medicao.valor_meta or 0) > 0 %}
+                {% set is_released_medicao = s in metas_liberadas.get('medicao', []) %}
+                <div class="meta-item {% if is_saved_medicao %}meta-item--saved{% endif %}" data-meta-medicao="{{ s }}" data-locked="{{ 'true' if is_saved_medicao else 'false' }}">
+                  <span class="meta-item__label">Semana {{ loop.index }}</span>
+                  <div class="field">
+                    <label class="field__label">Meta medição (R$)</label>
+                    <input class="field__input" type="text" id="meta-medicao-s{{ s }}"
+                           value="{{ meta_medicao.valor_meta | brl if meta_medicao else '0,00' }}"
+                           placeholder="0,00"
+                           {% if is_saved_medicao or (not current_user.can_manage_admin() and not is_released_medicao) %}readonly{% else %}oninput="formatarValorBR(this)"{% endif %} />
+                  </div>
+                  <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px">
+                    <button class="btn btn--sm {% if is_saved_medicao or (not current_user.can_manage_admin() and not is_released_medicao) %}btn--ghost{% else %}btn--primary{% endif %}"
+                            id="btn-meta-medicao-s{{ s }}"
+                            onclick="{% if is_saved_medicao and current_user.can_manage_admin() %}editarMetaMedicao({{ s }}, this){% elif not is_saved_medicao and (current_user.can_manage_admin() or is_released_medicao) %}salvarMetaMedicao({{ s }}, this){% endif %}"
+                            {% if (is_saved_medicao and not current_user.can_manage_admin()) or (not is_saved_medicao and not current_user.can_manage_admin() and not is_released_medicao) %}disabled{% endif %}>
+                      {% if is_saved_medicao and current_user.can_manage_admin() %}
+                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                      Editar
+                      {% elif is_saved_medicao %}
+                      Preenchido
+                      {% elif not current_user.can_manage_admin() and not is_released_medicao %}
+                      Aguardando liberação
+                      {% else %}
+                      Salvar
+                      {% endif %}
+                    </button>
+                    {% if current_user.can_manage_admin() %}
+                    <button class="btn btn--xs {% if is_released_medicao or is_saved_medicao %}btn--ghost{% else %}btn--primary{% endif %}" type="button"
+                            onclick="disponibilizarMeta('medicao', {{ s }}, this)"
+                            {% if is_released_medicao or is_saved_medicao %}disabled{% endif %}>
+                      {% if is_released_medicao or is_saved_medicao %}Disponibilizada{% else %}Disponibilizar Meta{% endif %}
+                    </button>
+                    {% endif %}
+                  </div>
+                </div>
+                {% endfor %}
+              </div>
+            </div>
+          </div>
+          {% endfor %}
+          </div>
+      </section>
+      {% endif %}
+
+      {% if 'relacionamento' in meta_scopes %}
       <section class="admin-card admin-card--full admin-collapsible">
         <button class="admin-card__header admin-card__header--toggle" type="button" onclick="toggleAdminCard('metas-relacionamento')">
           <h3>Metas Inadimplencia</h3>
@@ -230,32 +514,47 @@
               {% for s in range(mes_ini, mes_ini + 4) %}
               {% set semana_local = loop.index %}
               {% set meta = metas | selectattr('semana', 'equalto', s) | first %}
-              {% set is_saved = meta is not none %}
+              {% set is_saved = meta is not none and ((meta.acoes_planejadas or 0) > 0 or (meta.valor_meta or 0) > 0) %}
+              {% set is_released_rel = s in metas_liberadas.get('relacionamento', []) %}
               <div class="meta-item {% if is_saved %}meta-item--saved{% endif %}" data-semana="{{ s }}" data-locked="{{ 'true' if is_saved else 'false' }}">
                 <span class="meta-item__label">Semana {{ semana_local }}</span>
                 <div class="field">
                   <label class="field__label">Ações planejadas</label>
                   <input class="field__input" type="number" id="acoes-s{{ s }}"
                          value="{{ meta.acoes_planejadas if meta else 0 }}" min="0"
-                         {% if is_saved %}readonly{% endif %} />
+                         {% if is_saved or (not current_user.can_manage_admin() and not is_released_rel) %}readonly{% endif %} />
                 </div>
                 <div class="field">
                   <label class="field__label">Valor meta (R$)</label>
                   <input class="field__input" type="text" id="valor-s{{ s }}"
                          value="{{ meta.valor_meta | brl if meta else '0,00' }}"
                          placeholder="0,00"
-                         {% if is_saved %}readonly{% else %}oninput="formatarValorBR(this)"{% endif %} />
+                         {% if is_saved or (not current_user.can_manage_admin() and not is_released_rel) %}readonly{% else %}oninput="formatarValorBR(this)"{% endif %} />
                 </div>
-                <button class="btn btn--sm {% if is_saved %}btn--ghost{% else %}btn--primary{% endif %}"
-                        id="btn-s{{ s }}"
-                        onclick="{% if is_saved %}editarMeta({{ s }}, this){% else %}salvarMeta({{ s }}, this){% endif %}">
-                  {% if is_saved %}
-                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-                  Editar
-                  {% else %}
-                  Salvar
+                <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px">
+                  <button class="btn btn--sm {% if is_saved or (not current_user.can_manage_admin() and not is_released_rel) %}btn--ghost{% else %}btn--primary{% endif %}"
+                          id="btn-s{{ s }}"
+                          onclick="{% if is_saved and current_user.can_manage_admin() %}editarMeta({{ s }}, this){% elif not is_saved and (current_user.can_manage_admin() or is_released_rel) %}salvarMeta({{ s }}, this){% endif %}"
+                          {% if (is_saved and not current_user.can_manage_admin()) or (not is_saved and not current_user.can_manage_admin() and not is_released_rel) %}disabled{% endif %}>
+                    {% if is_saved and current_user.can_manage_admin() %}
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                    Editar
+                    {% elif is_saved %}
+                    Preenchido
+                    {% elif not current_user.can_manage_admin() and not is_released_rel %}
+                    Aguardando liberação
+                    {% else %}
+                    Salvar
+                    {% endif %}
+                  </button>
+                  {% if current_user.can_manage_admin() %}
+                  <button class="btn btn--xs {% if is_released_rel or is_saved %}btn--ghost{% else %}btn--primary{% endif %}" type="button"
+                          onclick="disponibilizarMeta('relacionamento', {{ s }}, this)"
+                          {% if is_released_rel or is_saved %}disabled{% endif %}>
+                    {% if is_released_rel or is_saved %}Disponibilizada{% else %}Disponibilizar Meta{% endif %}
+                  </button>
                   {% endif %}
-                </button>
+                </div>
               </div>
               {% endfor %}
             </div>
@@ -265,10 +564,12 @@
 
         </div>
       </section>
+      {% endif %}
 
     </div>
   </main>
 </div>
+{% if is_admin_dashboard %}
 <div id="modal-usuario" class="modal-overlay" hidden>
   <div class="modal">
     <div class="modal__header">
@@ -318,8 +619,12 @@
     </div>
   </div>
 </div>
+{% endif %}
 
 <div id="toast" class="toast" aria-live="polite"></div>
+<script>
+  window.CAN_EDIT_LOCKED_METAS = {{ 'true' if current_user.can_manage_admin() else 'false' }};
+</script>
 <script src="{{ url_for('static', filename='js/admin.js') }}"></script>
 <script>
 (function () {

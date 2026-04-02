@@ -1,0 +1,122 @@
+{% set active_page = active_page | default('') %}
+{% set active_panel = active_panel | default('') %}
+{% set tem_paineis = current_user.can_access_panel('master')
+  or current_user.can_access_panel('relacionamento')
+  or current_user.can_access_panel('vendas')
+  or current_user.can_access_panel('investidores')
+  or current_user.can_access_panel('financeiro')
+  or current_user.can_access_panel('giro')
+  or current_user.can_access_panel('fornecedores')
+  or current_user.can_access_panel('medicao') %}
+
+<div class="drawer__nav">
+  {% if current_user.can_access_metas_dashboard() %}
+  <a href="{{ url_for('admin.dashboard') }}" class="drawer__link{% if active_page == 'dashboard' %} drawer__link--active{% endif %}">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+    {{ 'Admin' if current_user.can_manage_admin() else 'Metas' }}
+  </a>
+  {% endif %}
+  {% if current_user.can_access_page('relacionamento') %}
+  <a href="{{ url_for('relacionamento.index') }}" class="drawer__link{% if active_page == 'relacionamento' %} drawer__link--active{% endif %}">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
+    Inadimplencia
+  </a>
+  {% endif %}
+  {% if current_user.can_access_page('vendas') %}
+  <a href="{{ url_for('vendas.index') }}" class="drawer__link{% if active_page == 'vendas' %} drawer__link--active{% endif %}">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3h18v18H3z"/><path d="M8 14l3-3 2 2 4-5"/></svg>
+    Vendas Varejo
+  </a>
+  {% endif %}
+  {% if current_user.can_access_page('investidores') %}
+  <a href="{{ url_for('investidores.index') }}" class="drawer__link{% if active_page == 'investidores' %} drawer__link--active{% endif %}">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3h18v18H3z"/><path d="M8 14l3-3 2 2 4-5"/></svg>
+    Investidores
+  </a>
+  {% endif %}
+  {% if current_user.can_access_page('financeiro') %}
+  <a href="{{ url_for('financeiro.index') }}" class="drawer__link{% if active_page == 'financeiro' %} drawer__link--active{% endif %}">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 1v22"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+    Financeiro
+  </a>
+  {% endif %}
+  {% if current_user.can_access_page('giro') %}
+  <a href="{{ url_for('giro.index') }}" class="drawer__link{% if active_page == 'giro' %} drawer__link--active{% endif %}">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19h16"/><path d="M7 15l3-3 3 2 4-6"/><circle cx="7" cy="15" r="1"/><circle cx="10" cy="12" r="1"/><circle cx="13" cy="14" r="1"/><circle cx="17" cy="8" r="1"/></svg>
+    Giro
+  </a>
+  {% endif %}
+  {% if current_user.can_access_page('fornecedores') %}
+  <a href="{{ url_for('fornecedores.index') }}" class="drawer__link{% if active_page == 'fornecedores' %} drawer__link--active{% endif %}">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 21h18"/><path d="M5 21V8l7-5 7 5v13"/><path d="M9 21v-6h6v6"/></svg>
+    Fornecedores
+  </a>
+  {% endif %}
+  {% if current_user.can_access_page('medicao') %}
+  <a href="{{ url_for('medicao.index') }}" class="drawer__link{% if active_page == 'medicao' %} drawer__link--active{% endif %}">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 20h18"/><path d="M6 16h12"/><path d="M8 12h8"/><path d="M10 4h4v8h-4z"/></svg>
+    Medicao
+  </a>
+  {% endif %}
+  {% if tem_paineis %}
+  <details class="drawer-subnav"{% if active_panel %} open{% endif %}>
+    <summary class="drawer-subnav__toggle">
+      <span class="drawer-subnav__label">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 7h7l2 2h9v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7z"/></svg>
+        Pain&eacute;is
+      </span>
+      <svg class="drawer-subnav__arrow" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+    </summary>
+    <div class="drawer-subnav__items">
+      {% if current_user.can_access_panel('master') %}
+      <a href="{{ url_for('admin.master_painel') }}" class="drawer__sublink{% if active_panel == 'master' %} drawer__sublink--active{% endif %}">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 12h16"/><path d="M12 4v16"/></svg>
+        Painel Master
+      </a>
+      {% endif %}
+      {% if current_user.can_access_panel('relacionamento') %}
+      <a href="{{ url_for('admin.relacionamento_painel') }}" class="drawer__sublink{% if active_panel == 'relacionamento' %} drawer__sublink--active{% endif %}">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"/><path d="M7 14l3-3 3 2 4-5"/></svg>
+        Painel Inadimplencia
+      </a>
+      {% endif %}
+      {% if current_user.can_access_panel('vendas') %}
+      <a href="{{ url_for('admin.vendas_painel') }}" class="drawer__sublink{% if active_panel == 'vendas' %} drawer__sublink--active{% endif %}">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"/><path d="M7 14l3-3 3 2 4-5"/></svg>
+        Painel de Vendas Varejo
+      </a>
+      {% endif %}
+      {% if current_user.can_access_panel('investidores') %}
+      <a href="{{ url_for('admin.investidores_painel') }}" class="drawer__sublink{% if active_panel == 'investidores' %} drawer__sublink--active{% endif %}">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"/><path d="M7 14l3-3 3 2 4-5"/></svg>
+        Painel Investidores
+      </a>
+      {% endif %}
+      {% if current_user.can_access_panel('financeiro') %}
+      <a href="{{ url_for('admin.financeiro_painel') }}" class="drawer__sublink{% if active_panel == 'financeiro' %} drawer__sublink--active{% endif %}">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"/><path d="M7 14l3-3 3 2 4-5"/></svg>
+        Painel Financeiro
+      </a>
+      {% endif %}
+      {% if current_user.can_access_panel('giro') %}
+      <a href="{{ url_for('admin.giro_painel') }}" class="drawer__sublink{% if active_panel == 'giro' %} drawer__sublink--active{% endif %}">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"/><path d="M7 14l3-3 3 2 4-5"/></svg>
+        Painel Giro
+      </a>
+      {% endif %}
+      {% if current_user.can_access_panel('fornecedores') %}
+      <a href="{{ url_for('admin.fornecedores_painel') }}" class="drawer__sublink{% if active_panel == 'fornecedores' %} drawer__sublink--active{% endif %}">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"/><path d="M7 14l3-3 3 2 4-5"/></svg>
+        Painel Fornecedores
+      </a>
+      {% endif %}
+      {% if current_user.can_access_panel('medicao') %}
+      <a href="{{ url_for('admin.medicao_painel') }}" class="drawer__sublink{% if active_panel == 'medicao' %} drawer__sublink--active{% endif %}">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"/><path d="M7 14l3-3 3 2 4-5"/></svg>
+        Painel Medicao
+      </a>
+      {% endif %}
+    </div>
+  </details>
+  {% endif %}
+</div>

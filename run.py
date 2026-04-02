@@ -1,6 +1,21 @@
 import os
+import platform
 
-if os.environ.get('SOCKETIO_ASYNC_MODE', 'eventlet').strip().lower() == 'eventlet':
+
+def _resolve_local_async_mode() -> str:
+    configured = os.environ.get('SOCKETIO_ASYNC_MODE', '').strip().lower()
+    if configured in {'eventlet', 'threading'}:
+        return configured
+    # On Windows/dev, prefer threading to avoid eventlet monkey-patch issues.
+    if platform.system().lower().startswith('win'):
+        return 'threading'
+    return 'eventlet'
+
+
+ASYNC_MODE = _resolve_local_async_mode()
+os.environ['SOCKETIO_ASYNC_MODE'] = ASYNC_MODE
+
+if ASYNC_MODE == 'eventlet':
     import eventlet
 
     eventlet.monkey_patch()

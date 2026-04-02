@@ -4,6 +4,7 @@ let investidoresCache = [];
 let investidoresFiltradosCache = [];
 let activeSituacaoChart = '';
 let deleteState = { id: null, btnEl: null, mode: 'single' };
+const MESES_INVESTIDORES_TOPBAR = ['abril', 'maio', 'junho'];
 
 function csrfHeaders(extra = {}) {
   return { 'X-CSRFToken': window.APP_CSRF_TOKEN || '', ...extra };
@@ -435,7 +436,7 @@ function parseBulkText(texto) {
 
 async function recarregarDados() {
   try {
-    const resp = await fetch(`/investidores/registros?mes=${MES_ATUAL}`);
+    const resp = await fetch(`/investidores/registros?mes=${MES_ATUAL}&semana=${SEMANA_ATUAL}`);
     const json = await resp.json();
     investidoresCache = json.registros || [];
     Object.assign(INITIAL_FINANCEIRO, json.financeiro || {});
@@ -550,6 +551,14 @@ document.addEventListener('DOMContentLoaded', () => {
   const saveBulkEl = document.getElementById('btn-save-bulk');
   const toggleBtn = document.getElementById('toggle-form');
   const formWrapper = document.getElementById('form-wrapper');
+
+  window.toggleMesInvestidores = function toggleMesInvestidores(mesId) {
+    const body = document.getElementById(`body-${mesId}`);
+    const arrow = document.getElementById(`arrow-${mesId}`);
+    if (!body || !arrow) return;
+    const collapsed = body.classList.toggle('week-month__body--collapsed');
+    arrow.classList.toggle('week-month__arrow--collapsed', collapsed);
+  };
 
   if (buscaEl) buscaEl.addEventListener('input', aplicarFiltros);
   if (situacaoEl) situacaoEl.addEventListener('change', aplicarFiltros);
@@ -666,6 +675,14 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     });
   }
+
+  MESES_INVESTIDORES_TOPBAR.forEach((mesId) => {
+    const body = document.getElementById(`body-${mesId}`);
+    const arrow = document.getElementById(`arrow-${mesId}`);
+    if (!body || !arrow) return;
+    body.classList.add('week-month__body--collapsed');
+    arrow.classList.add('week-month__arrow--collapsed');
+  });
 
   aplicarFiltros();
   conectarSocket();

@@ -4,7 +4,7 @@ from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 from app import db
 
 
-SITUACAO_OPCOES = ('SIM', 'NÃO', 'CONTATO REJEITADO', 'LIGAR EM OUTRO MOMENTO')
+SITUACAO_OPCOES = ('SIM (INTEGRAL)', 'SIM (PARCIAL)', 'NÃO', 'CONTATO REJEITADO', 'LIGAR EM OUTRO MOMENTO')
 
 try:
     BRAZIL_TZ = ZoneInfo('America/Sao_Paulo')
@@ -55,6 +55,7 @@ class Relacionamento(db.Model):
 
     def to_dict(self):
         criado_em = self.criado_em_brasilia
+        situacao = 'SIM (INTEGRAL)' if self.situacao == 'SIM' else self.situacao
         return {
             'id': self.id,
             'empreendimento': self.empreendimento,
@@ -62,7 +63,7 @@ class Relacionamento(db.Model):
             'telefone': self.telefone,
             'email_cliente': self.email_cliente or '',
             'tipo_contato': self.tipo_contato,
-            'situacao': self.situacao,
+            'situacao': situacao,
             'observacao': self.observacao or '',
             'valor': float(self.valor),
             'responsavel': self.responsavel,

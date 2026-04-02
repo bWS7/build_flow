@@ -108,6 +108,7 @@ function atualizarCard(card) {
   const metaEl = item.querySelector('[data-master-card-meta]');
   const contextEl = item.querySelector('[data-master-card-context]');
   const fillEl = item.querySelector('[data-master-card-fill]');
+  const signalEl = item.querySelector('[data-master-card-signal]');
 
   if (percentualEl) percentualEl.textContent = `${formatarNumeroBr(card.percentual, 1)}%`;
   if (metaEl) {
@@ -117,6 +118,10 @@ function atualizarCard(card) {
   }
   if (contextEl) contextEl.textContent = card.comparativo_label || '';
   if (fillEl) fillEl.style.width = `${Math.min(Number(card.percentual || 0), 100)}%`;
+  if (signalEl) {
+    signalEl.textContent = card.desempenho_status === 'positivo' ? '↑' : card.desempenho_status === 'negativo' ? '↓' : '•';
+    signalEl.className = `master-chip__signal master-chip__signal--${card.desempenho_status || 'neutro'}`;
+  }
 }
 
 function renderizarTabela(cards) {

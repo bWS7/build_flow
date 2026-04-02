@@ -6,10 +6,51 @@
 
 const META_LOCK_PREFIX = 'meta-locked-s';
 const MESES = ['abril', 'maio', 'junho'];
-const ADMIN_COLLAPSIBLES = ['metas-varejo', 'metas-investidores', 'metas-relacionamento'];
+const MESES_FINANCEIRO = ['financeiro-abril', 'financeiro-maio', 'financeiro-junho'];
+const MESES_FORNECEDORES = ['fornecedores-abril', 'fornecedores-maio', 'fornecedores-junho'];
+const MESES_GIRO = ['giro-abril', 'giro-maio', 'giro-junho'];
+const MESES_MEDICAO = ['medicao-abril', 'medicao-maio', 'medicao-junho'];
+const MESES_VENDAS = ['vendas-abril', 'vendas-maio', 'vendas-junho'];
+const MESES_INVESTIDORES = ['investidores-abril', 'investidores-maio', 'investidores-junho'];
+const ADMIN_COLLAPSIBLES = ['metas-varejo', 'metas-investidores', 'metas-financeiro', 'metas-fornecedores', 'metas-giro', 'metas-medicao', 'metas-relacionamento'];
+const CAN_EDIT_LOCKED_METAS = window.CAN_EDIT_LOCKED_METAS === true;
+
+async function disponibilizarMeta(scope, semana, btn) {
+  try {
+    const resp = await fetch('/admin/meta/disponibilizar', {
+      method: 'POST',
+      headers: csrfHeaders({ 'Content-Type': 'application/json' }),
+      body: JSON.stringify({ scope, semana }),
+    });
+    const json = await resp.json();
+    if (resp.ok) {
+      showToast(`Meta da semana ${semana} disponibilizada.`, 'success');
+      setTimeout(() => location.reload(), 300);
+    } else {
+      showToast(json.erro || 'Erro ao disponibilizar meta.', 'error');
+    }
+  } catch {
+    showToast('Falha de conexão ao disponibilizar meta.', 'error');
+  }
+}
 
 function csrfHeaders(extra = {}) {
   return { 'X-CSRFToken': window.APP_CSRF_TOKEN || '', ...extra };
+}
+
+function aplicarEstadoBloqueado(btn, textoEditar, onEdit) {
+  if (!btn) return;
+  btn.classList.remove('btn--primary');
+  btn.classList.add('btn--ghost');
+  if (CAN_EDIT_LOCKED_METAS) {
+    btn.disabled = false;
+    btn.innerHTML = textoEditar;
+    btn.onclick = onEdit;
+  } else {
+    btn.disabled = true;
+    btn.textContent = 'Preenchido';
+    btn.onclick = null;
+  }
 }
 
 // ── Toast ──────────────────────────────────────────────────────────────────
@@ -199,10 +240,7 @@ function renderizarMetaBloqueada(semana) {
   acoesEl.readOnly = true;
   valorEl.readOnly = true;
   valorEl.oninput = null;
-  btn.innerHTML = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg> Editar';
-  btn.classList.remove('btn--primary');
-  btn.classList.add('btn--ghost');
-  btn.onclick = () => editarMeta(semana, btn);
+  aplicarEstadoBloqueado(btn, '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg> Editar', () => editarMeta(semana, btn));
   if (item) item.dataset.locked = 'true';
   localStorage.setItem(`${META_LOCK_PREFIX}${semana}`, '1');
 }
@@ -262,10 +300,7 @@ function renderizarMetaVendaBloqueada(mes) {
   const { item, input, btn } = obterMetaVendaEls(mes);
   if (!input || !btn) return;
   input.readOnly = true;
-  btn.innerHTML = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg> Editar';
-  btn.classList.remove('btn--primary');
-  btn.classList.add('btn--ghost');
-  btn.onclick = () => editarMetaVenda(mes, btn);
+  aplicarEstadoBloqueado(btn, '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg> Editar', () => editarMetaVenda(mes, btn));
   if (item) item.dataset.locked = 'true';
 }
 
@@ -288,7 +323,7 @@ async function salvarMetaVenda(mes, btn) {
     const resp = await fetch('/admin/meta-venda/salvar', {
       method: 'POST',
       headers: csrfHeaders({ 'Content-Type': 'application/json' }),
-      body: JSON.stringify({ mes, quantidade_meta: quantidade }),
+      body: JSON.stringify({ semana: mes, quantidade_meta: quantidade }),
     });
     const raw = await resp.text();
     const json = raw ? JSON.parse(raw) : {};
@@ -309,6 +344,33 @@ function toggleMes(mesId) {
   const arrow = document.getElementById(`arrow-${mesId}`);
   const isCollapsed = body.classList.toggle('mes-body--collapsed');
   arrow.classList.toggle('mes-arrow--collapsed', isCollapsed);
+}
+
+function toggleMesFinanceiro(mesId) {
+  const body = document.getElementById(`body-${mesId}`);
+  const arrow = document.getElementById(`arrow-${mesId}`);
+  const isCollapsed = body.classList.toggle('mes-body--collapsed');
+  arrow.classList.toggle('mes-arrow--collapsed', isCollapsed);
+}
+
+function toggleMesVendas(mesId) {
+  toggleMesFinanceiro(mesId);
+}
+
+function toggleMesInvestidores(mesId) {
+  toggleMesFinanceiro(mesId);
+}
+
+function toggleMesGiro(mesId) {
+  toggleMesFinanceiro(mesId);
+}
+
+function toggleMesFornecedores(mesId) {
+  toggleMesFinanceiro(mesId);
+}
+
+function toggleMesMedicao(mesId) {
+  toggleMesFinanceiro(mesId);
 }
 
 function toggleAdminCard(cardId) {
@@ -356,6 +418,84 @@ document.addEventListener('DOMContentLoaded', () => {
       arrow.classList.add('mes-arrow--collapsed');
     }
   });
+
+  document.querySelectorAll('.meta-item[data-meta-financeiro]').forEach((item) => {
+    const semana = item.dataset.metaFinanceiro;
+    const lockedByServer = item.dataset.locked === 'true';
+    if (lockedByServer) renderizarMetaFinanceiroBloqueada(semana);
+  });
+
+  document.querySelectorAll('.meta-item[data-meta-giro]').forEach((item) => {
+    const semana = item.dataset.metaGiro;
+    const lockedByServer = item.dataset.locked === 'true';
+    if (lockedByServer) renderizarMetaGiroBloqueada(semana);
+  });
+
+  document.querySelectorAll('.meta-item[data-meta-fornecedor]').forEach((item) => {
+    const semana = item.dataset.metaFornecedor;
+    const lockedByServer = item.dataset.locked === 'true';
+    if (lockedByServer) renderizarMetaFornecedorBloqueada(semana);
+  });
+
+  document.querySelectorAll('.meta-item[data-meta-medicao]').forEach((item) => {
+    const semana = item.dataset.metaMedicao;
+    const lockedByServer = item.dataset.locked === 'true';
+    if (lockedByServer) renderizarMetaMedicaoBloqueada(semana);
+  });
+
+  MESES_FINANCEIRO.forEach((mesId) => {
+    const body = document.getElementById(`body-${mesId}`);
+    const arrow = document.getElementById(`arrow-${mesId}`);
+    if (body && arrow) {
+      body.classList.add('mes-body--collapsed');
+      arrow.classList.add('mes-arrow--collapsed');
+    }
+  });
+
+  MESES_GIRO.forEach((mesId) => {
+    const body = document.getElementById(`body-${mesId}`);
+    const arrow = document.getElementById(`arrow-${mesId}`);
+    if (body && arrow) {
+      body.classList.add('mes-body--collapsed');
+      arrow.classList.add('mes-arrow--collapsed');
+    }
+  });
+
+  MESES_FORNECEDORES.forEach((mesId) => {
+    const body = document.getElementById(`body-${mesId}`);
+    const arrow = document.getElementById(`arrow-${mesId}`);
+    if (body && arrow) {
+      body.classList.add('mes-body--collapsed');
+      arrow.classList.add('mes-arrow--collapsed');
+    }
+  });
+
+  MESES_MEDICAO.forEach((mesId) => {
+    const body = document.getElementById(`body-${mesId}`);
+    const arrow = document.getElementById(`arrow-${mesId}`);
+    if (body && arrow) {
+      body.classList.add('mes-body--collapsed');
+      arrow.classList.add('mes-arrow--collapsed');
+    }
+  });
+
+  MESES_VENDAS.forEach((mesId) => {
+    const body = document.getElementById(`body-${mesId}`);
+    const arrow = document.getElementById(`arrow-${mesId}`);
+    if (body && arrow) {
+      body.classList.add('mes-body--collapsed');
+      arrow.classList.add('mes-arrow--collapsed');
+    }
+  });
+
+  MESES_INVESTIDORES.forEach((mesId) => {
+    const body = document.getElementById(`body-${mesId}`);
+    const arrow = document.getElementById(`arrow-${mesId}`);
+    if (body && arrow) {
+      body.classList.add('mes-body--collapsed');
+      arrow.classList.add('mes-arrow--collapsed');
+    }
+  });
 });
 
 function obterMetaInvestidorEls(mes) {
@@ -371,10 +511,7 @@ function renderizarMetaInvestidorBloqueada(mes) {
   if (!input || !btn) return;
   input.readOnly = true;
   input.oninput = null;
-  btn.innerHTML = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg> Editar';
-  btn.classList.remove('btn--primary');
-  btn.classList.add('btn--ghost');
-  btn.onclick = () => editarMetaInvestidor(mes, btn);
+  aplicarEstadoBloqueado(btn, '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg> Editar', () => editarMetaInvestidor(mes, btn));
   if (item) item.dataset.locked = 'true';
 }
 
@@ -398,7 +535,7 @@ async function salvarMetaInvestidor(mes, btn) {
     const resp = await fetch('/admin/meta-investidor/salvar', {
       method: 'POST',
       headers: csrfHeaders({ 'Content-Type': 'application/json' }),
-      body: JSON.stringify({ mes, valor_meta: valor }),
+      body: JSON.stringify({ semana: mes, valor_meta: valor }),
     });
     const raw = await resp.text();
     const json = raw ? JSON.parse(raw) : {};
@@ -419,4 +556,227 @@ function editarMetaInvestidor(mes, btn) {
 
 function editarMetaVenda(mes, btn) {
   renderizarMetaVendaEditavel(mes);
+}
+
+function obterMetaFinanceiroEls(semana) {
+  return {
+    item: document.querySelector(`.meta-item[data-meta-financeiro="${semana}"]`),
+    input: document.getElementById(`meta-financeiro-s${semana}`),
+    btn: document.getElementById(`btn-meta-financeiro-s${semana}`),
+  };
+}
+
+function renderizarMetaFinanceiroBloqueada(semana) {
+  const { item, input, btn } = obterMetaFinanceiroEls(semana);
+  if (!input || !btn) return;
+  input.readOnly = true;
+  input.oninput = null;
+  aplicarEstadoBloqueado(btn, '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg> Editar', () => editarMetaFinanceiro(semana, btn));
+  if (item) item.dataset.locked = 'true';
+}
+
+function renderizarMetaFinanceiroEditavel(semana) {
+  const { item, input, btn } = obterMetaFinanceiroEls(semana);
+  if (!input || !btn) return;
+  input.readOnly = false;
+  input.oninput = function () { formatarValorBR(this); };
+  btn.textContent = 'Salvar';
+  btn.classList.remove('btn--ghost');
+  btn.classList.add('btn--primary');
+  btn.onclick = () => salvarMetaFinanceiro(semana, btn);
+  if (item) item.dataset.locked = 'false';
+}
+
+async function salvarMetaFinanceiro(semana, btn) {
+  const input = document.getElementById(`meta-financeiro-s${semana}`);
+  const valor = Math.max(parsearValorBR(input ? input.value : '0') || 0, 0);
+
+  try {
+    const resp = await fetch('/admin/meta-financeiro/salvar', {
+      method: 'POST',
+      headers: csrfHeaders({ 'Content-Type': 'application/json' }),
+      body: JSON.stringify({ semana, valor_meta: valor }),
+    });
+    const raw = await resp.text();
+    const json = raw ? JSON.parse(raw) : {};
+    if (resp.ok) {
+      showToast(`Meta financeira da semana ${semana} salva!`, 'success');
+      renderizarMetaFinanceiroBloqueada(semana);
+    } else {
+      showToast(json.erro || 'Erro ao salvar meta financeira.', 'error');
+    }
+  } catch {
+    showToast('Erro ao salvar meta financeira.', 'error');
+  }
+}
+
+function editarMetaFinanceiro(semana, btn) {
+  renderizarMetaFinanceiroEditavel(semana);
+}
+
+function obterMetaGiroEls(semana) {
+  return {
+    item: document.querySelector(`.meta-item[data-meta-giro="${semana}"]`),
+    input: document.getElementById(`meta-giro-s${semana}`),
+    btn: document.getElementById(`btn-meta-giro-s${semana}`),
+  };
+}
+
+function renderizarMetaGiroBloqueada(semana) {
+  const { item, input, btn } = obterMetaGiroEls(semana);
+  if (!input || !btn) return;
+  input.readOnly = true;
+  input.oninput = null;
+  aplicarEstadoBloqueado(btn, '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg> Editar', () => editarMetaGiro(semana, btn));
+  if (item) item.dataset.locked = 'true';
+}
+
+function renderizarMetaGiroEditavel(semana) {
+  const { item, input, btn } = obterMetaGiroEls(semana);
+  if (!input || !btn) return;
+  input.readOnly = false;
+  input.oninput = function () { formatarValorBR(this); };
+  btn.textContent = 'Salvar';
+  btn.classList.remove('btn--ghost');
+  btn.classList.add('btn--primary');
+  btn.onclick = () => salvarMetaGiro(semana, btn);
+  if (item) item.dataset.locked = 'false';
+}
+
+async function salvarMetaGiro(semana, btn) {
+  const input = document.getElementById(`meta-giro-s${semana}`);
+  const valor = Math.max(parsearValorBR(input ? input.value : '0') || 0, 0);
+
+  try {
+    const resp = await fetch('/admin/meta-giro/salvar', {
+      method: 'POST',
+      headers: csrfHeaders({ 'Content-Type': 'application/json' }),
+      body: JSON.stringify({ semana, valor_meta: valor }),
+    });
+    const raw = await resp.text();
+    const json = raw ? JSON.parse(raw) : {};
+    if (resp.ok) {
+      showToast(`Meta de giro da semana ${semana} salva!`, 'success');
+      renderizarMetaGiroBloqueada(semana);
+    } else {
+      showToast(json.erro || 'Erro ao salvar meta de giro.', 'error');
+    }
+  } catch {
+    showToast('Erro ao salvar meta de giro.', 'error');
+  }
+}
+
+function editarMetaGiro(semana, btn) {
+  renderizarMetaGiroEditavel(semana);
+}
+
+function obterMetaFornecedorEls(semana) {
+  return {
+    item: document.querySelector(`.meta-item[data-meta-fornecedor="${semana}"]`),
+    input: document.getElementById(`meta-fornecedor-s${semana}`),
+    btn: document.getElementById(`btn-meta-fornecedor-s${semana}`),
+  };
+}
+
+function renderizarMetaFornecedorBloqueada(semana) {
+  const { item, input, btn } = obterMetaFornecedorEls(semana);
+  if (!input || !btn) return;
+  input.readOnly = true;
+  input.oninput = null;
+  aplicarEstadoBloqueado(btn, '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg> Editar', () => editarMetaFornecedor(semana, btn));
+  if (item) item.dataset.locked = 'true';
+}
+
+function renderizarMetaFornecedorEditavel(semana) {
+  const { item, input, btn } = obterMetaFornecedorEls(semana);
+  if (!input || !btn) return;
+  input.readOnly = false;
+  input.oninput = function () { formatarValorBR(this); };
+  btn.textContent = 'Salvar';
+  btn.classList.remove('btn--ghost');
+  btn.classList.add('btn--primary');
+  btn.onclick = () => salvarMetaFornecedor(semana, btn);
+  if (item) item.dataset.locked = 'false';
+}
+
+async function salvarMetaFornecedor(semana, btn) {
+  const input = document.getElementById(`meta-fornecedor-s${semana}`);
+  const valor = Math.max(parsearValorBR(input ? input.value : '0') || 0, 0);
+  try {
+    const resp = await fetch('/admin/meta-fornecedor/salvar', {
+      method: 'POST',
+      headers: csrfHeaders({ 'Content-Type': 'application/json' }),
+      body: JSON.stringify({ semana, valor_meta: valor }),
+    });
+    const raw = await resp.text();
+    const json = raw ? JSON.parse(raw) : {};
+    if (resp.ok) {
+      showToast(`Meta de fornecedores da semana ${semana} salva!`, 'success');
+      renderizarMetaFornecedorBloqueada(semana);
+    } else {
+      showToast(json.erro || 'Erro ao salvar meta de fornecedores.', 'error');
+    }
+  } catch {
+    showToast('Erro ao salvar meta de fornecedores.', 'error');
+  }
+}
+
+function editarMetaFornecedor(semana, btn) {
+  renderizarMetaFornecedorEditavel(semana);
+}
+
+function obterMetaMedicaoEls(semana) {
+  return {
+    item: document.querySelector(`.meta-item[data-meta-medicao="${semana}"]`),
+    input: document.getElementById(`meta-medicao-s${semana}`),
+    btn: document.getElementById(`btn-meta-medicao-s${semana}`),
+  };
+}
+
+function renderizarMetaMedicaoBloqueada(semana) {
+  const { item, input, btn } = obterMetaMedicaoEls(semana);
+  if (!input || !btn) return;
+  input.readOnly = true;
+  input.oninput = null;
+  aplicarEstadoBloqueado(btn, '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg> Editar', () => editarMetaMedicao(semana, btn));
+  if (item) item.dataset.locked = 'true';
+}
+
+function renderizarMetaMedicaoEditavel(semana) {
+  const { item, input, btn } = obterMetaMedicaoEls(semana);
+  if (!input || !btn) return;
+  input.readOnly = false;
+  input.oninput = function () { formatarValorBR(this); };
+  btn.textContent = 'Salvar';
+  btn.classList.remove('btn--ghost');
+  btn.classList.add('btn--primary');
+  btn.onclick = () => salvarMetaMedicao(semana, btn);
+  if (item) item.dataset.locked = 'false';
+}
+
+async function salvarMetaMedicao(semana, btn) {
+  const input = document.getElementById(`meta-medicao-s${semana}`);
+  const valor = Math.max(parsearValorBR(input ? input.value : '0') || 0, 0);
+
+  try {
+    const resp = await fetch('/admin/meta-medicao/salvar', {
+      method: 'POST',
+      headers: csrfHeaders({ 'Content-Type': 'application/json' }),
+      body: JSON.stringify({ semana, valor_meta: valor }),
+    });
+    const raw = await resp.text();
+    const json = raw ? JSON.parse(raw) : {};
+    if (resp.ok) {
+      showToast(`Meta de medicao da semana ${semana} salva!`, 'success');
+      renderizarMetaMedicaoBloqueada(semana);
+    } else {
+      showToast(json.erro || 'Erro ao salvar meta de medicao.', 'error');
+    }
+  } catch {
+    showToast('Erro ao salvar meta de medicao.', 'error');
+  }
+}
+
+function editarMetaMedicao(semana, btn) {
+  renderizarMetaMedicaoEditavel(semana);
 }

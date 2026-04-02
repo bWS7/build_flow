@@ -1,0 +1,340 @@
+{% extends "base.html" %}
+{% block title %}Fornecedores - Semana {{ semana_atual }}{% endblock %}
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/relacionamento.css') }}" />
+{% endblock %}
+
+{% set logo_svg %}<img src="{{ url_for('static', filename='images/logo2.webp') }}" alt="Sousa Ara&uacute;jo" />{% endset %}
+
+{% block body %}
+<div class="app-layout">
+  <header class="topheader">
+    <button class="hamburger" id="menu-btn" aria-label="Abrir menu">
+      <span></span><span></span><span></span>
+    </button>
+    <div class="topheader__center">Central de Fornecedores</div>
+    <a href="{{ url_for('fornecedores.index') }}" class="topheader__logo">{{ logo_svg }}</a>
+  </header>
+  <div class="drawer-overlay" id="drawer-overlay"></div>
+  <nav class="drawer" id="drawer">
+    <div class="drawer__header">
+      <img src="{{ url_for('static', filename='images/logo.webp') }}" class="drawer__logo" alt="Sousa Ara&uacute;jo" />
+      <button class="drawer__close" id="drawer-close">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+    {% set active_page = 'fornecedores' %}
+    {% include "partials/app_drawer_nav.html" %}
+    {% if false %}
+    <div class="drawer__nav">
+      {% if current_user.tipo == 'admin' %}
+      <a href="{{ url_for('admin.dashboard') }}" class="drawer__link">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+        Admin
+      </a>
+      <a href="{{ url_for('relacionamento.index') }}" class="drawer__link">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
+        Inadimplencia
+      </a>
+      <a href="{{ url_for('vendas.index') }}" class="drawer__link">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3h18v18H3z"/><path d="M8 14l3-3 2 2 4-5"/></svg>
+        Vendas Varejo
+      </a>
+      <a href="{{ url_for('investidores.index') }}" class="drawer__link">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3h18v18H3z"/><path d="M8 14l3-3 2 2 4-5"/></svg>
+        Investidores
+      </a>
+      {% endif %}
+      <a href="{{ url_for('financeiro.index') }}" class="drawer__link">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 1v22"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+        Financeiro
+      </a>
+      <a href="{{ url_for('giro.index') }}" class="drawer__link">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19h16"/><path d="M7 15l3-3 3 2 4-6"/><circle cx="7" cy="15" r="1"/><circle cx="10" cy="12" r="1"/><circle cx="13" cy="14" r="1"/><circle cx="17" cy="8" r="1"/></svg>
+        Giro
+      </a>
+      <a href="{{ url_for('fornecedores.index') }}" class="drawer__link drawer__link--active">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 21h18"/><path d="M5 21V8l7-5 7 5v13"/><path d="M9 21v-6h6v6"/></svg>
+        Fornecedores
+      </a>
+      <a href="{{ url_for('medicao.index') }}" class="drawer__link">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 20h18"/><path d="M6 16h12"/><path d="M8 12h8"/><path d="M10 4h4v8h-4z"/></svg>
+        Medicao
+      </a>
+      {% if current_user.tipo == 'admin' %}
+      <details class="drawer-subnav">
+        <summary class="drawer-subnav__toggle">
+          <span class="drawer-subnav__label">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 7h7l2 2h9v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7z"/></svg>
+            Pain&eacute;is
+          </span>
+          <svg class="drawer-subnav__arrow" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+        </summary>
+        <div class="drawer-subnav__items">
+          <a href="{{ url_for('admin.master_painel') }}" class="drawer__sublink">Painel Master</a>
+          <a href="{{ url_for('admin.relacionamento_painel') }}" class="drawer__sublink">Painel Inadimplencia</a>
+          <a href="{{ url_for('admin.vendas_painel') }}" class="drawer__sublink">Painel de Vendas Varejo</a>
+          <a href="{{ url_for('admin.investidores_painel') }}" class="drawer__sublink">Painel Investidores</a>
+          <a href="{{ url_for('admin.financeiro_painel') }}" class="drawer__sublink">Painel Financeiro</a>
+          <a href="{{ url_for('admin.giro_painel') }}" class="drawer__sublink">Painel Giro</a>
+          <a href="{{ url_for('admin.fornecedores_painel') }}" class="drawer__sublink">Painel Fornecedores</a>
+          <a href="{{ url_for('admin.medicao_painel') }}" class="drawer__sublink">Painel Medicao</a>
+        </div>
+      </details>
+      {% endif %}
+    </div>
+    {% endif %}
+    <div class="drawer__theme-slot">
+      {% include "partials/theme_control.html" %}
+    </div>
+    <div class="drawer__footer">
+      <div class="drawer__avatar">{{ current_user.nome[0] }}</div>
+      <div class="drawer__user-info">
+        <span class="drawer__user-name">{{ current_user.nome | title }}</span>
+        <span class="drawer__user-role">{{ current_user.tipo | user_type_label }}</span>
+      </div>
+      <form method="POST" action="{{ url_for('auth.logout') }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+        <button type="submit" class="drawer__logout" title="Sair">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+        </button>
+      </form>
+    </div>
+  </nav>
+
+  <main class="main-content">
+    <header class="topbar">
+      <div class="topbar__left">
+        <span class="topbar__badge" id="live-badge"><span class="topbar__pulse"></span> AO VIVO</span>
+      </div>
+      <div class="topbar__weeks">
+        {% for mes_nome, mes_ini, mes_id in [('Abril', 1, 'abril'), ('Maio', 5, 'maio'), ('Junho', 9, 'junho')] %}
+        <div class="week-month">
+          <button class="week-month__toggle" type="button" onclick="toggleMesFornecedores('{{ mes_id }}')">
+            <span>{{ mes_nome }}</span>
+            <svg class="week-month__arrow week-month__arrow--collapsed" id="arrow-{{ mes_id }}" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+          </button>
+          <div class="week-month__body week-month__body--collapsed" id="body-{{ mes_id }}">
+            {% for s in range(mes_ini, mes_ini + 4) %}
+            <a href="?semana={{ s }}" class="week-pill {% if s == semana_atual %}week-pill--active{% endif %}">S{{ loop.index }}</a>
+            {% endfor %}
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+    </header>
+
+    <section class="indicators">
+      <div class="kpi-card">
+        <div class="kpi-card__body">
+          <span class="kpi-card__label">META FORNECEDORES</span>
+          <span class="kpi-card__value" id="valor-meta">R$ {{ indicadores.valor_meta | brl_int }}</span>
+        </div>
+        <div class="kpi-card__icon kpi-card__icon--plan"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg></div>
+      </div>
+      <div class="kpi-card kpi-card--highlight">
+        <div class="kpi-card__body">
+          <span class="kpi-card__label">VALOR NEGOCIADO</span>
+          <span class="kpi-card__value" id="valor-negociado">R$ {{ indicadores.valor_negociado | brl_int }}</span>
+        </div>
+        <div class="kpi-card__icon kpi-card__icon--money"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19h16"/><path d="M7 15l3-3 3 2 4-6"/></svg></div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-card__body">
+          <span class="kpi-card__label">ATINGIMENTO</span>
+          <span class="kpi-card__value" id="pct-atingimento">{{ indicadores.pct_valor }}%</span>
+        </div>
+        <div class="kpi-card__icon kpi-card__icon--target"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20V10"/><path d="M18 20V4"/><path d="M6 20v-6"/></svg></div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-card__body">
+          <span class="kpi-card__label">FORNECEDORES</span>
+          <span class="kpi-card__value" id="total-fornecedores">{{ indicadores.total_fornecedores }}</span>
+        </div>
+        <div class="kpi-card__icon kpi-card__icon--done"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg></div>
+      </div>
+    </section>
+
+    <section class="progress-section">
+      <div class="progress-block">
+        <div class="progress-block__header">
+          <span class="progress-block__label">Progresso da Meta de Fornecedores</span>
+          <span class="progress-block__pct" id="pct-valor">{{ indicadores.pct_valor }}%</span>
+        </div>
+        <div class="progress-track"><div class="progress-fill progress-fill--valor" id="bar-valor" style="width:{{ indicadores.pct_valor }}%"></div></div>
+        <div class="progress-block__detail"><span id="txt-valor">R$ {{ indicadores.valor_negociado | brl }} de R$ {{ indicadores.valor_meta | brl }}</span></div>
+      </div>
+      <div class="progress-block">
+        <div class="progress-block__header">
+          <span class="progress-block__label">Empreendimentos com registro</span>
+          <span class="progress-block__pct" id="pct-empreendimentos">{{ indicadores.total_empreendimentos }}</span>
+        </div>
+        <div class="progress-track"><div class="progress-fill progress-fill--acoes" id="bar-empreendimentos" style="width:{{ 100 if indicadores.total_empreendimentos else 0 }}%"></div></div>
+        <div class="progress-block__detail"><span id="txt-empreendimentos">{{ indicadores.total_empreendimentos }} empreendimentos com registro na semana</span></div>
+      </div>
+    </section>
+
+    <section class="form-section">
+      <div class="section-header">
+        <h3 class="section-header__title">Novo Registro de Fornecedor - Semana {{ semana_atual }}</h3>
+        <button class="btn btn--sm btn--ghost" id="toggle-form">▼ Expandir</button>
+      </div>
+      <div id="form-wrapper" style="display:none">
+        <form id="form-cadastro" class="cadastro-form" novalidate>
+          <input type="hidden" name="semana" value="{{ semana_atual }}" />
+          <div class="form-grid">
+            <div class="field">
+              <label class="field__label">Empreendimento *</label>
+              <select class="field__input" name="empreendimento" required>
+                <option value="">Selecione...</option>
+                {% for empreendimento in empreendimentos %}
+                <option value="{{ empreendimento.nome }}">{{ empreendimento.nome }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="field">
+              <label class="field__label">Nome do fornecedor *</label>
+              <input class="field__input" type="text" name="nome_fornecedor" required />
+            </div>
+            <div class="field">
+              <label class="field__label">Servico prestado *</label>
+              <input class="field__input" type="text" name="servico_prestado" required />
+            </div>
+            <div class="field">
+              <label class="field__label">E-mail *</label>
+              <input class="field__input" type="email" name="email" required />
+            </div>
+            <div class="field">
+              <label class="field__label">Telefone *</label>
+              <input class="field__input" type="text" name="telefone" required />
+            </div>
+            <div class="field">
+              <label class="field__label">Situacao / Negociado *</label>
+              <select class="field__input" name="situacao" required>
+                <option value="">Selecione...</option>
+                {% for item in situacoes %}
+                <option value="{{ item }}">{{ item }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="field">
+              <label class="field__label">Valor negociado (R$) *</label>
+              <input class="field__input" type="number" name="valor_negociado" min="0" step="0.01" required />
+            </div>
+            <div class="field">
+              <label class="field__label">Responsavel</label>
+              <input class="field__input" type="text" value="{{ current_user.nome | upper }}" readonly />
+            </div>
+            <div class="field field--full">
+              <label class="field__label">Observacoes</label>
+              <textarea class="field__input field__input--textarea" name="observacao" rows="3"></textarea>
+            </div>
+          </div>
+          <div class="form-actions">
+            <button type="submit" class="btn btn--primary" id="btn-salvar">Salvar Registro</button>
+          </div>
+        </form>
+      </div>
+    </section>
+
+    <section class="list-section">
+      <div class="section-header">
+        <h3 class="section-header__title">Registros da Semana</h3>
+        <span class="section-header__meta" id="total-registros">{{ registros|length }} registros</span>
+      </div>
+      <div class="table-wrap">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>Empreendimento</th>
+              <th>Fornecedor</th>
+              <th>Servico</th>
+              <th>Situacao</th>
+              <th>Valor</th>
+              <th>Responsavel</th>
+              <th>Data</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody id="tbody-fornecedores">
+            {% if not registros %}
+            <tr id="empty-row"><td colspan="9" class="td-empty">Nenhum registro nesta semana. Cadastre o primeiro acima.</td></tr>
+            {% endif %}
+          </tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+</div>
+
+<div class="modal" id="modal-ficha" hidden>
+  <div class="modal__dialog modal__dialog--lg">
+    <div class="modal__header">
+      <h3>Registro <span id="fi-id"></span></h3>
+      <button class="modal__close" type="button" onclick="closeFicha()">x</button>
+    </div>
+    <form id="form-ficha" class="cadastro-form" novalidate>
+      <div class="form-grid">
+        <div class="field"><label class="field__label">Empreendimento</label><select class="field__input" id="fi-empreendimento"></select></div>
+        <div class="field"><label class="field__label">Fornecedor</label><input class="field__input" id="fi-fornecedor" type="text" /></div>
+        <div class="field"><label class="field__label">Servico prestado</label><input class="field__input" id="fi-servico" type="text" /></div>
+        <div class="field"><label class="field__label">E-mail</label><input class="field__input" id="fi-email" type="email" /></div>
+        <div class="field"><label class="field__label">Telefone</label><input class="field__input" id="fi-telefone" type="text" /></div>
+        <div class="field"><label class="field__label">Situacao</label><select class="field__input" id="fi-situacao"></select></div>
+        <div class="field"><label class="field__label">Valor negociado</label><input class="field__input" id="fi-valor" type="number" min="0" step="0.01" /></div>
+        <div class="field"><label class="field__label">Responsavel</label><input class="field__input" id="fi-resp" type="text" readonly /></div>
+        <div class="field"><label class="field__label">Semana</label><input class="field__input" id="fi-semana" type="text" readonly /></div>
+        <div class="field"><label class="field__label">Criado em</label><input class="field__input" id="fi-data" type="text" readonly /></div>
+        <div class="field field--full"><label class="field__label">Observacoes</label><textarea class="field__input field__input--textarea" id="fi-obs" rows="3"></textarea></div>
+      </div>
+      <div class="form-actions">
+        <span class="form-feedback" id="fi-permissao"></span>
+        <button type="button" class="btn btn--primary" id="btn-salvar-ficha" onclick="salvarFicha()">Salvar Alteracoes</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div class="modal" id="modal-delete" hidden>
+  <div class="modal__dialog">
+    <div class="modal__header">
+      <h3>Excluir registro</h3>
+      <button class="modal__close" type="button" onclick="closeDeleteModal()">x</button>
+    </div>
+    <div class="modal__body">
+      <p>Deseja realmente excluir este registro?</p>
+    </div>
+    <div class="form-actions">
+      <button type="button" class="btn btn--ghost" onclick="closeDeleteModal()">Cancelar</button>
+      <button type="button" class="btn btn--danger" id="confirm-delete-btn">Excluir</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+  window.APP_CSRF_TOKEN = '{{ csrf_token() }}';
+  const SEMANA_ATUAL = {{ semana_atual|int }};
+  const INITIAL_REGISTROS = {{ registros_json|tojson }};
+  const CURRENT_USER_NOME = {{ (current_user.nome or '')|upper|tojson }};
+  const IS_ADMIN = {{ 'true' if current_user.tipo == 'admin' else 'false' }};
+  const EMPREENDIMENTOS = {{ empreendimentos|map(attribute='nome')|list|tojson }};
+  const SITUACOES = {{ situacoes|list|tojson }};
+</script>
+<script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+<script src="{{ url_for('static', filename='js/fornecedores.js') }}"></script>
+<script>
+(function () {
+  const btn = document.getElementById('menu-btn');
+  const drawer = document.getElementById('drawer');
+  const overlay = document.getElementById('drawer-overlay');
+  function open() { drawer.classList.add('open'); overlay.classList.add('show'); }
+  function shut() { drawer.classList.remove('open'); overlay.classList.remove('show'); }
+  btn.addEventListener('click', open);
+  overlay.addEventListener('click', shut);
+  document.getElementById('drawer-close').addEventListener('click', shut);
+})();
+</script>
+{% endblock %}

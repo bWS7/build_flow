@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% block title %}Admin - Painel Inadimplencia{% endblock %}
+{% block title %}Admin - Painel Giro{% endblock %}
 {% block extra_css %}
 <link rel="stylesheet" href="{{ url_for('static', filename='css/admin.css') }}" />
 {% endblock %}
@@ -12,8 +12,8 @@
     <button class="hamburger" id="menu-btn" aria-label="Abrir menu">
       <span></span><span></span><span></span>
     </button>
-    <div class="topheader__center">Painel de Inadimplencia</div>
-    <a href="{{ url_for('admin.relacionamento_painel') }}" class="topheader__logo">{{ logo_svg }}</a>
+    <div class="topheader__center">Painel Giro</div>
+    <a href="{{ url_for('admin.giro_painel') }}" class="topheader__logo">{{ logo_svg }}</a>
   </header>
 
   <div class="drawer-overlay" id="drawer-overlay"></div>
@@ -25,7 +25,7 @@
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
       </button>
     </div>
-    {% set active_panel = 'relacionamento' %}
+    {% set active_panel = 'giro' %}
     {% include "partials/app_drawer_nav.html" %}
     {% if false %}
     <div class="drawer__nav">
@@ -65,7 +65,7 @@
         <summary class="drawer-subnav__toggle">
           <span class="drawer-subnav__label">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 7h7l2 2h9v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7z"/></svg>
-            Painéis
+            Pain&eacute;is
           </span>
           <svg class="drawer-subnav__arrow" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
         </summary>
@@ -74,7 +74,7 @@
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 12h16"/><path d="M12 4v16"/></svg>
             Painel Master
           </a>
-          <a href="{{ url_for('admin.relacionamento_painel') }}" class="drawer__sublink drawer__sublink--active">
+          <a href="{{ url_for('admin.relacionamento_painel') }}" class="drawer__sublink">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"/><path d="M7 14l3-3 3 2 4-5"/></svg>
             Painel Inadimplencia
           </a>
@@ -90,7 +90,7 @@
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"/><path d="M7 14l3-3 3 2 4-5"/></svg>
             Painel Financeiro
           </a>
-          <a href="{{ url_for('admin.giro_painel') }}" class="drawer__sublink">
+          <a href="{{ url_for('admin.giro_painel') }}" class="drawer__sublink drawer__sublink--active">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"/><path d="M7 14l3-3 3 2 4-5"/></svg>
             Painel Giro
           </a>
@@ -128,7 +128,7 @@
     <section class="analytics-page">
       <div class="analytics-toolbar">
         {% for mes in meses %}
-        <a href="{{ url_for('admin.relacionamento_painel', mes=mes.slug, empreendimento=filtros.empreendimento, responsavel=filtros.responsavel, tipo_contato=filtros.tipo_contato, situacao=filtros.situacao) }}"
+        <a href="{{ url_for('admin.giro_painel', mes=mes.slug, origem=filtros.origem, responsavel=filtros.responsavel, tipo_negociacao=filtros.tipo_negociacao, referencia=filtros.referencia) }}"
            class="analytics-month {% if mes.slug == mes_atual.slug %}analytics-month--active{% endif %}">
           {{ mes.nome }}
         </a>
@@ -136,14 +136,14 @@
       </div>
 
       {% if mes_atual.slug == 'resumo_trimestral' %}
-      <form method="get" action="{{ url_for('admin.relacionamento_painel') }}" class="analytics-filter-bar">
+      <form method="get" action="{{ url_for('admin.giro_painel') }}" class="analytics-filter-bar">
         <input type="hidden" name="mes" value="resumo_trimestral" />
         <label class="analytics-filter">
-          <span>Empreendimento</span>
-          <select name="empreendimento" class="field__input">
-            <option value="">Todos</option>
-            {% for item in opcoes_filtro.empreendimentos %}
-            <option value="{{ item }}" {% if filtros.empreendimento == item %}selected{% endif %}>{{ item }}</option>
+          <span>Origem</span>
+          <select name="origem" class="field__input">
+            <option value="">Todas</option>
+            {% for item in opcoes_filtro.origens %}
+            <option value="{{ item }}" {% if filtros.origem == item %}selected{% endif %}>{{ item }}</option>
             {% endfor %}
           </select>
         </label>
@@ -157,26 +157,26 @@
           </select>
         </label>
         <label class="analytics-filter">
-          <span>Tipo de contato</span>
-          <select name="tipo_contato" class="field__input">
+          <span>Tipo de negociacao</span>
+          <select name="tipo_negociacao" class="field__input">
             <option value="">Todos</option>
-            {% for item in opcoes_filtro.tipos_contato %}
-            <option value="{{ item }}" {% if filtros.tipo_contato == item %}selected{% endif %}>{{ item }}</option>
+            {% for item in opcoes_filtro.tipos_negociacao %}
+            <option value="{{ item }}" {% if filtros.tipo_negociacao == item %}selected{% endif %}>{{ item }}</option>
             {% endfor %}
           </select>
         </label>
         <label class="analytics-filter">
-          <span>Situacao</span>
-          <select name="situacao" class="field__input">
+          <span>Referencia</span>
+          <select name="referencia" class="field__input">
             <option value="">Todas</option>
-            {% for item in opcoes_filtro.situacoes %}
-            <option value="{{ item }}" {% if filtros.situacao == item %}selected{% endif %}>{{ item }}</option>
+            {% for item in opcoes_filtro.referencias %}
+            <option value="{{ item }}" {% if filtros.referencia == item %}selected{% endif %}>{{ item }}</option>
             {% endfor %}
           </select>
         </label>
         <div class="analytics-filter__actions">
           <button type="submit" class="btn btn--primary">Aplicar filtros</button>
-          <a href="{{ url_for('admin.relacionamento_painel', mes='resumo_trimestral') }}" class="btn btn--ghost">Limpar</a>
+          <a href="{{ url_for('admin.giro_painel', mes='resumo_trimestral') }}" class="btn btn--ghost">Limpar</a>
         </div>
       </form>
 
@@ -191,20 +191,20 @@
 
       <section class="analytics-summary-grid">
         <article class="analytics-card">
-          <span class="analytics-card__label">Valor Planejado {{ mes_atual.nome }}</span>
+          <span class="analytics-card__label">Valor Meta {{ mes_atual.nome }}</span>
           <strong class="analytics-card__value">R$ {{ resumo_mensal.valor_planejado | brl }}</strong>
         </article>
         <article class="analytics-card">
-          <span class="analytics-card__label">Valor Realizado {{ mes_atual.nome }}</span>
+          <span class="analytics-card__label">Valor Captado {{ mes_atual.nome }}</span>
           <strong class="analytics-card__value">R$ {{ resumo_mensal.valor_realizado | brl }}</strong>
         </article>
         <article class="analytics-card">
-          <span class="analytics-card__label">Acoes Planejadas {{ mes_atual.nome }}</span>
-          <strong class="analytics-card__value">{{ resumo_mensal.acoes_planejadas }}</strong>
+          <span class="analytics-card__label">Captacoes {{ mes_atual.nome }}</span>
+          <strong class="analytics-card__value">{{ resumo_mensal.captacoes_realizadas }}</strong>
         </article>
         <article class="analytics-card">
-          <span class="analytics-card__label">Acoes Realizadas {{ mes_atual.nome }}</span>
-          <strong class="analytics-card__value">{{ resumo_mensal.acoes_realizadas }}</strong>
+          <span class="analytics-card__label">Origens Acionadas {{ mes_atual.nome }}</span>
+          <strong class="analytics-card__value">{{ resumo_mensal.origens_acionadas }}</strong>
         </article>
       </section>
 
@@ -213,7 +213,7 @@
         <article class="analytics-highlight analytics-highlight--strong">
           <span class="analytics-highlight__label">Execucao Atual</span>
           <strong class="analytics-highlight__value">{{ resumo_mensal.pct_valor }}%</strong>
-          <p>{{ resumo_mensal.pct_acoes }}% das acoes concluidas no periodo.</p>
+          <p>{{ resumo_mensal.pct_origens }}% de cobertura da base de origens no periodo.</p>
         </article>
         <article class="analytics-highlight">
           <span class="analytics-highlight__label">Melhor Semana</span>
@@ -222,7 +222,7 @@
           </strong>
           <p>
             {% if destaques.melhor_semana %}
-            Valor {{ destaques.melhor_semana.pct_valor }}% | Acoes {{ destaques.melhor_semana.pct_acoes }}%
+            Valor {{ destaques.melhor_semana.pct_valor }}% | Origens {{ destaques.melhor_semana.pct_origens }}%
             {% else %}
             Ainda nao ha registros lancados.
             {% endif %}
@@ -233,7 +233,7 @@
           <strong class="analytics-highlight__value">
             {% if destaques.pior_semana %}{{ destaques.pior_semana.mes_nome }} S{{ destaques.pior_semana.semana_label }}{% else %}Sem dados{% endif %}
           </strong>
-          <p>Gap de R$ {{ destaques.gap_valor | brl }} e {{ destaques.gap_acoes }} acoes para o planejado.</p>
+          <p>Gap de R$ {{ destaques.gap_valor | brl }} e {{ destaques.gap_origens }} origens frente ao potencial da base.</p>
         </article>
       </section>
       {% endif %}
@@ -253,19 +253,19 @@
         <div class="analytics-progress"><span style="width: {{ resumo_mensal.pct_valor if resumo_mensal.pct_valor <= 100 else 100 }}%"></span></div>
         <div class="analytics-metric">
           <div>
-            <strong>Execucao de Acoes</strong>
-            <p>{{ resumo_mensal.acoes_realizadas }} de {{ resumo_mensal.acoes_planejadas }} acoes planejadas</p>
+            <strong>Cobertura de Origens</strong>
+            <p>{{ resumo_mensal.origens_acionadas }} origens acionadas em {{ total_origens_base }} origens monitoradas</p>
           </div>
-          <span>{{ resumo_mensal.pct_acoes }}%</span>
+          <span>{{ resumo_mensal.pct_origens }}%</span>
         </div>
-        <div class="analytics-progress analytics-progress--dark"><span style="width: {{ resumo_mensal.pct_acoes if resumo_mensal.pct_acoes <= 100 else 100 }}%"></span></div>
+        <div class="analytics-progress analytics-progress--dark"><span style="width: {{ resumo_mensal.pct_origens if resumo_mensal.pct_origens <= 100 else 100 }}%"></span></div>
       </section>
 
       {% if mes_atual.slug == 'resumo_trimestral' %}
       <section class="analytics-panel">
         <div class="analytics-panel__header">
           <h2>Evolucao das Metas</h2>
-          <span>{% if mes_atual.slug == 'resumo_trimestral' %}Abril a Junho{% else %}{{ mes_atual.nome }}{% endif %}</span>
+          <span>Abril a Junho</span>
         </div>
         <div class="analytics-chart-shell">
           <div class="analytics-chart-side">
@@ -277,8 +277,8 @@
           </div>
           <div class="analytics-chart-stage">
             <div class="analytics-chart-legend analytics-chart-legend--top">
-              <span><i class="analytics-chart-legend__dot analytics-chart-legend__dot--valor"></i> % Valor Realizado</span>
-              <span><i class="analytics-chart-legend__dot analytics-chart-legend__dot--acoes"></i> % Acoes Realizadas</span>
+              <span><i class="analytics-chart-legend__dot analytics-chart-legend__dot--valor"></i> % Valor Captado</span>
+              <span><i class="analytics-chart-legend__dot analytics-chart-legend__dot--acoes"></i> % Cobertura de Origens</span>
             </div>
             <div class="analytics-chart">
               <div class="analytics-chart__gridline analytics-chart__gridline--100"></div>
@@ -341,14 +341,15 @@
           </div>
           <div class="analytics-week-grid">
             <div>
-              <strong>Planejado</strong>
+              <strong>Meta</strong>
               <p>Valor: R$ {{ semana.valor_planejado | brl }}</p>
-              <p>Acoes: {{ semana.acoes_planejadas }}</p>
+              <p>Origens base: {{ total_origens_base }}</p>
             </div>
             <div>
               <strong>Realizado</strong>
               <p>Valor: R$ {{ semana.valor_realizado | brl }}</p>
-              <p>Acoes: {{ semana.acoes_realizadas }}</p>
+              <p>Captacoes: {{ semana.captacoes_realizadas }}</p>
+              <p>Origens: {{ semana.origens_acionadas }}</p>
             </div>
           </div>
           <div class="analytics-metric">
@@ -357,10 +358,10 @@
           </div>
           <div class="analytics-progress"><span style="width: {{ semana.pct_valor if semana.pct_valor <= 100 else 100 }}%"></span></div>
           <div class="analytics-metric">
-            <div><strong>Progresso de Acoes</strong></div>
-            <span>{{ semana.pct_acoes }}%</span>
+            <div><strong>Cobertura de Origens</strong></div>
+            <span>{{ semana.pct_origens }}%</span>
           </div>
-          <div class="analytics-progress analytics-progress--dark"><span style="width: {{ semana.pct_acoes if semana.pct_acoes <= 100 else 100 }}%"></span></div>
+          <div class="analytics-progress analytics-progress--dark"><span style="width: {{ semana.pct_origens if semana.pct_origens <= 100 else 100 }}%"></span></div>
         </article>
         {% endfor %}
       </section>
@@ -378,14 +379,14 @@
               <tr>
                 <th>Mes</th>
                 <th>Semana</th>
-                <th>Valor Planejado</th>
-                <th>Valor Realizado</th>
+                <th>Valor Meta</th>
+                <th>Valor Captado</th>
                 <th>% Valor</th>
-                <th>Acoes Planejadas</th>
-                <th>Acoes Realizadas</th>
-                <th>% Acoes</th>
+                <th>Captacoes</th>
+                <th>Origens</th>
+                <th>% Origens</th>
                 <th>Acum. Valor</th>
-                <th>Acum. Acoes</th>
+                <th>Acum. Origens</th>
               </tr>
             </thead>
             <tbody>
@@ -396,11 +397,11 @@
                 <td>R$ {{ linha.valor_planejado | brl }}</td>
                 <td>R$ {{ linha.valor_realizado | brl }}</td>
                 <td>{{ linha.pct_valor }}%</td>
-                <td>{{ linha.acoes_planejadas }}</td>
-                <td>{{ linha.acoes_realizadas }}</td>
-                <td>{{ linha.pct_acoes }}%</td>
+                <td>{{ linha.captacoes_realizadas }}</td>
+                <td>{{ linha.origens_acionadas }}</td>
+                <td>{{ linha.pct_origens }}%</td>
                 <td>{{ linha.pct_valor_acumulado }}%</td>
-                <td>{{ linha.pct_acoes_acumulado }}%</td>
+                <td>{{ linha.pct_origens_acumulado }}%</td>
               </tr>
               {% endfor %}
             </tbody>
@@ -429,14 +430,14 @@
   class="analytics-ai{% if not analytics_ai_enabled %} analytics-ai--disabled{% endif %}"
   data-analytics-ai
   data-enabled="{{ 'true' if analytics_ai_enabled else 'false' }}"
-  data-chat-url="{{ url_for('admin.relacionamento_ai_chat') }}"
+  data-chat-url="{{ url_for('admin.giro_ai_chat') }}"
   data-mes="{{ mes_atual.slug }}"
-  data-empreendimento="{{ filtros.empreendimento }}"
+  data-origem="{{ filtros.origem }}"
   data-responsavel="{{ filtros.responsavel }}"
-  data-tipo-contato="{{ filtros.tipo_contato }}"
-  data-situacao="{{ filtros.situacao }}"
+  data-tipo-negociacao="{{ filtros.tipo_negociacao }}"
+  data-referencia="{{ filtros.referencia }}"
 >
-  <button type="button" class="analytics-ai__toggle" data-ai-toggle aria-expanded="false" aria-label="Abrir Kamille, assistente analítica">
+  <button type="button" class="analytics-ai__toggle" data-ai-toggle aria-expanded="false" aria-label="Abrir Kamille, assistente analitica">
     <img src="{{ url_for('static', filename='images/kamille.png') }}" alt="Kamille" class="analytics-ai__avatar" />
   </button>
   <section class="analytics-ai__panel" data-ai-panel hidden>
@@ -444,25 +445,21 @@
       <div class="analytics-ai__identity">
         <img src="{{ url_for('static', filename='images/kamille.png') }}" alt="Kamille" class="analytics-ai__header-avatar" />
         <div class="analytics-ai__identity-copy">
-          <span class="analytics-ai__eyebrow">Assistente Analítica</span>
+          <span class="analytics-ai__eyebrow">Assistente Analitica</span>
           <strong>Kamille</strong>
-          <p>Sua parceira para interpretar o trimestre com leitura analítica, comercial e financeira.</p>
+          <p>Sua parceira para interpretar o trimestre de giro com leitura analitica, financeira e de caixa.</p>
         </div>
       </div>
       <button type="button" class="analytics-ai__close" data-ai-close aria-label="Fechar Kamille">x</button>
     </header>
     <div class="analytics-ai__messages" data-ai-messages>
       <div class="analytics-ai__message analytics-ai__message--assistant analytics-ai__message--intro">
-        Sou a Kamille. Posso analisar comparações entre semanas, gargalos, desempenho por responsável, situações e oportunidades do trimestre.
+        Sou a Kamille. Posso analisar desempenho por origem, referencias, responsaveis e oportunidades de captacao para o caixa.
       </div>
     </div>
     <div class="analytics-ai__status" data-ai-status></div>
     <form class="analytics-ai__form" data-ai-form>
-      <textarea
-        class="analytics-ai__input"
-        data-ai-input
-        rows="1"
-      ></textarea>
+      <textarea class="analytics-ai__input" data-ai-input rows="1"></textarea>
       <button type="submit" class="analytics-ai__send" aria-label="Enviar pergunta para Kamille">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
           <line x1="5" y1="12" x2="19" y2="12"></line>
