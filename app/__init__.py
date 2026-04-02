@@ -74,6 +74,13 @@ def _resolve_socketio_cors():
     return [origin.strip() for origin in allowed_origins.split(',') if origin.strip()]
 
 
+def _resolve_socketio_async_mode():
+    async_mode = (os.environ.get('SOCKETIO_ASYNC_MODE') or '').strip().lower()
+    if async_mode in {'eventlet', 'threading'}:
+        return async_mode
+    return 'eventlet' if os.environ.get('FLASK_ENV') == 'production' else 'threading'
+
+
 def create_app():
     app = Flask(__name__)
 
@@ -106,7 +113,11 @@ def create_app():
     login_manager.login_message = 'Por favor, faça login para acessar esta página.'
     login_manager.login_message_category = 'warning'
     migrate.init_app(app, db)
-    socketio.init_app(app, cors_allowed_origins=_resolve_socketio_cors(), async_mode='threading')
+    socketio.init_app(
+        app,
+        cors_allowed_origins=_resolve_socketio_cors(),
+        async_mode=_resolve_socketio_async_mode(),
+    )
 
     # ── Blueprints ─────────────────────────────────────────────────────────────
     from app.routes.auth import auth_bp

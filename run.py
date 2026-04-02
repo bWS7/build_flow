@@ -1,3 +1,10 @@
+import os
+
+if os.environ.get('SOCKETIO_ASYNC_MODE', 'eventlet').strip().lower() == 'eventlet':
+    import eventlet
+
+    eventlet.monkey_patch()
+
 from app import create_app, socketio
 
 app = create_app()
