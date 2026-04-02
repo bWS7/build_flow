@@ -141,3 +141,39 @@ As views estao em `app/templates/`, com base compartilhada e templates separados
 - Separacao clara entre modelos, rotas, servicos, templates e ativos.
 - Capacidade de atualizacao em tempo real entre clientes conectados.
 - Base preparada para operacao em ambiente produtivo com persistencia relacional e controle de acesso.
+
+## Deploy no Render
+
+O repositorio agora inclui um [`render.yaml`](./render.yaml) pronto para uso com Render Blueprints.
+
+### O que o Blueprint cria
+
+- 1 Web Service Python
+- 1 banco PostgreSQL gerenciado no Render
+- deploy automatico a cada push na branch conectada
+
+### Variaveis de ambiente esperadas
+
+- `DATABASE_URL`: preenchida automaticamente pelo banco do Render
+- `SECRET_KEY`: gerada automaticamente pelo Render
+- `ALLOWED_ORIGINS`: informe a URL publica da aplicacao, por exemplo `https://seu-app.onrender.com`
+- `SEED_ADMIN_EMAIL`: e-mail do usuario admin inicial
+- `SEED_ADMIN_PASSWORD`: senha do usuario admin inicial
+- `SEED_ADMIN_NAME`: nome do admin inicial, opcional
+- `GEMINI_API_KEY`: opcional, habilita a assistente analitica
+- `GEMINI_MODEL`: opcional
+- `GEMINI_ANALYTICS_STYLE`: opcional
+
+### Como subir
+
+1. Envie este repositorio para o GitHub.
+2. No Render, escolha `New +` > `Blueprint`.
+3. Conecte o repositorio e confirme o arquivo `render.yaml`.
+4. Preencha as variaveis marcadas como secretas (`ALLOWED_ORIGINS`, `SEED_ADMIN_EMAIL`, `SEED_ADMIN_PASSWORD` e, se quiser, `GEMINI_API_KEY`).
+5. Finalize a criacao do Blueprint e aguarde o primeiro deploy.
+
+### Observacoes
+
+- O comando de inicializacao usado em producao e `gunicorn run:app --worker-class eventlet -w 1 --bind 0.0.0.0:$PORT`.
+- A aplicacao exige PostgreSQL e adiciona `sslmode=require` automaticamente quando necessario.
+- No primeiro boot, a aplicacao executa `db.create_all()`, garante colunas esperadas e faz o seed inicial de admin/empreendimentos.
