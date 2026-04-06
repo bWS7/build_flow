@@ -37,25 +37,25 @@
   {% if current_user.can_access_page('financeiro') %}
   <a href="{{ url_for('financeiro.index') }}" class="drawer__link{% if active_page == 'financeiro' %} drawer__link--active{% endif %}">
     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 1v22"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
-    Financeiro
+    Renegociação Bancária
   </a>
   {% endif %}
   {% if current_user.can_access_page('giro') %}
   <a href="{{ url_for('giro.index') }}" class="drawer__link{% if active_page == 'giro' %} drawer__link--active{% endif %}">
     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19h16"/><path d="M7 15l3-3 3 2 4-6"/><circle cx="7" cy="15" r="1"/><circle cx="10" cy="12" r="1"/><circle cx="13" cy="14" r="1"/><circle cx="17" cy="8" r="1"/></svg>
-    Giro
+    Capital de Giro
   </a>
   {% endif %}
   {% if current_user.can_access_page('fornecedores') %}
   <a href="{{ url_for('fornecedores.index') }}" class="drawer__link{% if active_page == 'fornecedores' %} drawer__link--active{% endif %}">
     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 21h18"/><path d="M5 21V8l7-5 7 5v13"/><path d="M9 21v-6h6v6"/></svg>
-    Fornecedores
+    Renegociação Fornecedores
   </a>
   {% endif %}
   {% if current_user.can_access_page('medicao') %}
   <a href="{{ url_for('medicao.index') }}" class="drawer__link{% if active_page == 'medicao' %} drawer__link--active{% endif %}">
     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 20h18"/><path d="M6 16h12"/><path d="M8 12h8"/><path d="M10 4h4v8h-4z"/></svg>
-    Medicao
+    Medição de obra
   </a>
   {% endif %}
   {% if tem_paineis %}
