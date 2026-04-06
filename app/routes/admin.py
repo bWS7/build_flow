@@ -1727,7 +1727,7 @@ def relacionamento_painel():
 @requer_painel('vendas')
 def vendas_painel():
     semana_local = int(request.args.get('semana', 1) or 1)
-    dados = montar_contexto_template_vendas(request.args.get('mes', 'abril'), incluir_resumo=True, semana_local=semana_local)
+    dados = montar_contexto_template_vendas(request.args.get('mes', RESUMO_TRIMESTRAL[0]), incluir_resumo=True, semana_local=semana_local)
     dados['painel_admin_vendas'] = True
     return render_template('vendas/index.html', **dados)
 
