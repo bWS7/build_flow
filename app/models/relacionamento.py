@@ -36,6 +36,7 @@ class Relacionamento(db.Model):
     tipo_contato = db.Column(db.String(60), nullable=False)
     situacao = db.Column(db.String(30), nullable=False, default='NÃO')
     observacao = db.Column(db.Text, nullable=True)
+    acao_realizada = db.Column(db.Text, nullable=True)
     valor = db.Column(db.Numeric(15, 2), nullable=False, default=0)
     responsavel = db.Column(db.String(120), nullable=False)
     semana = db.Column(db.Integer, nullable=False, default=1)
@@ -65,6 +66,7 @@ class Relacionamento(db.Model):
             'tipo_contato': self.tipo_contato,
             'situacao': situacao,
             'observacao': self.observacao or '',
+            'acao_realizada': self.acao_realizada or '',
             'valor': float(self.valor),
             'responsavel': self.responsavel,
             'semana': self.semana,

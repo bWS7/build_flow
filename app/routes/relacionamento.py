@@ -5,6 +5,7 @@ from app import db, socketio
 from app.models.relacionamento import Relacionamento, SITUACAO_OPCOES
 from app.models.empreendimento import Empreendimento
 from app.models.meta import MetaSemana
+from app.models.meta_configuracao import MetaConfiguracaoIndicador
 from sqlalchemy import func
 
 relacionamento_bp = Blueprint('relacionamento', __name__)
@@ -40,9 +41,10 @@ def _calcular_indicadores(semana: int, registros: list[Relacionamento] | None = 
     meta = MetaSemana.query.filter_by(semana=semana).first()
     acoes_planejadas = meta.acoes_planejadas if meta else 0
     valor_meta = float(meta.valor_meta) if meta else 0.0
+    meta_base = MetaConfiguracaoIndicador.query.filter_by(scope='relacionamento').first()
 
     todos = registros if registros is not None else Relacionamento.query.filter_by(semana=semana).all()
-    acoes_realizadas = len(todos)
+    acoes_realizadas = sum(1 for item in todos if (item.acao_realizada or '').strip())
     registros_sim = [r for r in todos if _situacao_conta_como_sim(r.situacao)]
     soma_valores = sum(float(r.valor) for r in registros_sim if r.valor > 0)
 
@@ -53,6 +55,7 @@ def _calcular_indicadores(semana: int, registros: list[Relacionamento] | None = 
         'semana': semana,
         'acoes_planejadas': acoes_planejadas,
         'acoes_realizadas': acoes_realizadas,
+        'meta_base_total': float(meta_base.meta_base_total or 0) if meta_base else 0.0,
         'valor_meta': valor_meta,
         'soma_valores': soma_valores,
         'pct_acoes': min(round(pct_acoes, 1), 100),
@@ -144,6 +147,7 @@ def cadastrar():
         tipo_contato=tipo_contato,
         situacao=situacao,
         observacao=(dados.get('observacao') or '').upper().strip() or None,
+        acao_realizada=(dados.get('acao_realizada') or '').upper().strip() or None,
         valor=valor,
         responsavel=current_user.nome.upper(),
         semana=semana,
@@ -192,6 +196,7 @@ def editar_registro(reg_id):
     reg.tipo_contato = tipo_contato
     reg.situacao = situacao
     reg.observacao = (dados.get('observacao') or '').upper().strip() or None
+    reg.acao_realizada = (dados.get('acao_realizada') or '').upper().strip() or None
     reg.valor = valor
 
     db.session.commit()

@@ -7,6 +7,7 @@ from app import db, socketio
 from app.models.empreendimento import Empreendimento
 from app.models.fornecedor import FornecedorRegistro, SITUACAO_FORNECEDOR_OPCOES
 from app.models.meta_fornecedor import MetaFornecedorSemana
+from app.models.meta_configuracao import MetaConfiguracaoIndicador
 
 
 fornecedores_bp = Blueprint('fornecedores', __name__)
@@ -40,6 +41,7 @@ def _situacao_conta_como_negociado(situacao: str | None) -> bool:
 def _calcular_indicadores_fornecedores(semana: int, registros: list[FornecedorRegistro] | None = None) -> dict:
     meta = MetaFornecedorSemana.query.filter_by(semana=semana).first()
     valor_meta = float(meta.valor_meta) if meta else 0.0
+    acoes_planejadas = int(meta.acoes_planejadas or 0) if meta else 0
     todos = registros if registros is not None else FornecedorRegistro.query.filter_by(semana=semana).all()
     valor_negociado = sum(
         float(item.valor_negociado or 0)
@@ -49,15 +51,22 @@ def _calcular_indicadores_fornecedores(semana: int, registros: list[FornecedorRe
     total_negociacoes = sum(1 for item in todos if _situacao_conta_como_negociado(item.situacao))
     total_fornecedores = len({(item.nome_fornecedor or '').strip() for item in todos if (item.nome_fornecedor or '').strip()})
     total_empreendimentos = len({(item.empreendimento or '').strip() for item in todos if (item.empreendimento or '').strip()})
+    acoes_realizadas = sum(1 for item in todos if (item.acao_realizada or '').strip())
     percentual = (valor_negociado / valor_meta * 100) if valor_meta > 0 else 0
+    percentual_acoes = (acoes_realizadas / acoes_planejadas * 100) if acoes_planejadas > 0 else 0
+    meta_base = MetaConfiguracaoIndicador.query.filter_by(scope='fornecedores').first()
 
     return {
         'semana': semana,
         'valor_meta': valor_meta,
+        'meta_base_total': float(meta_base.meta_base_total or 0) if meta_base else 0.0,
         'valor_negociado': valor_negociado,
         'total_negociacoes': total_negociacoes,
         'total_fornecedores': total_fornecedores,
         'total_empreendimentos': total_empreendimentos,
+        'acoes_planejadas': acoes_planejadas,
+        'acoes_realizadas': acoes_realizadas,
+        'pct_acoes': min(round(percentual_acoes, 1), 100),
         'pct_valor': min(round(percentual, 1), 100),
     }
 
@@ -71,13 +80,20 @@ def resumir_fornecedores_trimestre() -> dict:
         if _situacao_conta_como_negociado(item.situacao)
     )
     valor_meta = sum(float(item.valor_meta or 0) for item in metas)
+    acoes_planejadas = sum(int(item.acoes_planejadas or 0) for item in metas)
+    acoes_realizadas = sum(1 for item in registros if (item.acao_realizada or '').strip())
+    meta_base = MetaConfiguracaoIndicador.query.filter_by(scope='fornecedores').first()
     return {
         'valor_realizado': valor_realizado,
         'valor_meta': valor_meta,
+        'meta_base_total': float(meta_base.meta_base_total or 0) if meta_base else 0.0,
         'percentual_atingimento': round((valor_realizado / valor_meta) * 100, 1) if valor_meta > 0 else 0.0,
         'total_negociacoes': sum(1 for item in registros if _situacao_conta_como_negociado(item.situacao)),
         'total_fornecedores': len({(item.nome_fornecedor or '').strip() for item in registros if (item.nome_fornecedor or '').strip()}),
         'total_empreendimentos': len({(item.empreendimento or '').strip() for item in registros if (item.empreendimento or '').strip()}),
+        'acoes_planejadas': acoes_planejadas,
+        'acoes_realizadas': acoes_realizadas,
+        'percentual_acoes': round((acoes_realizadas / acoes_planejadas) * 100, 1) if acoes_planejadas > 0 else 0.0,
     }
 
 
@@ -160,6 +176,7 @@ def cadastrar():
         situacao=situacao,
         valor_negociado=valor_negociado,
         observacao=(dados.get('observacao') or '').upper().strip() or None,
+        acao_realizada=(dados.get('acao_realizada') or '').upper().strip() or None,
         responsavel=current_user.nome.upper(),
         semana=semana,
     )
@@ -230,6 +247,7 @@ def editar_registro(reg_id):
     reg.situacao = situacao
     reg.valor_negociado = valor_negociado
     reg.observacao = (dados.get('observacao') or '').upper().strip() or None
+    reg.acao_realizada = (dados.get('acao_realizada') or '').upper().strip() or None
 
     db.session.commit()
     _broadcast_update_fornecedores(reg.semana)

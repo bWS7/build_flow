@@ -7,6 +7,7 @@ ADMIN = 'admin'
 GESTOR_FINANCEIRO = 'gestor_financeiro'
 GESTOR_ENGENHARIA = 'gestor_engenharia'
 GESTOR_COMERCIAL = 'gestor_comercial'
+GESTOR_MARKETING = 'gestor_marketing'
 GESTOR_SUPRIMENTOS = 'gestor_suprimentos'
 GESTOR_CREDITO = 'gestor_credito'
 USUARIO_FINANCEIRO = 'usuario_financeiro'
@@ -27,6 +28,7 @@ TIPOS_VALIDOS = (
     GESTOR_FINANCEIRO,
     GESTOR_ENGENHARIA,
     GESTOR_COMERCIAL,
+    GESTOR_MARKETING,
     GESTOR_SUPRIMENTOS,
     GESTOR_CREDITO,
     USUARIO_FINANCEIRO,
@@ -41,6 +43,7 @@ GESTORES = {
     GESTOR_FINANCEIRO,
     GESTOR_ENGENHARIA,
     GESTOR_COMERCIAL,
+    GESTOR_MARKETING,
     GESTOR_SUPRIMENTOS,
     GESTOR_CREDITO,
 }
@@ -50,7 +53,7 @@ PERMISSOES_PAGINAS = {
     'giro': {ADMIN, GESTOR_FINANCEIRO, USUARIO_FINANCEIRO},
     'medicao': {ADMIN, GESTOR_ENGENHARIA, USUARIO_ENGENHARIA},
     'vendas': {ADMIN, GESTOR_COMERCIAL, USUARIO_COMERCIAL},
-    'investidores': {ADMIN, GESTOR_COMERCIAL, USUARIO_COMERCIAL},
+    'investidores': {ADMIN, GESTOR_MARKETING},
     'fornecedores': {ADMIN, GESTOR_SUPRIMENTOS, USUARIO_SUPRIMENTOS},
     'relacionamento': {ADMIN, GESTOR_CREDITO, USUARIO_CREDITO},
 }
@@ -60,7 +63,7 @@ PERMISSOES_PAINEIS = {
     'giro': {ADMIN, GESTOR_FINANCEIRO},
     'medicao': {ADMIN, GESTOR_ENGENHARIA},
     'vendas': {ADMIN, GESTOR_COMERCIAL},
-    'investidores': {ADMIN, GESTOR_COMERCIAL},
+    'investidores': {ADMIN, GESTOR_MARKETING},
     'fornecedores': {ADMIN, GESTOR_SUPRIMENTOS},
     'relacionamento': {ADMIN, GESTOR_CREDITO},
     'master': {ADMIN},
@@ -71,7 +74,7 @@ PERMISSOES_METAS = {
     'giro': {ADMIN, GESTOR_FINANCEIRO},
     'medicao': {ADMIN, GESTOR_ENGENHARIA},
     'vendas': {ADMIN, GESTOR_COMERCIAL},
-    'investidores': {ADMIN, GESTOR_COMERCIAL},
+    'investidores': {ADMIN, GESTOR_MARKETING},
     'fornecedores': {ADMIN, GESTOR_SUPRIMENTOS},
     'relacionamento': {ADMIN, GESTOR_CREDITO},
 }

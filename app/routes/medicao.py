@@ -7,6 +7,7 @@ from app import db, socketio
 from app.models.empreendimento import Empreendimento
 from app.models.medicao import MedicaoRegistro
 from app.models.meta_medicao import MetaMedicaoSemana
+from app.models.meta_configuracao import MetaConfiguracaoIndicador
 
 
 medicao_bp = Blueprint('medicao', __name__)
@@ -36,18 +37,26 @@ def _parse_semana(valor) -> int | None:
 def _calcular_indicadores_medicao(semana: int, registros: list[MedicaoRegistro] | None = None) -> dict:
     meta = MetaMedicaoSemana.query.filter_by(semana=semana).first()
     valor_meta = float(meta.valor_meta) if meta else 0.0
+    acoes_planejadas = int(meta.acoes_planejadas or 0) if meta else 0
     todos = registros if registros is not None else MedicaoRegistro.query.filter_by(semana=semana).all()
     valor_realizado = sum(float(item.valor_medicao or 0) for item in todos)
     total_medicoes = len(todos)
     total_empreendimentos = len({(item.empreendimento or '').strip() for item in todos if (item.empreendimento or '').strip()})
+    acoes_realizadas = sum(1 for item in todos if (item.acao_realizada or '').strip())
     percentual = (valor_realizado / valor_meta * 100) if valor_meta > 0 else 0
+    percentual_acoes = (acoes_realizadas / acoes_planejadas * 100) if acoes_planejadas > 0 else 0
+    meta_base = MetaConfiguracaoIndicador.query.filter_by(scope='medicao').first()
 
     return {
         'semana': semana,
         'valor_meta': valor_meta,
+        'meta_base_total': float(meta_base.meta_base_total or 0) if meta_base else 0.0,
         'valor_realizado': valor_realizado,
         'total_medicoes': total_medicoes,
         'total_empreendimentos': total_empreendimentos,
+        'acoes_planejadas': acoes_planejadas,
+        'acoes_realizadas': acoes_realizadas,
+        'pct_acoes': min(round(percentual_acoes, 1), 100),
         'pct_valor': min(round(percentual, 1), 100),
     }
 
@@ -57,12 +66,19 @@ def resumir_medicao_trimestre() -> dict:
     metas = MetaMedicaoSemana.query.filter(MetaMedicaoSemana.semana.in_(range(1, 13))).all()
     valor_realizado = sum(float(item.valor_medicao or 0) for item in registros)
     valor_meta = sum(float(item.valor_meta or 0) for item in metas)
+    acoes_planejadas = sum(int(item.acoes_planejadas or 0) for item in metas)
+    acoes_realizadas = sum(1 for item in registros if (item.acao_realizada or '').strip())
+    meta_base = MetaConfiguracaoIndicador.query.filter_by(scope='medicao').first()
     return {
         'valor_realizado': valor_realizado,
         'valor_meta': valor_meta,
+        'meta_base_total': float(meta_base.meta_base_total or 0) if meta_base else 0.0,
         'percentual_atingimento': round((valor_realizado / valor_meta) * 100, 1) if valor_meta > 0 else 0.0,
         'total_medicoes': len(registros),
         'total_empreendimentos': len({(item.empreendimento or '').strip() for item in registros if (item.empreendimento or '').strip()}),
+        'acoes_planejadas': acoes_planejadas,
+        'acoes_realizadas': acoes_realizadas,
+        'percentual_acoes': round((acoes_realizadas / acoes_planejadas) * 100, 1) if acoes_planejadas > 0 else 0.0,
     }
 
 
@@ -132,6 +148,7 @@ def cadastrar():
         empreendimento=empreendimento,
         valor_medicao=valor_medicao,
         observacao=(dados.get('observacao') or '').upper().strip() or None,
+        acao_realizada=(dados.get('acao_realizada') or '').upper().strip() or None,
         responsavel=current_user.nome.upper(),
         semana=semana,
     )
@@ -190,6 +207,7 @@ def editar_registro(reg_id):
     reg.empreendimento = empreendimento
     reg.valor_medicao = valor_medicao
     reg.observacao = (dados.get('observacao') or '').upper().strip() or None
+    reg.acao_realizada = (dados.get('acao_realizada') or '').upper().strip() or None
 
     db.session.commit()
     _broadcast_update_medicao(reg.semana)

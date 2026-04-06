@@ -8,6 +8,7 @@ from sqlalchemy import extract, func
 
 from app import db, socketio
 from app.models.empreendimento import Empreendimento
+from app.models.meta_configuracao import MetaConfiguracaoIndicador
 from app.models.meta_venda_semana import MetaVendaSemana
 from app.models.venda import SITUACAO_VENDA_OPCOES, TIPO_VENDA_OPCOES, Venda
 from app.services.analytics_ai import analytics_ai_available, analytics_ai_enabled, ask_analytics_assistant, build_global_ai_context, fallback_analytics_answer
@@ -200,6 +201,13 @@ def _obter_meta_semana(semana_global: int | None) -> int:
     return int(meta.quantidade_meta) if meta else 0
 
 
+def _obter_meta_acoes_semana(semana_global: int | None) -> int:
+    if not semana_global:
+        return 0
+    meta = MetaVendaSemana.query.filter_by(semana=semana_global).first()
+    return int(meta.acoes_planejadas or 0) if meta else 0
+
+
 def _obter_meta_mes(mes_slug: str) -> int:
     inicio = MESES_MAP[mes_slug]['semana_inicio']
     return sum(_obter_meta_semana(inicio + offset) for offset in range(4))
@@ -207,6 +215,15 @@ def _obter_meta_mes(mes_slug: str) -> int:
 
 def _obter_meta_trimestral() -> int:
     return sum(_obter_meta_mes(slug) for slug, _, _, _ in MESES_VENDAS)
+
+
+def _obter_meta_acoes_mes(mes_slug: str) -> int:
+    inicio = MESES_MAP[mes_slug]['semana_inicio']
+    return sum(_obter_meta_acoes_semana(inicio + offset) for offset in range(4))
+
+
+def _obter_meta_acoes_trimestral() -> int:
+    return sum(_obter_meta_acoes_mes(slug) for slug, _, _, _ in MESES_VENDAS)
 
 
 def _montar_funil(vendas: list[Venda]) -> list[dict]:
@@ -257,25 +274,36 @@ def _calcular_financeiro(mes_slug: str, vendas: list[Venda] | None = None, seman
     vendas = vendas if vendas is not None else _consultar_vendas_periodo(mes_slug, semana_local=semana_local)
     if mes_slug == RESUMO_TRIMESTRAL[0]:
         meta_quantidade = _obter_meta_trimestral()
+        meta_acoes = _obter_meta_acoes_trimestral()
     elif semana_local:
-        meta_quantidade = _obter_meta_semana(MESES_MAP[mes_slug]['semana_inicio'] + semana_local - 1)
+        semana_global = MESES_MAP[mes_slug]['semana_inicio'] + semana_local - 1
+        meta_quantidade = _obter_meta_semana(semana_global)
+        meta_acoes = _obter_meta_acoes_semana(semana_global)
     else:
         meta_quantidade = _obter_meta_mes(mes_slug)
+        meta_acoes = _obter_meta_acoes_mes(mes_slug)
     valor_realizado = sum(
         float(venda.valor_presente or 0)
         for venda in vendas
         if _normalizar_situacao(venda.situacao) == 'VENDIDA'
     )
     total_vendidas = sum(1 for venda in vendas if _normalizar_situacao(venda.situacao) == 'VENDIDA')
+    acoes_realizadas = sum(1 for venda in vendas if (venda.acao_realizada or '').strip())
     percentual = round((total_vendidas / meta_quantidade) * 100, 1) if meta_quantidade > 0 else 0.0
+    percentual_acoes = round((acoes_realizadas / meta_acoes) * 100, 1) if meta_acoes > 0 else 0.0
+    meta_base = MetaConfiguracaoIndicador.query.filter_by(scope='vendas').first()
     return {
         'mes': mes_slug,
         'semana_local': semana_local,
         'meta_quantidade': meta_quantidade,
+        'meta_base_total': float(meta_base.meta_base_total or 0) if meta_base else 0.0,
+        'meta_acoes': meta_acoes,
         'valor_realizado': valor_realizado,
         'percentual_atingimento': percentual,
         'total_registros': len(vendas),
         'total_vendidas': total_vendidas,
+        'acoes_realizadas': acoes_realizadas,
+        'percentual_acoes': percentual_acoes,
         'funil': _montar_funil(vendas),
     }
 
@@ -330,6 +358,7 @@ def _validar_payload_venda(dados: dict) -> tuple[dict, str | None]:
         'corretor': _normalizar_texto(dados.get('corretor')),
         'imobiliaria': _normalizar_texto(dados.get('imobiliaria')),
         'valor_presente': _parse_decimal(dados.get('valor_presente')),
+        'acao_realizada': _normalizar_texto(dados.get('acao_realizada')),
     }
     obrigatorios = ('reserva', 'data_reserva', 'situacao', 'tipo_venda', 'empreendimento', 'cliente')
     for campo in obrigatorios:
@@ -429,6 +458,7 @@ def cadastrar():
         imobiliaria=registro['imobiliaria'] or None,
         valor_presente=registro['valor_presente'],
         tipo_venda=registro['tipo_venda'],
+        acao_realizada=registro['acao_realizada'] or None,
         criado_por=current_user.nome.upper(),
     )
     db.session.add(venda)
@@ -470,6 +500,7 @@ def bulk_cadastrar():
             imobiliaria=registro['imobiliaria'] or None,
             valor_presente=registro['valor_presente'],
             tipo_venda=registro['tipo_venda'],
+            acao_realizada=registro['acao_realizada'] or None,
             criado_por=current_user.nome.upper(),
         )
         vendas.append(venda)
@@ -509,6 +540,7 @@ def editar_registro(reg_id):
     venda.imobiliaria = registro['imobiliaria'] or None
     venda.valor_presente = registro['valor_presente']
     venda.tipo_venda = registro['tipo_venda']
+    venda.acao_realizada = registro['acao_realizada'] or None
     db.session.commit()
 
     mes_atual = _mes_slug_por_numero(venda.data_reserva.month)

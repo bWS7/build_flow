@@ -59,6 +59,7 @@ class Venda(db.Model):
     imobiliaria = db.Column(db.String(120), nullable=True)
     valor_presente = db.Column(db.Numeric(15, 2), nullable=False, default=0)
     tipo_venda = db.Column(db.String(60), nullable=False, default='DIRETA')
+    acao_realizada = db.Column(db.Text, nullable=True)
     criado_por = db.Column(db.String(120), nullable=False)
     criado_em = db.Column(
         db.DateTime(timezone=True),
@@ -85,6 +86,7 @@ class Venda(db.Model):
             'imobiliaria': self.imobiliaria or '',
             'valor_presente': float(self.valor_presente or 0),
             'tipo_venda': self.tipo_venda,
+            'acao_realizada': self.acao_realizada or '',
             'criado_por': self.criado_por,
             'criado_em': self.criado_em.isoformat() if self.criado_em else '',
         }

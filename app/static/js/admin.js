@@ -225,6 +225,16 @@ function parsearValorBR(str) {
   return parseFloat(str.replace(/\./g, '').replace(',', '.')) || 0;
 }
 
+function parsearInteiroSeguro(valor) {
+  return Math.max(parseInt(valor || '0', 10) || 0, 0);
+}
+
+function obterMetaBase(scope, monetario = true) {
+  const input = document.getElementById(`meta-base-${scope}`);
+  if (!input) return 0;
+  return monetario ? Math.max(parsearValorBR(input.value), 0) : parsearInteiroSeguro(input.value);
+}
+
 function obterMetaEls(semana) {
   return {
     item: document.querySelector(`.meta-item[data-semana="${semana}"]`),
@@ -265,12 +275,13 @@ async function salvarMeta(semana, btn) {
   const valorEl = document.getElementById(`valor-s${semana}`);
   const acoes = parseInt(acoesEl.value) || 0;
   const valor = parsearValorBR(valorEl.value);
+  const metaBaseTotal = obterMetaBase('relacionamento');
 
   try {
     const resp = await fetch('/admin/meta/salvar', {
       method: 'POST',
       headers: csrfHeaders({ 'Content-Type': 'application/json' }),
-      body: JSON.stringify({ semana, acoes_planejadas: acoes, valor_meta: valor }),
+      body: JSON.stringify({ semana, acoes_planejadas: acoes, valor_meta: valor, meta_base_total: metaBaseTotal }),
     });
     const json = await resp.json();
     if (resp.ok) {
@@ -292,22 +303,25 @@ function obterMetaVendaEls(mes) {
   return {
     item: document.querySelector(`.meta-item[data-meta-venda="${mes}"]`),
     input: document.getElementById(`meta-venda-${mes}`),
+    acoesEl: document.getElementById(`acoes-venda-${mes}`),
     btn: document.getElementById(`btn-meta-venda-${mes}`),
   };
 }
 
 function renderizarMetaVendaBloqueada(mes) {
-  const { item, input, btn } = obterMetaVendaEls(mes);
+  const { item, input, acoesEl, btn } = obterMetaVendaEls(mes);
   if (!input || !btn) return;
   input.readOnly = true;
+  if (acoesEl) acoesEl.readOnly = true;
   aplicarEstadoBloqueado(btn, '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg> Editar', () => editarMetaVenda(mes, btn));
   if (item) item.dataset.locked = 'true';
 }
 
 function renderizarMetaVendaEditavel(mes) {
-  const { item, input, btn } = obterMetaVendaEls(mes);
+  const { item, input, acoesEl, btn } = obterMetaVendaEls(mes);
   if (!input || !btn) return;
   input.readOnly = false;
+  if (acoesEl) acoesEl.readOnly = false;
   btn.textContent = 'Salvar Meta';
   btn.classList.remove('btn--ghost');
   btn.classList.add('btn--primary');
@@ -317,13 +331,16 @@ function renderizarMetaVendaEditavel(mes) {
 
 async function salvarMetaVenda(mes, btn) {
   const input = document.getElementById(`meta-venda-${mes}`);
-  const quantidade = Math.max(parseInt(input ? input.value : '0', 10) || 0, 0);
+  const acoesEl = document.getElementById(`acoes-venda-${mes}`);
+  const quantidade = parsearInteiroSeguro(input ? input.value : '0');
+  const acoes = parsearInteiroSeguro(acoesEl ? acoesEl.value : '0');
+  const metaBaseTotal = obterMetaBase('vendas', false);
 
   try {
     const resp = await fetch('/admin/meta-venda/salvar', {
       method: 'POST',
       headers: csrfHeaders({ 'Content-Type': 'application/json' }),
-      body: JSON.stringify({ semana: mes, quantidade_meta: quantidade }),
+      body: JSON.stringify({ semana: mes, quantidade_meta: quantidade, acoes_planejadas: acoes, meta_base_total: metaBaseTotal }),
     });
     const raw = await resp.text();
     const json = raw ? JSON.parse(raw) : {};
@@ -502,24 +519,27 @@ function obterMetaInvestidorEls(mes) {
   return {
     item: document.querySelector(`.meta-item[data-meta-investidor="${mes}"]`),
     input: document.getElementById(`meta-investidor-${mes}`),
+    acoesEl: document.getElementById(`acoes-investidor-${mes}`),
     btn: document.getElementById(`btn-meta-investidor-${mes}`),
   };
 }
 
 function renderizarMetaInvestidorBloqueada(mes) {
-  const { item, input, btn } = obterMetaInvestidorEls(mes);
+  const { item, input, acoesEl, btn } = obterMetaInvestidorEls(mes);
   if (!input || !btn) return;
   input.readOnly = true;
   input.oninput = null;
+  if (acoesEl) acoesEl.readOnly = true;
   aplicarEstadoBloqueado(btn, '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg> Editar', () => editarMetaInvestidor(mes, btn));
   if (item) item.dataset.locked = 'true';
 }
 
 function renderizarMetaInvestidorEditavel(mes) {
-  const { item, input, btn } = obterMetaInvestidorEls(mes);
+  const { item, input, acoesEl, btn } = obterMetaInvestidorEls(mes);
   if (!input || !btn) return;
   input.readOnly = false;
   input.oninput = function () { formatarValorBR(this); };
+  if (acoesEl) acoesEl.readOnly = false;
   btn.textContent = 'Salvar Meta';
   btn.classList.remove('btn--ghost');
   btn.classList.add('btn--primary');
@@ -529,13 +549,16 @@ function renderizarMetaInvestidorEditavel(mes) {
 
 async function salvarMetaInvestidor(mes, btn) {
   const input = document.getElementById(`meta-investidor-${mes}`);
+  const acoesEl = document.getElementById(`acoes-investidor-${mes}`);
   const valor = Math.max(parsearValorBR(input ? input.value : '0') || 0, 0);
+  const acoes = parsearInteiroSeguro(acoesEl ? acoesEl.value : '0');
+  const metaBaseTotal = obterMetaBase('investidores');
 
   try {
     const resp = await fetch('/admin/meta-investidor/salvar', {
       method: 'POST',
       headers: csrfHeaders({ 'Content-Type': 'application/json' }),
-      body: JSON.stringify({ semana: mes, valor_meta: valor }),
+      body: JSON.stringify({ semana: mes, valor_meta: valor, acoes_planejadas: acoes, meta_base_total: metaBaseTotal }),
     });
     const raw = await resp.text();
     const json = raw ? JSON.parse(raw) : {};
@@ -562,24 +585,27 @@ function obterMetaFinanceiroEls(semana) {
   return {
     item: document.querySelector(`.meta-item[data-meta-financeiro="${semana}"]`),
     input: document.getElementById(`meta-financeiro-s${semana}`),
+    acoesEl: document.getElementById(`acoes-financeiro-s${semana}`),
     btn: document.getElementById(`btn-meta-financeiro-s${semana}`),
   };
 }
 
 function renderizarMetaFinanceiroBloqueada(semana) {
-  const { item, input, btn } = obterMetaFinanceiroEls(semana);
+  const { item, input, acoesEl, btn } = obterMetaFinanceiroEls(semana);
   if (!input || !btn) return;
   input.readOnly = true;
   input.oninput = null;
+  if (acoesEl) acoesEl.readOnly = true;
   aplicarEstadoBloqueado(btn, '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg> Editar', () => editarMetaFinanceiro(semana, btn));
   if (item) item.dataset.locked = 'true';
 }
 
 function renderizarMetaFinanceiroEditavel(semana) {
-  const { item, input, btn } = obterMetaFinanceiroEls(semana);
+  const { item, input, acoesEl, btn } = obterMetaFinanceiroEls(semana);
   if (!input || !btn) return;
   input.readOnly = false;
   input.oninput = function () { formatarValorBR(this); };
+  if (acoesEl) acoesEl.readOnly = false;
   btn.textContent = 'Salvar';
   btn.classList.remove('btn--ghost');
   btn.classList.add('btn--primary');
@@ -589,13 +615,16 @@ function renderizarMetaFinanceiroEditavel(semana) {
 
 async function salvarMetaFinanceiro(semana, btn) {
   const input = document.getElementById(`meta-financeiro-s${semana}`);
+  const acoesEl = document.getElementById(`acoes-financeiro-s${semana}`);
   const valor = Math.max(parsearValorBR(input ? input.value : '0') || 0, 0);
+  const acoes = parsearInteiroSeguro(acoesEl ? acoesEl.value : '0');
+  const metaBaseTotal = obterMetaBase('financeiro');
 
   try {
     const resp = await fetch('/admin/meta-financeiro/salvar', {
       method: 'POST',
       headers: csrfHeaders({ 'Content-Type': 'application/json' }),
-      body: JSON.stringify({ semana, valor_meta: valor }),
+      body: JSON.stringify({ semana, valor_meta: valor, acoes_planejadas: acoes, meta_base_total: metaBaseTotal }),
     });
     const raw = await resp.text();
     const json = raw ? JSON.parse(raw) : {};
@@ -618,24 +647,27 @@ function obterMetaGiroEls(semana) {
   return {
     item: document.querySelector(`.meta-item[data-meta-giro="${semana}"]`),
     input: document.getElementById(`meta-giro-s${semana}`),
+    acoesEl: document.getElementById(`acoes-giro-s${semana}`),
     btn: document.getElementById(`btn-meta-giro-s${semana}`),
   };
 }
 
 function renderizarMetaGiroBloqueada(semana) {
-  const { item, input, btn } = obterMetaGiroEls(semana);
+  const { item, input, acoesEl, btn } = obterMetaGiroEls(semana);
   if (!input || !btn) return;
   input.readOnly = true;
   input.oninput = null;
+  if (acoesEl) acoesEl.readOnly = true;
   aplicarEstadoBloqueado(btn, '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg> Editar', () => editarMetaGiro(semana, btn));
   if (item) item.dataset.locked = 'true';
 }
 
 function renderizarMetaGiroEditavel(semana) {
-  const { item, input, btn } = obterMetaGiroEls(semana);
+  const { item, input, acoesEl, btn } = obterMetaGiroEls(semana);
   if (!input || !btn) return;
   input.readOnly = false;
   input.oninput = function () { formatarValorBR(this); };
+  if (acoesEl) acoesEl.readOnly = false;
   btn.textContent = 'Salvar';
   btn.classList.remove('btn--ghost');
   btn.classList.add('btn--primary');
@@ -645,13 +677,16 @@ function renderizarMetaGiroEditavel(semana) {
 
 async function salvarMetaGiro(semana, btn) {
   const input = document.getElementById(`meta-giro-s${semana}`);
+  const acoesEl = document.getElementById(`acoes-giro-s${semana}`);
   const valor = Math.max(parsearValorBR(input ? input.value : '0') || 0, 0);
+  const acoes = parsearInteiroSeguro(acoesEl ? acoesEl.value : '0');
+  const metaBaseTotal = obterMetaBase('giro');
 
   try {
     const resp = await fetch('/admin/meta-giro/salvar', {
       method: 'POST',
       headers: csrfHeaders({ 'Content-Type': 'application/json' }),
-      body: JSON.stringify({ semana, valor_meta: valor }),
+      body: JSON.stringify({ semana, valor_meta: valor, acoes_planejadas: acoes, meta_base_total: metaBaseTotal }),
     });
     const raw = await resp.text();
     const json = raw ? JSON.parse(raw) : {};
@@ -674,24 +709,27 @@ function obterMetaFornecedorEls(semana) {
   return {
     item: document.querySelector(`.meta-item[data-meta-fornecedor="${semana}"]`),
     input: document.getElementById(`meta-fornecedor-s${semana}`),
+    acoesEl: document.getElementById(`acoes-fornecedor-s${semana}`),
     btn: document.getElementById(`btn-meta-fornecedor-s${semana}`),
   };
 }
 
 function renderizarMetaFornecedorBloqueada(semana) {
-  const { item, input, btn } = obterMetaFornecedorEls(semana);
+  const { item, input, acoesEl, btn } = obterMetaFornecedorEls(semana);
   if (!input || !btn) return;
   input.readOnly = true;
   input.oninput = null;
+  if (acoesEl) acoesEl.readOnly = true;
   aplicarEstadoBloqueado(btn, '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg> Editar', () => editarMetaFornecedor(semana, btn));
   if (item) item.dataset.locked = 'true';
 }
 
 function renderizarMetaFornecedorEditavel(semana) {
-  const { item, input, btn } = obterMetaFornecedorEls(semana);
+  const { item, input, acoesEl, btn } = obterMetaFornecedorEls(semana);
   if (!input || !btn) return;
   input.readOnly = false;
   input.oninput = function () { formatarValorBR(this); };
+  if (acoesEl) acoesEl.readOnly = false;
   btn.textContent = 'Salvar';
   btn.classList.remove('btn--ghost');
   btn.classList.add('btn--primary');
@@ -701,12 +739,15 @@ function renderizarMetaFornecedorEditavel(semana) {
 
 async function salvarMetaFornecedor(semana, btn) {
   const input = document.getElementById(`meta-fornecedor-s${semana}`);
+  const acoesEl = document.getElementById(`acoes-fornecedor-s${semana}`);
   const valor = Math.max(parsearValorBR(input ? input.value : '0') || 0, 0);
+  const acoes = parsearInteiroSeguro(acoesEl ? acoesEl.value : '0');
+  const metaBaseTotal = obterMetaBase('fornecedores');
   try {
     const resp = await fetch('/admin/meta-fornecedor/salvar', {
       method: 'POST',
       headers: csrfHeaders({ 'Content-Type': 'application/json' }),
-      body: JSON.stringify({ semana, valor_meta: valor }),
+      body: JSON.stringify({ semana, valor_meta: valor, acoes_planejadas: acoes, meta_base_total: metaBaseTotal }),
     });
     const raw = await resp.text();
     const json = raw ? JSON.parse(raw) : {};
@@ -729,24 +770,27 @@ function obterMetaMedicaoEls(semana) {
   return {
     item: document.querySelector(`.meta-item[data-meta-medicao="${semana}"]`),
     input: document.getElementById(`meta-medicao-s${semana}`),
+    acoesEl: document.getElementById(`acoes-medicao-s${semana}`),
     btn: document.getElementById(`btn-meta-medicao-s${semana}`),
   };
 }
 
 function renderizarMetaMedicaoBloqueada(semana) {
-  const { item, input, btn } = obterMetaMedicaoEls(semana);
+  const { item, input, acoesEl, btn } = obterMetaMedicaoEls(semana);
   if (!input || !btn) return;
   input.readOnly = true;
   input.oninput = null;
+  if (acoesEl) acoesEl.readOnly = true;
   aplicarEstadoBloqueado(btn, '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg> Editar', () => editarMetaMedicao(semana, btn));
   if (item) item.dataset.locked = 'true';
 }
 
 function renderizarMetaMedicaoEditavel(semana) {
-  const { item, input, btn } = obterMetaMedicaoEls(semana);
+  const { item, input, acoesEl, btn } = obterMetaMedicaoEls(semana);
   if (!input || !btn) return;
   input.readOnly = false;
   input.oninput = function () { formatarValorBR(this); };
+  if (acoesEl) acoesEl.readOnly = false;
   btn.textContent = 'Salvar';
   btn.classList.remove('btn--ghost');
   btn.classList.add('btn--primary');
@@ -756,13 +800,16 @@ function renderizarMetaMedicaoEditavel(semana) {
 
 async function salvarMetaMedicao(semana, btn) {
   const input = document.getElementById(`meta-medicao-s${semana}`);
+  const acoesEl = document.getElementById(`acoes-medicao-s${semana}`);
   const valor = Math.max(parsearValorBR(input ? input.value : '0') || 0, 0);
+  const acoes = parsearInteiroSeguro(acoesEl ? acoesEl.value : '0');
+  const metaBaseTotal = obterMetaBase('medicao');
 
   try {
     const resp = await fetch('/admin/meta-medicao/salvar', {
       method: 'POST',
       headers: csrfHeaders({ 'Content-Type': 'application/json' }),
-      body: JSON.stringify({ semana, valor_meta: valor }),
+      body: JSON.stringify({ semana, valor_meta: valor, acoes_planejadas: acoes, meta_base_total: metaBaseTotal }),
     });
     const raw = await resp.text();
     const json = raw ? JSON.parse(raw) : {};

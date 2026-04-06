@@ -48,6 +48,7 @@ class Investidor(db.Model):
     corretor = db.Column(db.String(120), nullable=True)
     imobiliaria = db.Column(db.String(120), nullable=True)
     valor_presente = db.Column(db.Numeric(15, 2), nullable=False, default=0)
+    acao_realizada = db.Column(db.Text, nullable=True)
     criado_por = db.Column(db.String(120), nullable=False)
     criado_em = db.Column(
         db.DateTime(timezone=True),
@@ -70,6 +71,7 @@ class Investidor(db.Model):
             'corretor': self.corretor or '',
             'imobiliaria': self.imobiliaria or '',
             'valor_presente': float(self.valor_presente or 0),
+            'acao_realizada': self.acao_realizada or '',
             'criado_por': self.criado_por,
             'criado_em': self.criado_em.isoformat() if self.criado_em else '',
         }

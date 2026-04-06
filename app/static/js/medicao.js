@@ -41,9 +41,9 @@ function atualizarIndicadores(ind) {
   document.getElementById('bar-valor').style.width = `${ind.pct_valor || 0}%`;
   document.getElementById('pct-valor').textContent = `${ind.pct_valor || 0}%`;
   document.getElementById('txt-valor').textContent = `${fmtValor(ind.valor_realizado || 0)} de ${fmtValor(ind.valor_meta || 0)}`;
-  document.getElementById('pct-empreendimentos').textContent = String(ind.total_empreendimentos || 0);
-  document.getElementById('bar-empreendimentos').style.width = `${ind.total_empreendimentos ? 100 : 0}%`;
-  document.getElementById('txt-empreendimentos').textContent = `${ind.total_empreendimentos || 0} empreendimentos com medição na semana`;
+  document.getElementById('pct-acoes').textContent = `${ind.pct_acoes || 0}%`;
+  document.getElementById('bar-acoes').style.width = `${Math.min(ind.pct_acoes || 0, 100)}%`;
+  document.getElementById('txt-acoes').textContent = `${ind.acoes_realizadas || 0} de ${ind.acoes_planejadas || 0} ações realizadas`;
 }
 
 function abrirFicha(id) {
@@ -57,10 +57,11 @@ function abrirFicha(id) {
   document.getElementById('fi-semana').value = `Semana ${r.semana}`;
   document.getElementById('fi-data').value = r.criado_em || '';
   document.getElementById('fi-obs').value = r.observacao || '';
+  document.getElementById('fi-acao').value = r.acao_realizada || '';
   document.getElementById('form-ficha').dataset.id = String(r.id);
   document.getElementById('fi-permissao').textContent = podeEditar ? '' : 'Somente o responsável ou admin pode editar este registro.';
   document.getElementById('btn-salvar-ficha').hidden = !podeEditar;
-  ['fi-empreendimento', 'fi-valor', 'fi-obs'].forEach((idCampo) => {
+  ['fi-empreendimento', 'fi-valor', 'fi-obs', 'fi-acao'].forEach((idCampo) => {
     const campo = document.getElementById(idCampo);
     if (campo) campo.disabled = !podeEditar;
   });
@@ -219,6 +220,7 @@ async function salvarFicha() {
     empreendimento: document.getElementById('fi-empreendimento').value.trim(),
     valor_medicao: document.getElementById('fi-valor').value,
     observacao: document.getElementById('fi-obs').value.trim(),
+    acao_realizada: document.getElementById('fi-acao').value.trim(),
   };
 
   if (!dados.empreendimento || !dados.valor_medicao) {

@@ -95,10 +95,11 @@ function abrirFicha(id) {
   document.getElementById('fi-semana').value = `Semana ${r.semana}`;
   document.getElementById('fi-data').value = r.criado_em;
   document.getElementById('fi-obs').value = r.observacao || '';
+  document.getElementById('fi-acao').value = r.acao_realizada || '';
   document.getElementById('form-ficha').dataset.id = String(r.id);
   document.getElementById('fi-permissao').textContent = podeEditar ? '' : 'Somente o responsável ou admin pode editar este registro.';
   document.getElementById('btn-salvar-ficha').hidden = !podeEditar;
-  ['fi-cliente', 'fi-emp', 'fi-tel', 'fi-email', 'fi-tipo', 'fi-situacao', 'fi-valor', 'fi-obs']
+  ['fi-cliente', 'fi-emp', 'fi-tel', 'fi-email', 'fi-tipo', 'fi-situacao', 'fi-valor', 'fi-obs', 'fi-acao']
     .forEach((idCampo) => {
       const campo = document.getElementById(idCampo);
       if (campo) campo.disabled = !podeEditar;
@@ -275,6 +276,7 @@ async function salvarFicha() {
     situacao: document.getElementById('fi-situacao').value.trim(),
     valor: document.getElementById('fi-valor').value,
     observacao: document.getElementById('fi-obs').value.trim(),
+    acao_realizada: document.getElementById('fi-acao').value.trim(),
   };
 
   if (!dados.empreendimento || !dados.cliente || !dados.telefone || !dados.tipo_contato || !dados.situacao) {

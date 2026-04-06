@@ -15,6 +15,8 @@ from app.models.meta_medicao import MetaMedicaoSemana
 from app.models.meta_investidor_semana import MetaInvestidorSemana
 from app.models.meta_venda_semana import MetaVendaSemana
 from app.models.meta_liberacao import MetaLiberacaoSemana
+from app.models.meta_configuracao import MetaConfiguracaoIndicador
+from app.models.meta_auditoria import MetaAlteracaoAuditoria
 from app.models.relacionamento import Relacionamento
 from app.models.financeiro import BANCOS_BRASIL, FinanceiroBanco
 from app.models.fornecedor import FornecedorRegistro, SITUACAO_FORNECEDOR_OPCOES
@@ -69,6 +71,48 @@ def _safe_pct(realizado: float, planejado: float) -> float:
     if planejado <= 0:
         return 0.0
     return min(round((realizado / planejado) * 100, 1), 999.9)
+
+
+def _obter_meta_base_total(scope: str) -> float:
+    config = MetaConfiguracaoIndicador.query.filter_by(scope=scope).first()
+    return float(config.meta_base_total or 0) if config else 0.0
+
+
+def _mapa_meta_base_total() -> dict[str, float]:
+    return {
+        item.scope: float(item.meta_base_total or 0)
+        for item in MetaConfiguracaoIndicador.query.order_by(MetaConfiguracaoIndicador.scope.asc()).all()
+    }
+
+
+def _registrar_auditoria_meta(scope: str, campo: str, valor_anterior, valor_novo, periodo: str | None = None) -> None:
+    anterior = '' if valor_anterior is None else str(valor_anterior)
+    novo = '' if valor_novo is None else str(valor_novo)
+    if anterior == novo:
+        return
+    db.session.add(
+        MetaAlteracaoAuditoria(
+            scope=scope,
+            periodo=periodo,
+            campo=campo,
+            valor_anterior=anterior,
+            valor_novo=novo,
+            usuario_id=current_user.id,
+        )
+    )
+
+
+def _salvar_meta_base_total(scope: str, valor: float) -> float:
+    valor_normalizado = max(float(valor or 0), 0.0)
+    config = MetaConfiguracaoIndicador.query.filter_by(scope=scope).first()
+    anterior = float(config.meta_base_total or 0) if config else 0.0
+    if config is None:
+        config = MetaConfiguracaoIndicador(scope=scope, meta_base_total=valor_normalizado)
+        db.session.add(config)
+    else:
+        config.meta_base_total = valor_normalizado
+    _registrar_auditoria_meta(scope, 'meta_base_total', anterior, valor_normalizado, 'total')
+    return valor_normalizado
 
 
 def _senha_forte(senha: str) -> bool:
@@ -1262,9 +1306,28 @@ def _montar_master_painel() -> dict:
         'monetario': True,
     })
 
+    cards_acoes = [
+        {'slug': 'venda_varejo', 'nome': 'Ações Venda Varejo', 'realizado': float(resumo_vendas['financeiro'].get('acoes_realizadas', 0)), 'meta': float(resumo_vendas['financeiro'].get('meta_acoes', 0)), 'percentual': float(resumo_vendas['financeiro'].get('percentual_acoes', 0)), 'descricao': 'Ações comerciais executadas frente à meta de ações do trimestre.', 'comparativo_label': 'ações realizadas x meta de ações', 'ficticio': False, 'monetario': False},
+        {'slug': 'giro', 'nome': 'Ações Capital de giro', 'realizado': float(resumo_giro.get('acoes_realizadas', 0)), 'meta': float(resumo_giro.get('acoes_planejadas', 0)), 'percentual': float(resumo_giro.get('percentual_acoes', 0)), 'descricao': 'Ações de capital de giro executadas frente à meta do trimestre.', 'comparativo_label': 'ações realizadas x meta de ações', 'ficticio': False, 'monetario': False},
+        {'slug': 'inadimplencia', 'nome': 'Ações Inadimplencia', 'realizado': float(resumo_inadimplencia['resumo_mensal'].get('acoes_realizadas', 0)), 'meta': float(resumo_inadimplencia['resumo_mensal'].get('acoes_planejadas', 0)), 'percentual': float(resumo_inadimplencia['resumo_mensal'].get('pct_acoes', 0)), 'descricao': 'Ações de inadimplência executadas frente à meta do trimestre.', 'comparativo_label': 'ações realizadas x meta de ações', 'ficticio': False, 'monetario': False},
+        {'slug': 'medicao', 'nome': 'Ações Medição de obras', 'realizado': float(resumo_medicao.get('acoes_realizadas', 0)), 'meta': float(resumo_medicao.get('acoes_planejadas', 0)), 'percentual': float(resumo_medicao.get('percentual_acoes', 0)), 'descricao': 'Ações de medição executadas frente à meta do trimestre.', 'comparativo_label': 'ações realizadas x meta de ações', 'ficticio': False, 'monetario': False},
+        {'slug': 'investidor', 'nome': 'Ações Investidores', 'realizado': float(resumo_investidores['financeiro'].get('acoes_realizadas', 0)), 'meta': float(resumo_investidores['financeiro'].get('meta_acoes', 0)), 'percentual': float(resumo_investidores['financeiro'].get('percentual_acoes', 0)), 'descricao': 'Ações de investidores executadas frente à meta do trimestre.', 'comparativo_label': 'ações realizadas x meta de ações', 'ficticio': False, 'monetario': False},
+        {'slug': 'fornecedores', 'nome': 'Ações Renegociação Fornecedores', 'realizado': float(resumo_fornecedores.get('acoes_realizadas', 0)), 'meta': float(resumo_fornecedores.get('acoes_planejadas', 0)), 'percentual': float(resumo_fornecedores.get('percentual_acoes', 0)), 'descricao': 'Ações com fornecedores executadas frente à meta do trimestre.', 'comparativo_label': 'ações realizadas x meta de ações', 'ficticio': False, 'monetario': False},
+        {'slug': 'bancos', 'nome': 'Ações Renegociação Bancária', 'realizado': float(resumo_bancos.get('acoes_realizadas', 0)), 'meta': float(resumo_bancos.get('acoes_planejadas', 0)), 'percentual': float(resumo_bancos.get('percentual_acoes', 0)), 'descricao': 'Ações bancárias executadas frente à meta do trimestre.', 'comparativo_label': 'ações realizadas x meta de ações', 'ficticio': False, 'monetario': False},
+    ]
+
     cards_ordenados = sorted(cards, key=lambda item: (
         ['venda_varejo', 'giro', 'inadimplencia', 'medicao', 'investidor', 'fornecedores', 'bancos'].index(item['slug'])
     ))
+    cards_acoes_ordenados = sorted(cards_acoes, key=lambda item: (
+        ['venda_varejo', 'giro', 'inadimplencia', 'medicao', 'investidor', 'fornecedores', 'bancos'].index(item['slug'])
+    ))
+    for card in cards_ordenados:
+        percentual = float(card.get('percentual', 0))
+        card['desempenho_status'] = 'positivo' if percentual >= 100 else ('negativo' if percentual < 60 else 'neutro')
+    for card in cards_acoes_ordenados:
+        percentual = float(card.get('percentual', 0))
+        card['desempenho_status'] = 'positivo' if percentual >= 100 else ('negativo' if percentual < 60 else 'neutro')
 
     total_realizado = sum(min(float(item['percentual']), 100.0) for item in cards_ordenados)
     total_meta = float(len(cards_ordenados) * 100)
@@ -1301,6 +1364,7 @@ def _serializar_master_painel() -> dict:
     painel = _montar_master_painel()
     return {
         'cards_master': painel['cards_master'],
+        'cards_master_acoes': painel['cards_master_acoes'],
         'objetivo_geral': painel['objetivo_geral'],
         'objetivo_realizado_total': painel['objetivo_realizado_total'],
         'objetivo_meta_total': painel['objetivo_meta_total'],
@@ -1333,6 +1397,19 @@ def _montar_contexto_ia_master() -> dict:
                 'monetario': card['monetario'],
             }
             for card in painel['cards_master']
+        ],
+        'cards_master_acoes': [
+            {
+                'frente': card['nome'],
+                'realizado': card['realizado'],
+                'meta': card['meta'],
+                'percentual': card['percentual'],
+                'descricao': card['descricao'],
+                'comparativo_label': card['comparativo_label'],
+                'ficticio': card['ficticio'],
+                'monetario': card['monetario'],
+            }
+            for card in painel['cards_master_acoes']
         ],
         'destaque_principal': painel['destaque_principal'],
         'alerta_principal': painel['alerta_principal'],
@@ -1483,15 +1560,29 @@ def _resumir_vendas_master_v2(periodo: dict) -> dict:
             'realizado': float(financeiro['total_vendidas']),
             'meta': float(financeiro['meta_quantidade']),
             'percentual': float(financeiro['percentual_atingimento']),
+            'acoes_realizadas': float(financeiro['acoes_realizadas']),
+            'meta_acoes': float(financeiro['meta_acoes']),
+            'percentual_acoes': float(financeiro['percentual_acoes']),
         }
     total_realizado = 0.0
     total_meta = 0.0
+    total_acoes_realizadas = 0.0
+    total_meta_acoes = 0.0
     for semana_global in periodo['semanas']:
         mes_slug, semana_local = _master_mes_e_semana_local_v2(semana_global)
         financeiro = montar_contexto_template_vendas(mes_slug, semana_local=semana_local)['financeiro']
         total_realizado += float(financeiro['total_vendidas'])
         total_meta += float(financeiro['meta_quantidade'])
-    return {'realizado': total_realizado, 'meta': total_meta, 'percentual': _safe_pct(total_realizado, total_meta)}
+        total_acoes_realizadas += float(financeiro['acoes_realizadas'])
+        total_meta_acoes += float(financeiro['meta_acoes'])
+    return {
+        'realizado': total_realizado,
+        'meta': total_meta,
+        'percentual': _safe_pct(total_realizado, total_meta),
+        'acoes_realizadas': total_acoes_realizadas,
+        'meta_acoes': total_meta_acoes,
+        'percentual_acoes': _safe_pct(total_acoes_realizadas, total_meta_acoes),
+    }
 
 
 def _resumir_investidores_master_v2(periodo: dict) -> dict:
@@ -1501,27 +1592,50 @@ def _resumir_investidores_master_v2(periodo: dict) -> dict:
             'realizado': float(financeiro['valor_realizado']),
             'meta': float(financeiro['meta_valor']),
             'percentual': float(financeiro['percentual_atingimento']),
+            'acoes_realizadas': float(financeiro['acoes_realizadas']),
+            'meta_acoes': float(financeiro['meta_acoes']),
+            'percentual_acoes': float(financeiro['percentual_acoes']),
         }
     total_realizado = 0.0
     total_meta = 0.0
+    total_acoes_realizadas = 0.0
+    total_meta_acoes = 0.0
     for semana_global in periodo['semanas']:
         mes_slug, semana_local = _master_mes_e_semana_local_v2(semana_global)
         financeiro = montar_contexto_template_investidores(mes_slug, semana_local=semana_local)['financeiro']
         total_realizado += float(financeiro['valor_realizado'])
         total_meta += float(financeiro['meta_valor'])
-    return {'realizado': total_realizado, 'meta': total_meta, 'percentual': _safe_pct(total_realizado, total_meta)}
+        total_acoes_realizadas += float(financeiro['acoes_realizadas'])
+        total_meta_acoes += float(financeiro['meta_acoes'])
+    return {
+        'realizado': total_realizado,
+        'meta': total_meta,
+        'percentual': _safe_pct(total_realizado, total_meta),
+        'acoes_realizadas': total_acoes_realizadas,
+        'meta_acoes': total_meta_acoes,
+        'percentual_acoes': _safe_pct(total_acoes_realizadas, total_meta_acoes),
+    }
 
 
 def _resumir_inadimplencia_master_v2(semanas: list[int]) -> dict:
     metas = MetaSemana.query.filter(MetaSemana.semana.in_(semanas)).all()
     registros = Relacionamento.query.filter(Relacionamento.semana.in_(semanas)).all()
     valor_meta = sum(float(item.valor_meta or 0) for item in metas)
+    acoes_planejadas = sum(int(item.acoes_planejadas or 0) for item in metas)
     valor_realizado = sum(
         float(item.valor or 0)
         for item in registros
         if _situacao_conta_como_sim(item.situacao) and float(item.valor or 0) > 0
     )
-    return {'realizado': valor_realizado, 'meta': valor_meta, 'percentual': _safe_pct(valor_realizado, valor_meta)}
+    acoes_realizadas = sum(1 for item in registros if (item.acao_realizada or '').strip())
+    return {
+        'realizado': valor_realizado,
+        'meta': valor_meta,
+        'percentual': _safe_pct(valor_realizado, valor_meta),
+        'acoes_realizadas': acoes_realizadas,
+        'acoes_planejadas': acoes_planejadas,
+        'percentual_acoes': _safe_pct(acoes_realizadas, acoes_planejadas),
+    }
 
 
 def _montar_master_painel_periodizado(view: str | None = None, period: str | None = None) -> dict:
@@ -1559,9 +1673,26 @@ def _montar_master_painel_periodizado(view: str | None = None, period: str | Non
         {'slug': 'fornecedores', 'nome': 'Renegociação Fornecedores', 'realizado': fornecedores_realizado, 'meta': fornecedores_meta, 'percentual': _safe_pct(fornecedores_realizado, fornecedores_meta), 'descricao': f"Valor negociado com fornecedores no período {periodo['label']}.", 'comparativo_label': 'valor negociado x meta de renegociação de fornecedores', 'ficticio': False, 'monetario': True},
         {'slug': 'bancos', 'nome': 'Renegociação Bancária', 'realizado': bancos_realizado, 'meta': bancos_meta, 'percentual': _safe_pct(bancos_realizado, bancos_meta), 'descricao': f"Valor arrecadado com bancos no período {periodo['label']}.", 'comparativo_label': 'valor arrecadado x meta de renegociação bancária', 'ficticio': False, 'monetario': True},
     ]
+    cards_acoes = [
+        {'slug': 'venda_varejo', 'nome': 'Acoes Venda Varejo', 'realizado': float(resumo_vendas['acoes_realizadas']), 'meta': float(resumo_vendas['meta_acoes']), 'percentual': float(resumo_vendas['percentual_acoes']), 'descricao': f"Acoes de venda varejo no periodo {periodo['label']}.", 'comparativo_label': 'acoes realizadas x meta de acoes', 'ficticio': False, 'monetario': False},
+        {'slug': 'giro', 'nome': 'Acoes Capital de giro', 'realizado': float(resumo_giro['acoes_realizadas']), 'meta': float(resumo_giro['acoes_planejadas']), 'percentual': float(resumo_giro['percentual_acoes']), 'descricao': f"Acoes de capital de giro no periodo {periodo['label']}.", 'comparativo_label': 'acoes realizadas x meta de acoes', 'ficticio': False, 'monetario': False},
+        {'slug': 'inadimplencia', 'nome': 'Acoes Inadimplencia', 'realizado': float(resumo_inadimplencia['acoes_realizadas']), 'meta': float(resumo_inadimplencia['acoes_planejadas']), 'percentual': float(resumo_inadimplencia['percentual_acoes']), 'descricao': f"Acoes de inadimplencia no periodo {periodo['label']}.", 'comparativo_label': 'acoes realizadas x meta de acoes', 'ficticio': False, 'monetario': False},
+        {'slug': 'medicao', 'nome': 'Acoes Medicao de obras', 'realizado': float(resumo_medicao['acoes_realizadas']), 'meta': float(resumo_medicao['acoes_planejadas']), 'percentual': float(resumo_medicao['percentual_acoes']), 'descricao': f"Acoes de medicao no periodo {periodo['label']}.", 'comparativo_label': 'acoes realizadas x meta de acoes', 'ficticio': False, 'monetario': False},
+        {'slug': 'investidor', 'nome': 'Acoes Investidor', 'realizado': float(resumo_investidores['acoes_realizadas']), 'meta': float(resumo_investidores['meta_acoes']), 'percentual': float(resumo_investidores['percentual_acoes']), 'descricao': f"Acoes de investidores no periodo {periodo['label']}.", 'comparativo_label': 'acoes realizadas x meta de acoes', 'ficticio': False, 'monetario': False},
+        {'slug': 'fornecedores', 'nome': 'Acoes Renegociacao Fornecedores', 'realizado': float(resumo_fornecedores['acoes_realizadas']), 'meta': float(resumo_fornecedores['acoes_planejadas']), 'percentual': float(resumo_fornecedores['percentual_acoes']), 'descricao': f"Acoes de fornecedores no periodo {periodo['label']}.", 'comparativo_label': 'acoes realizadas x meta de acoes', 'ficticio': False, 'monetario': False},
+        {'slug': 'bancos', 'nome': 'Acoes Renegociacao Bancaria', 'realizado': float(resumo_bancos['acoes_realizadas']), 'meta': float(resumo_bancos['acoes_planejadas']), 'percentual': float(resumo_bancos['percentual_acoes']), 'descricao': f"Acoes bancarias no periodo {periodo['label']}.", 'comparativo_label': 'acoes realizadas x meta de acoes', 'ficticio': False, 'monetario': False},
+    ]
     ordem = ['venda_varejo', 'giro', 'inadimplencia', 'medicao', 'investidor', 'fornecedores', 'bancos']
     cards_ordenados = sorted(cards, key=lambda item: ordem.index(item['slug']))
     for card in cards_ordenados:
+        if card['percentual'] > tempo_pct + 0.1:
+            card['desempenho_status'] = 'positivo'
+        elif card['percentual'] < tempo_pct - 0.1:
+            card['desempenho_status'] = 'negativo'
+        else:
+            card['desempenho_status'] = 'neutro'
+    cards_acoes_ordenados = sorted(cards_acoes, key=lambda item: ordem.index(item['slug']))
+    for card in cards_acoes_ordenados:
         if card['percentual'] > tempo_pct + 0.1:
             card['desempenho_status'] = 'positivo'
         elif card['percentual'] < tempo_pct - 0.1:
@@ -1577,6 +1708,8 @@ def _montar_master_painel_periodizado(view: str | None = None, period: str | Non
 
     return {
         'cards_master': cards_ordenados,
+        'cards_master_acoes': cards_acoes_ordenados,
+        'cards_master_acoes': cards_acoes_ordenados,
         'objetivo_geral': objetivo_geral,
         'objetivo_realizado_total': total_realizado,
         'objetivo_meta_total': total_meta,
@@ -1600,6 +1733,7 @@ def _serializar_master_painel_periodizado(view: str | None = None, period: str |
     painel = _montar_master_painel_periodizado(view, period)
     return {
         'cards_master': painel['cards_master'],
+        'cards_master_acoes': painel['cards_master_acoes'],
         'objetivo_geral': painel['objetivo_geral'],
         'objetivo_realizado_total': painel['objetivo_realizado_total'],
         'objetivo_meta_total': painel['objetivo_meta_total'],
@@ -1638,6 +1772,7 @@ def _montar_contexto_ia_master_periodizado(view: str | None = None, period: str 
             }
             for card in painel['cards_master']
         ],
+        'cards_master_acoes': painel['cards_master_acoes'],
         'destaque_principal': painel['destaque_principal'],
         'alerta_principal': painel['alerta_principal'],
     }
@@ -1707,13 +1842,16 @@ def _meta_relacionamento_preenchida(meta: MetaSemana | None) -> bool:
 def _meta_valor_preenchida(meta) -> bool:
     if meta is None:
         return False
-    return float(getattr(meta, 'valor_meta', 0) or 0) > 0
+    return (
+        float(getattr(meta, 'valor_meta', 0) or 0) > 0
+        or int(getattr(meta, 'acoes_planejadas', 0) or 0) > 0
+    )
 
 
 def _meta_venda_preenchida(meta: MetaVendaSemana | None) -> bool:
     if meta is None:
         return False
-    return int(meta.quantidade_meta or 0) > 0
+    return int(meta.quantidade_meta or 0) > 0 or int(meta.acoes_planejadas or 0) > 0
 
 
 def _mapa_metas_liberadas() -> dict[str, set[int]]:
@@ -1761,6 +1899,7 @@ def dashboard():
         for meta in MetaMedicaoSemana.query.order_by(MetaMedicaoSemana.semana).all()
     }
     metas_liberadas = _mapa_metas_liberadas()
+    metas_base_total = _mapa_meta_base_total()
     return render_template('admin/dashboard.html',
                            usuarios=usuarios,
                            empreendimentos=empreendimentos,
@@ -1771,6 +1910,7 @@ def dashboard():
                            metas_fornecedores=metas_fornecedores,
                            metas_giro=metas_giro,
                            metas_medicao=metas_medicao,
+                           metas_base_total=metas_base_total,
                            metas_liberadas=metas_liberadas,
                            meses_vendas=MESES_VENDAS,
                            periodo_investidores=PERIODO_INVESTIDORES,
@@ -2178,6 +2318,7 @@ def salvar_meta():
     try:
         acoes = int(dados.get('acoes_planejadas', 0))
         valor = float(dados.get('valor_meta', 0))
+        meta_base_total = float(dados.get('meta_base_total', 0) or 0)
     except (ValueError, TypeError):
         return jsonify({'erro': 'Valores inválidos.'}), 400
 
@@ -2185,11 +2326,16 @@ def salvar_meta():
     if meta:
         if _meta_relacionamento_preenchida(meta) and not _pode_editar_meta_existente('relacionamento'):
             return jsonify({'erro': 'Meta ja preenchida e bloqueada para edicao.'}), 403
+        _registrar_auditoria_meta('relacionamento', 'acoes_planejadas', int(meta.acoes_planejadas or 0), acoes, f's{semana}')
+        _registrar_auditoria_meta('relacionamento', 'valor_meta', float(meta.valor_meta or 0), valor, f's{semana}')
         meta.acoes_planejadas = acoes
         meta.valor_meta = valor
     else:
         meta = MetaSemana(semana=semana, acoes_planejadas=acoes, valor_meta=valor)
         db.session.add(meta)
+        _registrar_auditoria_meta('relacionamento', 'acoes_planejadas', 0, acoes, f's{semana}')
+        _registrar_auditoria_meta('relacionamento', 'valor_meta', 0, valor, f's{semana}')
+    _salvar_meta_base_total('relacionamento', meta_base_total)
     db.session.commit()
     return jsonify({'sucesso': True})
 
@@ -2202,6 +2348,8 @@ def salvar_meta_investidor():
     try:
         semana = int(dados.get('semana', 1))
         valor = float(dados.get('valor_meta', 0) or 0)
+        acoes = int(dados.get('acoes_planejadas', 0) or 0)
+        meta_base_total = float(dados.get('meta_base_total', 0) or 0)
     except (ValueError, TypeError):
         return jsonify({'erro': 'Valor invalido.'}), 400
     if not _garantir_meta_liberada('investidores', semana):
@@ -2211,10 +2359,16 @@ def salvar_meta_investidor():
     if meta:
         if _meta_valor_preenchida(meta) and not _pode_editar_meta_existente('investidores'):
             return jsonify({'erro': 'Meta ja preenchida e bloqueada para edicao.'}), 403
+        _registrar_auditoria_meta('investidores', 'valor_meta', float(meta.valor_meta or 0), max(valor, 0), f's{semana}')
+        _registrar_auditoria_meta('investidores', 'acoes_planejadas', int(meta.acoes_planejadas or 0), max(acoes, 0), f's{semana}')
         meta.valor_meta = max(valor, 0)
+        meta.acoes_planejadas = max(acoes, 0)
     else:
-        meta = MetaInvestidorSemana(semana=semana, valor_meta=max(valor, 0))
+        meta = MetaInvestidorSemana(semana=semana, valor_meta=max(valor, 0), acoes_planejadas=max(acoes, 0))
         db.session.add(meta)
+        _registrar_auditoria_meta('investidores', 'valor_meta', 0, max(valor, 0), f's{semana}')
+        _registrar_auditoria_meta('investidores', 'acoes_planejadas', 0, max(acoes, 0), f's{semana}')
+    _salvar_meta_base_total('investidores', meta_base_total)
     db.session.commit()
     return jsonify({'sucesso': True})
 
@@ -2227,6 +2381,8 @@ def salvar_meta_financeiro():
     try:
         semana = int(dados.get('semana', 1))
         valor = float(dados.get('valor_meta', 0) or 0)
+        acoes = int(dados.get('acoes_planejadas', 0) or 0)
+        meta_base_total = float(dados.get('meta_base_total', 0) or 0)
     except (ValueError, TypeError):
         return jsonify({'erro': 'Valores invalidos.'}), 400
     if not _garantir_meta_liberada('financeiro', semana):
@@ -2236,10 +2392,16 @@ def salvar_meta_financeiro():
     if meta:
         if _meta_valor_preenchida(meta) and not _pode_editar_meta_existente('financeiro'):
             return jsonify({'erro': 'Meta ja preenchida e bloqueada para edicao.'}), 403
+        _registrar_auditoria_meta('financeiro', 'valor_meta', float(meta.valor_meta or 0), max(valor, 0), f's{semana}')
+        _registrar_auditoria_meta('financeiro', 'acoes_planejadas', int(meta.acoes_planejadas or 0), max(acoes, 0), f's{semana}')
         meta.valor_meta = max(valor, 0)
+        meta.acoes_planejadas = max(acoes, 0)
     else:
-        meta = MetaFinanceiroSemana(semana=semana, valor_meta=max(valor, 0))
+        meta = MetaFinanceiroSemana(semana=semana, valor_meta=max(valor, 0), acoes_planejadas=max(acoes, 0))
         db.session.add(meta)
+        _registrar_auditoria_meta('financeiro', 'valor_meta', 0, max(valor, 0), f's{semana}')
+        _registrar_auditoria_meta('financeiro', 'acoes_planejadas', 0, max(acoes, 0), f's{semana}')
+    _salvar_meta_base_total('financeiro', meta_base_total)
     db.session.commit()
     return jsonify({'sucesso': True})
 
@@ -2252,6 +2414,8 @@ def salvar_meta_giro():
     try:
         semana = int(dados.get('semana', 1))
         valor = float(dados.get('valor_meta', 0) or 0)
+        acoes = int(dados.get('acoes_planejadas', 0) or 0)
+        meta_base_total = float(dados.get('meta_base_total', 0) or 0)
     except (ValueError, TypeError):
         return jsonify({'erro': 'Valores invalidos.'}), 400
     if not _garantir_meta_liberada('giro', semana):
@@ -2261,10 +2425,16 @@ def salvar_meta_giro():
     if meta:
         if _meta_valor_preenchida(meta) and not _pode_editar_meta_existente('giro'):
             return jsonify({'erro': 'Meta ja preenchida e bloqueada para edicao.'}), 403
+        _registrar_auditoria_meta('giro', 'valor_meta', float(meta.valor_meta or 0), max(valor, 0), f's{semana}')
+        _registrar_auditoria_meta('giro', 'acoes_planejadas', int(meta.acoes_planejadas or 0), max(acoes, 0), f's{semana}')
         meta.valor_meta = max(valor, 0)
+        meta.acoes_planejadas = max(acoes, 0)
     else:
-        meta = MetaGiroSemana(semana=semana, valor_meta=max(valor, 0))
+        meta = MetaGiroSemana(semana=semana, valor_meta=max(valor, 0), acoes_planejadas=max(acoes, 0))
         db.session.add(meta)
+        _registrar_auditoria_meta('giro', 'valor_meta', 0, max(valor, 0), f's{semana}')
+        _registrar_auditoria_meta('giro', 'acoes_planejadas', 0, max(acoes, 0), f's{semana}')
+    _salvar_meta_base_total('giro', meta_base_total)
     db.session.commit()
     return jsonify({'sucesso': True})
 
@@ -2277,6 +2447,8 @@ def salvar_meta_fornecedor():
     try:
         semana = int(dados.get('semana', 1))
         valor = float(dados.get('valor_meta', 0) or 0)
+        acoes = int(dados.get('acoes_planejadas', 0) or 0)
+        meta_base_total = float(dados.get('meta_base_total', 0) or 0)
     except (ValueError, TypeError):
         return jsonify({'erro': 'Valores invalidos.'}), 400
     if not _garantir_meta_liberada('fornecedores', semana):
@@ -2286,10 +2458,16 @@ def salvar_meta_fornecedor():
     if meta:
         if _meta_valor_preenchida(meta) and not _pode_editar_meta_existente('fornecedores'):
             return jsonify({'erro': 'Meta ja preenchida e bloqueada para edicao.'}), 403
+        _registrar_auditoria_meta('fornecedores', 'valor_meta', float(meta.valor_meta or 0), max(valor, 0), f's{semana}')
+        _registrar_auditoria_meta('fornecedores', 'acoes_planejadas', int(meta.acoes_planejadas or 0), max(acoes, 0), f's{semana}')
         meta.valor_meta = max(valor, 0)
+        meta.acoes_planejadas = max(acoes, 0)
     else:
-        meta = MetaFornecedorSemana(semana=semana, valor_meta=max(valor, 0))
+        meta = MetaFornecedorSemana(semana=semana, valor_meta=max(valor, 0), acoes_planejadas=max(acoes, 0))
         db.session.add(meta)
+        _registrar_auditoria_meta('fornecedores', 'valor_meta', 0, max(valor, 0), f's{semana}')
+        _registrar_auditoria_meta('fornecedores', 'acoes_planejadas', 0, max(acoes, 0), f's{semana}')
+    _salvar_meta_base_total('fornecedores', meta_base_total)
     db.session.commit()
     return jsonify({'sucesso': True})
 
@@ -2302,6 +2480,8 @@ def salvar_meta_medicao():
     try:
         semana = int(dados.get('semana', 1))
         valor = float(dados.get('valor_meta', 0) or 0)
+        acoes = int(dados.get('acoes_planejadas', 0) or 0)
+        meta_base_total = float(dados.get('meta_base_total', 0) or 0)
     except (ValueError, TypeError):
         return jsonify({'erro': 'Valores invalidos.'}), 400
     if not _garantir_meta_liberada('medicao', semana):
@@ -2311,10 +2491,16 @@ def salvar_meta_medicao():
     if meta:
         if _meta_valor_preenchida(meta) and not _pode_editar_meta_existente('medicao'):
             return jsonify({'erro': 'Meta ja preenchida e bloqueada para edicao.'}), 403
+        _registrar_auditoria_meta('medicao', 'valor_meta', float(meta.valor_meta or 0), max(valor, 0), f's{semana}')
+        _registrar_auditoria_meta('medicao', 'acoes_planejadas', int(meta.acoes_planejadas or 0), max(acoes, 0), f's{semana}')
         meta.valor_meta = max(valor, 0)
+        meta.acoes_planejadas = max(acoes, 0)
     else:
-        meta = MetaMedicaoSemana(semana=semana, valor_meta=max(valor, 0))
+        meta = MetaMedicaoSemana(semana=semana, valor_meta=max(valor, 0), acoes_planejadas=max(acoes, 0))
         db.session.add(meta)
+        _registrar_auditoria_meta('medicao', 'valor_meta', 0, max(valor, 0), f's{semana}')
+        _registrar_auditoria_meta('medicao', 'acoes_planejadas', 0, max(acoes, 0), f's{semana}')
+    _salvar_meta_base_total('medicao', meta_base_total)
     db.session.commit()
     return jsonify({'sucesso': True})
 
@@ -2327,6 +2513,8 @@ def salvar_meta_venda():
     try:
         semana = int(dados.get('semana', 1))
         quantidade = int(dados.get('quantidade_meta', 0) or 0)
+        acoes = int(dados.get('acoes_planejadas', 0) or 0)
+        meta_base_total = float(dados.get('meta_base_total', 0) or 0)
     except (ValueError, TypeError):
         return jsonify({'erro': 'Quantidade inválida.'}), 400
 
@@ -2336,10 +2524,16 @@ def salvar_meta_venda():
     if meta:
         if _meta_venda_preenchida(meta) and not _pode_editar_meta_existente('vendas'):
             return jsonify({'erro': 'Meta ja preenchida e bloqueada para edicao.'}), 403
+        _registrar_auditoria_meta('vendas', 'quantidade_meta', int(meta.quantidade_meta or 0), max(quantidade, 0), f's{semana}')
+        _registrar_auditoria_meta('vendas', 'acoes_planejadas', int(meta.acoes_planejadas or 0), max(acoes, 0), f's{semana}')
         meta.quantidade_meta = max(quantidade, 0)
+        meta.acoes_planejadas = max(acoes, 0)
     else:
-        meta = MetaVendaSemana(semana=semana, quantidade_meta=max(quantidade, 0))
+        meta = MetaVendaSemana(semana=semana, quantidade_meta=max(quantidade, 0), acoes_planejadas=max(acoes, 0))
         db.session.add(meta)
+        _registrar_auditoria_meta('vendas', 'quantidade_meta', 0, max(quantidade, 0), f's{semana}')
+        _registrar_auditoria_meta('vendas', 'acoes_planejadas', 0, max(acoes, 0), f's{semana}')
+    _salvar_meta_base_total('vendas', meta_base_total)
     db.session.commit()
     return jsonify({'sucesso': True})
 

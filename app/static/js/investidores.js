@@ -208,6 +208,12 @@ function atualizarFinanceiro(financeiro) {
   const pctEl = document.getElementById('pct-valor');
   const txtEl = document.getElementById('txt-valor');
   const barEl = document.getElementById('bar-valor');
+  const pctAcoesEl = document.getElementById('pct-acoes');
+  const txtAcoesEl = document.getElementById('txt-acoes');
+  const barAcoesEl = document.getElementById('bar-acoes');
+  const metaBaseEl = document.getElementById('insight-meta-base');
+  const restanteAcoesEl = document.getElementById('insight-acoes-restantes');
+  const statusAcoesEl = document.getElementById('insight-acoes-status');
 
   if (metaEl) metaEl.textContent = fmtMoedaInteira(financeiro.meta_valor || 0);
   if (valorEl) valorEl.textContent = fmtMoedaInteira(financeiro.valor_realizado || 0);
@@ -216,6 +222,18 @@ function atualizarFinanceiro(financeiro) {
   if (pctEl) pctEl.textContent = `${financeiro.percentual_atingimento || 0}%`;
   if (txtEl) txtEl.textContent = `${fmtMoedaInteira(financeiro.valor_realizado || 0)} de ${fmtMoedaInteira(financeiro.meta_valor || 0)} realizados`;
   if (barEl) barEl.style.width = `${Math.min(financeiro.percentual_atingimento || 0, 100)}%`;
+  if (pctAcoesEl) pctAcoesEl.textContent = `${financeiro.percentual_acoes || 0}%`;
+  if (txtAcoesEl) txtAcoesEl.textContent = `${financeiro.acoes_realizadas || 0} de ${financeiro.meta_acoes || 0} ações realizadas`;
+  if (barAcoesEl) barAcoesEl.style.width = `${Math.min(financeiro.percentual_acoes || 0, 100)}%`;
+  if (metaBaseEl) metaBaseEl.textContent = fmtMoedaInteira(financeiro.meta_base_total || 0);
+  if (restanteAcoesEl) restanteAcoesEl.textContent = String(Math.max((financeiro.meta_acoes || 0) - (financeiro.acoes_realizadas || 0), 0));
+  if (statusAcoesEl) {
+    statusAcoesEl.textContent = (financeiro.meta_acoes || 0) <= 0
+      ? 'Meta pendente'
+      : (financeiro.acoes_realizadas || 0) >= (financeiro.meta_acoes || 0)
+        ? 'Meta atingida'
+        : 'Em andamento';
+  }
 
   atualizarInsights(financeiro);
   renderizarFunil(financeiro.funil || []);
@@ -389,6 +407,8 @@ function abrirInvestidor(id) {
   document.getElementById('ii-corretor').value = investidor.corretor || '';
   document.getElementById('ii-imobiliaria').value = investidor.imobiliaria || '';
   document.getElementById('ii-valor').value = investidor.valor_presente || 0;
+  const acaoEl = document.getElementById('ii-acao');
+  if (acaoEl) acaoEl.value = investidor.acao_realizada || '';
   document.getElementById('form-investidor').dataset.id = String(investidor.id);
   document.getElementById('modal-investidor').removeAttribute('hidden');
 }
@@ -463,6 +483,7 @@ async function salvarInvestidorEditado() {
     corretor: document.getElementById('ii-corretor').value.trim(),
     imobiliaria: document.getElementById('ii-imobiliaria').value.trim(),
     valor_presente: document.getElementById('ii-valor').value,
+    acao_realizada: document.getElementById('ii-acao')?.value.trim() || '',
   };
   if (!validarCamposBasicos(dados)) {
     showToast('Preencha os campos obrigatórios.', 'error');

@@ -257,22 +257,27 @@
       </div>
       <div class="progress-block progress-block--funnel">
         <div class="progress-block__header">
-          <span class="progress-block__label">Funil por Situação</span>
-          <span class="progress-block__pct" id="funil-total">{{ financeiro.funil | sum(attribute='quantidade') }} reservas</span>
+          <span class="progress-block__label">Progresso das Ações</span>
+          <span class="progress-block__pct" id="pct-acoes">{{ financeiro.percentual_acoes }}%</span>
         </div>
-        <div class="sales-funnel">
-          <button class="sales-funnel__chart" id="funil-chart" type="button" aria-label="Gráfico de pizza das situações de vendas"></button>
-          <div class="sales-funnel__legend" id="funil-legenda">
-            {% for item in financeiro.funil %}
-            <div class="sales-funnel__item" data-situacao="{{ item.label }}">
-              <span class="sales-funnel__dot" style="background: {{ item.cor }}"></span>
-              <div>
-                <strong>{{ item.label }}</strong>
-                <p>{{ item.quantidade }} reservas | {{ item.percentual }}%</p>
-              </div>
-            </div>
-            {% endfor %}
-          </div>
+        <div class="progress-track">
+          <span id="funil-total" hidden></span>
+          <div class="progress-fill progress-fill--acoes" id="bar-acoes" style="width:{{ financeiro.percentual_acoes if financeiro.percentual_acoes <= 100 else 100 }}%"></div>
+        </div>
+        <div class="progress-block__detail" id="txt-acoes">{{ financeiro.acoes_realizadas }} de {{ financeiro.meta_acoes }} ações realizadas</div>
+        <div class="progress-insights">
+          <article class="progress-insight">
+            <span class="progress-insight__label">Meta base</span>
+            <strong class="progress-insight__value" id="insight-meta-base">{{ financeiro.meta_base_total | round(0) | int }}</strong>
+          </article>
+          <article class="progress-insight">
+            <span class="progress-insight__label">Ações restantes</span>
+            <strong class="progress-insight__value" id="insight-acoes-restantes">{{ (financeiro.meta_acoes - financeiro.acoes_realizadas) if financeiro.meta_acoes > financeiro.acoes_realizadas else 0 }}</strong>
+          </article>
+          <article class="progress-insight">
+            <span class="progress-insight__label">Esforço</span>
+            <strong class="progress-insight__value" id="insight-acoes-status">{% if financeiro.meta_acoes <= 0 %}Meta pendente{% elif financeiro.acoes_realizadas < financeiro.meta_acoes %}Em andamento{% else %}Meta atingida{% endif %}</strong>
+          </article>
         </div>
       </div>
     </section>
@@ -301,6 +306,7 @@
               <div class="field"><label class="field__label">Imobiliária</label><input class="field__input" name="imobiliaria" type="text" /></div>
               <div class="field"><label class="field__label">Valor Presente</label><input class="field__input" name="valor_presente" type="number" min="0" step="0.01" /></div>
               <div class="field"><label class="field__label">Tipo de Venda *</label><select class="field__input" name="tipo_venda" required>{% for tipo in tipos_venda %}<option value="{{ tipo }}">{{ tipo }}</option>{% endfor %}</select></div>
+              <div class="field field--full"><label class="field__label">Ação realizada</label><textarea class="field__input field__textarea" name="acao_realizada" rows="2" placeholder="Descreva a ação realizada..."></textarea></div>
             </div>
             <div class="form-actions">
               <button type="reset" class="btn btn--ghost">Limpar</button>
@@ -403,6 +409,7 @@
       <div class="field"><label class="field__label">Imobiliária</label><input class="field__input" id="vi-imobiliaria" type="text" /></div>
       <div class="field"><label class="field__label">Valor Presente</label><input class="field__input" id="vi-valor" type="number" min="0" step="0.01" /></div>
       <div class="field"><label class="field__label">Tipo de Venda</label><select class="field__input" id="vi-tipo-venda"></select></div>
+      <div class="field field--full"><label class="field__label">Ação realizada</label><textarea class="field__input field__textarea" id="vi-acao" rows="3"></textarea></div>
       <div class="modal__actions field--full">
         <button class="btn btn--ghost" type="button" onclick="closeVenda()">Fechar</button>
         <button class="btn btn--primary" type="submit" id="btn-salvar-modal">Salvar alterações</button>

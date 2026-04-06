@@ -40,6 +40,7 @@ def _format_user_type(value):
         'gestor_financeiro': 'GESTOR FINANCEIRO',
         'gestor_engenharia': 'GESTOR ENGENHARIA',
         'gestor_comercial': 'GESTOR COMERCIAL',
+        'gestor_marketing': 'GESTOR MARKETING',
         'gestor_suprimentos': 'GESTOR SUPRIMENTOS',
         'gestor_credito': 'GESTOR CREDITO',
         'usuario_financeiro': 'USUARIO FINANCEIRO',
@@ -300,13 +301,50 @@ def _ensure_database_columns():
     tabelas = {
         'vendas': {
             'tipo_venda': "ALTER TABLE vendas ADD COLUMN tipo_venda VARCHAR(60) NOT NULL DEFAULT 'DIRETA'",
+            'acao_realizada': "ALTER TABLE vendas ADD COLUMN acao_realizada TEXT",
+        },
+        'vendas_investidor': {
+            'acao_realizada': "ALTER TABLE vendas_investidor ADD COLUMN acao_realizada TEXT",
         },
         'financeiro_bancos': {
             'negociacao': "ALTER TABLE financeiro_bancos ADD COLUMN negociacao VARCHAR(20) NOT NULL DEFAULT 'PARCIAL'",
+            'acao_realizada': "ALTER TABLE financeiro_bancos ADD COLUMN acao_realizada TEXT",
+        },
+        'giro_captacoes': {
+            'acao_realizada': "ALTER TABLE giro_captacoes ADD COLUMN acao_realizada TEXT",
+        },
+        'fornecedores_registros': {
+            'acao_realizada': "ALTER TABLE fornecedores_registros ADD COLUMN acao_realizada TEXT",
+        },
+        'medicoes': {
+            'acao_realizada': "ALTER TABLE medicoes ADD COLUMN acao_realizada TEXT",
+        },
+        'relacionamentos': {
+            'acao_realizada': "ALTER TABLE relacionamentos ADD COLUMN acao_realizada TEXT",
+        },
+        'metas_venda_semana': {
+            'acoes_planejadas': "ALTER TABLE metas_venda_semana ADD COLUMN acoes_planejadas INTEGER NOT NULL DEFAULT 0",
+        },
+        'metas_investidor_semana': {
+            'acoes_planejadas': "ALTER TABLE metas_investidor_semana ADD COLUMN acoes_planejadas INTEGER NOT NULL DEFAULT 0",
+        },
+        'metas_financeiro_semana': {
+            'acoes_planejadas': "ALTER TABLE metas_financeiro_semana ADD COLUMN acoes_planejadas INTEGER NOT NULL DEFAULT 0",
+        },
+        'metas_giro_semana': {
+            'acoes_planejadas': "ALTER TABLE metas_giro_semana ADD COLUMN acoes_planejadas INTEGER NOT NULL DEFAULT 0",
+        },
+        'meta_fornecedor_semana': {
+            'acoes_planejadas': "ALTER TABLE meta_fornecedor_semana ADD COLUMN acoes_planejadas INTEGER NOT NULL DEFAULT 0",
+        },
+        'metas_medicao_semana': {
+            'acoes_planejadas': "ALTER TABLE metas_medicao_semana ADD COLUMN acoes_planejadas INTEGER NOT NULL DEFAULT 0",
         },
     }
 
     for tabela, colunas in tabelas.items():
+        if not inspector.has_table(tabela):
+            continue
         existentes = {coluna['name'] for coluna in inspector.get_columns(tabela)}
         for coluna, ddl in colunas.items():
             if coluna in existentes:

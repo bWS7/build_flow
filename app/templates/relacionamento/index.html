@@ -210,6 +210,7 @@
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
           Novo Registro — Semana {{ semana_atual }}
         </h3>
+        <span class="section-header__count">Meta base total: R$ {{ indicadores.meta_base_total | brl_int }}</span>
         <button class="btn btn--sm btn--ghost" id="toggle-form">▼ Expandir</button>
       </div>
 
@@ -267,6 +268,10 @@
           <div class="field field--full">
             <label class="field__label">Observação</label>
             <textarea class="field__input field__textarea" name="observacao" rows="2" placeholder="Observações adicionais..."></textarea>
+          </div>
+          <div class="field field--full">
+            <label class="field__label">Ação realizada</label>
+            <textarea class="field__input field__textarea" name="acao_realizada" rows="2" placeholder="Descreva a ação realizada..."></textarea>
           </div>
           <div class="form-actions">
             <button type="reset" class="btn btn--ghost">Limpar</button>
@@ -328,6 +333,7 @@
       <div class="field"><label class="field__label">Semana</label><input class="field__input" id="fi-semana" type="text" readonly /></div>
       <div class="field"><label class="field__label">Data / Hora</label><input class="field__input" id="fi-data" type="text" readonly /></div>
       <div class="field field--full"><label class="field__label">Observação</label><textarea class="field__input field__textarea" id="fi-obs" rows="3"></textarea></div>
+      <div class="field field--full"><label class="field__label">Ação realizada</label><textarea class="field__input field__textarea" id="fi-acao" rows="3"></textarea></div>
       <div class="modal__actions field--full">
         <span id="fi-permissao" class="ficha-permission"></span>
         <button class="btn btn--ghost" type="button" onclick="closeFicha()">Fechar</button>

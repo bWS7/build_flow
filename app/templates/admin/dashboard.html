@@ -141,6 +141,12 @@
           <svg class="admin-card__arrow" id="arrow-metas-varejo" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
         </button>
         <div class="admin-card__body" id="body-metas-varejo">
+        <div class="field" style="margin-bottom:16px">
+          <label class="field__label">Meta Base Total (unidades)</label>
+          <input class="field__input" type="number" min="0" step="1" id="meta-base-vendas"
+                 value="{{ metas_base_total.get('vendas', 0) | int }}"
+                 {% if not current_user.can_manage_admin() %}readonly{% endif %} />
+        </div>
         {% for mes_nome, mes_ini, mes_id in [('Abril', 1, 'vendas-abril'), ('Maio', 5, 'vendas-maio'), ('Junho', 9, 'vendas-junho')] %}
         <div class="mes-group" id="mes-{{ mes_id }}">
           <button class="mes-label" type="button" onclick="toggleMesVendas('{{ mes_id }}')">
@@ -159,6 +165,13 @@
                   <label class="field__label">Meta semanal (unidades)</label>
                   <input class="field__input" type="number" min="0" step="1" id="meta-venda-{{ s }}"
                          value="{{ meta_venda.quantidade_meta if meta_venda else 0 }}"
+                         placeholder="0"
+                         {% if is_saved_meta_venda or (not current_user.can_manage_admin() and not is_released_meta_venda) %}readonly{% endif %} />
+                </div>
+                <div class="field">
+                  <label class="field__label">Ações planejadas</label>
+                  <input class="field__input" type="number" min="0" step="1" id="acoes-venda-{{ s }}"
+                         value="{{ meta_venda.acoes_planejadas if meta_venda else 0 }}"
                          placeholder="0"
                          {% if is_saved_meta_venda or (not current_user.can_manage_admin() and not is_released_meta_venda) %}readonly{% endif %} />
                 </div>
@@ -202,6 +215,12 @@
           <svg class="admin-card__arrow" id="arrow-metas-investidores" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
         </button>
         <div class="admin-card__body" id="body-metas-investidores">
+        <div class="field" style="margin-bottom:16px">
+          <label class="field__label">Meta Base Total (R$)</label>
+          <input class="field__input" type="text" id="meta-base-investidores"
+                 value="{{ metas_base_total.get('investidores', 0) | brl }}"
+                 {% if current_user.can_manage_admin() %}oninput="formatarValorBR(this)"{% else %}readonly{% endif %} />
+        </div>
         {% for mes_nome, mes_ini, mes_id in [('Abril', 1, 'investidores-abril'), ('Maio', 5, 'investidores-maio'), ('Junho', 9, 'investidores-junho')] %}
         <div class="mes-group" id="mes-{{ mes_id }}">
           <button class="mes-label" type="button" onclick="toggleMesInvestidores('{{ mes_id }}')">
@@ -222,6 +241,13 @@
                          value="{{ meta_investidor.valor_meta | brl if meta_investidor else '0,00' }}"
                          placeholder="0,00"
                          {% if is_saved_meta_investidor or (not current_user.can_manage_admin() and not is_released_meta_investidor) %}readonly{% else %}oninput="formatarValorBR(this)"{% endif %} />
+                </div>
+                <div class="field">
+                  <label class="field__label">Ações planejadas</label>
+                  <input class="field__input" type="number" min="0" step="1" id="acoes-investidor-{{ s }}"
+                         value="{{ meta_investidor.acoes_planejadas if meta_investidor else 0 }}"
+                         placeholder="0"
+                         {% if is_saved_meta_investidor or (not current_user.can_manage_admin() and not is_released_meta_investidor) %}readonly{% endif %} />
                 </div>
                 <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px">
                   <button class="btn btn--sm {% if is_saved_meta_investidor or (not current_user.can_manage_admin() and not is_released_meta_investidor) %}btn--ghost{% else %}btn--primary{% endif %}" type="button" id="btn-meta-investidor-{{ s }}"
@@ -263,6 +289,12 @@
           <svg class="admin-card__arrow" id="arrow-metas-financeiro" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
         </button>
         <div class="admin-card__body" id="body-metas-financeiro">
+        <div class="field" style="margin-bottom:16px">
+          <label class="field__label">Meta Base Total (R$)</label>
+          <input class="field__input" type="text" id="meta-base-financeiro"
+                 value="{{ metas_base_total.get('financeiro', 0) | brl }}"
+                 {% if current_user.can_manage_admin() %}oninput="formatarValorBR(this)"{% else %}readonly{% endif %} />
+        </div>
         {% for mes_nome, mes_ini, mes_id in [('Abril', 1, 'financeiro-abril'), ('Maio', 5, 'financeiro-maio'), ('Junho', 9, 'financeiro-junho')] %}
         <div class="mes-group" id="mes-{{ mes_id }}">
           <button class="mes-label" type="button" onclick="toggleMesFinanceiro('{{ mes_id }}')">
@@ -283,6 +315,13 @@
                          value="{{ meta_fin.valor_meta | brl if meta_fin else '0,00' }}"
                          placeholder="0,00"
                          {% if is_saved_fin or (not current_user.can_manage_admin() and not is_released_fin) %}readonly{% else %}oninput="formatarValorBR(this)"{% endif %} />
+                </div>
+                <div class="field">
+                  <label class="field__label">Ações planejadas</label>
+                  <input class="field__input" type="number" min="0" step="1" id="acoes-financeiro-s{{ s }}"
+                         value="{{ meta_fin.acoes_planejadas if meta_fin else 0 }}"
+                         placeholder="0"
+                         {% if is_saved_fin or (not current_user.can_manage_admin() and not is_released_fin) %}readonly{% endif %} />
                 </div>
                 <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px">
                   <button class="btn btn--sm {% if is_saved_fin or (not current_user.can_manage_admin() and not is_released_fin) %}btn--ghost{% else %}btn--primary{% endif %}"
@@ -325,6 +364,12 @@
             <svg class="admin-card__arrow" id="arrow-metas-giro" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
           </button>
           <div class="admin-card__body" id="body-metas-giro">
+          <div class="field" style="margin-bottom:16px">
+            <label class="field__label">Meta Base Total (R$)</label>
+            <input class="field__input" type="text" id="meta-base-giro"
+                   value="{{ metas_base_total.get('giro', 0) | brl }}"
+                   {% if current_user.can_manage_admin() %}oninput="formatarValorBR(this)"{% else %}readonly{% endif %} />
+          </div>
           {% for mes_nome, mes_ini, mes_id in [('Abril', 1, 'giro-abril'), ('Maio', 5, 'giro-maio'), ('Junho', 9, 'giro-junho')] %}
           <div class="mes-group" id="mes-{{ mes_id }}">
             <button class="mes-label" type="button" onclick="toggleMesGiro('{{ mes_id }}')">
@@ -339,14 +384,21 @@
                 {% set is_released_giro = s in metas_liberadas.get('giro', []) %}
                 <div class="meta-item {% if is_saved_giro %}meta-item--saved{% endif %}" data-meta-giro="{{ s }}" data-locked="{{ 'true' if is_saved_giro else 'false' }}">
                   <span class="meta-item__label">Semana {{ loop.index }}</span>
-                  <div class="field">
-                    <label class="field__label">Meta giro (R$)</label>
-                    <input class="field__input" type="text" id="meta-giro-s{{ s }}"
-                           value="{{ meta_giro.valor_meta | brl if meta_giro else '0,00' }}"
-                           placeholder="0,00"
-                           {% if is_saved_giro or (not current_user.can_manage_admin() and not is_released_giro) %}readonly{% else %}oninput="formatarValorBR(this)"{% endif %} />
-                  </div>
-                  <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px">
+                    <div class="field">
+                      <label class="field__label">Meta giro (R$)</label>
+                      <input class="field__input" type="text" id="meta-giro-s{{ s }}"
+                             value="{{ meta_giro.valor_meta | brl if meta_giro else '0,00' }}"
+                             placeholder="0,00"
+                             {% if is_saved_giro or (not current_user.can_manage_admin() and not is_released_giro) %}readonly{% else %}oninput="formatarValorBR(this)"{% endif %} />
+                    </div>
+                    <div class="field">
+                      <label class="field__label">Ações planejadas</label>
+                      <input class="field__input" type="number" min="0" step="1" id="acoes-giro-s{{ s }}"
+                             value="{{ meta_giro.acoes_planejadas if meta_giro else 0 }}"
+                             placeholder="0"
+                             {% if is_saved_giro or (not current_user.can_manage_admin() and not is_released_giro) %}readonly{% endif %} />
+                    </div>
+                    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px">
                     <button class="btn btn--sm {% if is_saved_giro or (not current_user.can_manage_admin() and not is_released_giro) %}btn--ghost{% else %}btn--primary{% endif %}"
                             id="btn-meta-giro-s{{ s }}"
                             onclick="{% if is_saved_giro and current_user.can_manage_admin() %}editarMetaGiro({{ s }}, this){% elif not is_saved_giro and (current_user.can_manage_admin() or is_released_giro) %}salvarMetaGiro({{ s }}, this){% endif %}"
@@ -387,6 +439,12 @@
             <svg class="admin-card__arrow" id="arrow-metas-fornecedores" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
           </button>
           <div class="admin-card__body" id="body-metas-fornecedores">
+          <div class="field" style="margin-bottom:16px">
+            <label class="field__label">Meta Base Total (R$)</label>
+            <input class="field__input" type="text" id="meta-base-fornecedores"
+                   value="{{ metas_base_total.get('fornecedores', 0) | brl }}"
+                   {% if current_user.can_manage_admin() %}oninput="formatarValorBR(this)"{% else %}readonly{% endif %} />
+          </div>
           {% for mes_nome, mes_ini, mes_id in [('Abril', 1, 'fornecedores-abril'), ('Maio', 5, 'fornecedores-maio'), ('Junho', 9, 'fornecedores-junho')] %}
           <div class="mes-group" id="mes-{{ mes_id }}">
             <button class="mes-label" type="button" onclick="toggleMesFornecedores('{{ mes_id }}')">
@@ -407,6 +465,13 @@
                            value="{{ meta_fornecedor.valor_meta | brl if meta_fornecedor else '0,00' }}"
                            placeholder="0,00"
                            {% if is_saved_fornecedor or (not current_user.can_manage_admin() and not is_released_fornecedor) %}readonly{% else %}oninput="formatarValorBR(this)"{% endif %} />
+                  </div>
+                  <div class="field">
+                    <label class="field__label">Ações planejadas</label>
+                    <input class="field__input" type="number" min="0" step="1" id="acoes-fornecedor-s{{ s }}"
+                           value="{{ meta_fornecedor.acoes_planejadas if meta_fornecedor else 0 }}"
+                           placeholder="0"
+                           {% if is_saved_fornecedor or (not current_user.can_manage_admin() and not is_released_fornecedor) %}readonly{% endif %} />
                   </div>
                   <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px">
                     <button class="btn btn--sm {% if is_saved_fornecedor or (not current_user.can_manage_admin() and not is_released_fornecedor) %}btn--ghost{% else %}btn--primary{% endif %}"
@@ -440,6 +505,12 @@
             <svg class="admin-card__arrow" id="arrow-metas-medicao" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
           </button>
           <div class="admin-card__body" id="body-metas-medicao">
+          <div class="field" style="margin-bottom:16px">
+            <label class="field__label">Meta Base Total (R$)</label>
+            <input class="field__input" type="text" id="meta-base-medicao"
+                   value="{{ metas_base_total.get('medicao', 0) | brl }}"
+                   {% if current_user.can_manage_admin() %}oninput="formatarValorBR(this)"{% else %}readonly{% endif %} />
+          </div>
           {% for mes_nome, mes_ini, mes_id in [('Abril', 1, 'medicao-abril'), ('Maio', 5, 'medicao-maio'), ('Junho', 9, 'medicao-junho')] %}
           <div class="mes-group" id="mes-{{ mes_id }}">
             <button class="mes-label" type="button" onclick="toggleMesMedicao('{{ mes_id }}')">
@@ -460,6 +531,13 @@
                            value="{{ meta_medicao.valor_meta | brl if meta_medicao else '0,00' }}"
                            placeholder="0,00"
                            {% if is_saved_medicao or (not current_user.can_manage_admin() and not is_released_medicao) %}readonly{% else %}oninput="formatarValorBR(this)"{% endif %} />
+                  </div>
+                  <div class="field">
+                    <label class="field__label">Ações planejadas</label>
+                    <input class="field__input" type="number" min="0" step="1" id="acoes-medicao-s{{ s }}"
+                           value="{{ meta_medicao.acoes_planejadas if meta_medicao else 0 }}"
+                           placeholder="0"
+                           {% if is_saved_medicao or (not current_user.can_manage_admin() and not is_released_medicao) %}readonly{% endif %} />
                   </div>
                   <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px">
                     <button class="btn btn--sm {% if is_saved_medicao or (not current_user.can_manage_admin() and not is_released_medicao) %}btn--ghost{% else %}btn--primary{% endif %}"
@@ -502,6 +580,12 @@
           <svg class="admin-card__arrow" id="arrow-metas-relacionamento" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
         </button>
         <div class="admin-card__body" id="body-metas-relacionamento">
+        <div class="field" style="margin-bottom:16px">
+          <label class="field__label">Meta Base Total (R$)</label>
+          <input class="field__input" type="text" id="meta-base-relacionamento"
+                 value="{{ metas_base_total.get('relacionamento', 0) | brl }}"
+                 {% if current_user.can_manage_admin() %}oninput="formatarValorBR(this)"{% else %}readonly{% endif %} />
+        </div>
 
         {% for mes_nome, mes_ini, mes_id in [('Abril', 1, 'abril'), ('Maio', 5, 'maio'), ('Junho', 9, 'junho')] %}
         <div class="mes-group" id="mes-{{ mes_id }}">

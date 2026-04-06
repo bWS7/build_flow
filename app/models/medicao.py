@@ -11,6 +11,7 @@ class MedicaoRegistro(db.Model):
     empreendimento = db.Column(db.String(120), nullable=False)
     valor_medicao = db.Column(db.Numeric(15, 2), nullable=False, default=0)
     observacao = db.Column(db.Text, nullable=True)
+    acao_realizada = db.Column(db.Text, nullable=True)
     responsavel = db.Column(db.String(120), nullable=False)
     semana = db.Column(db.Integer, nullable=False, default=1)
     criado_em = db.Column(
@@ -34,6 +35,7 @@ class MedicaoRegistro(db.Model):
             'empreendimento': self.empreendimento,
             'valor_medicao': float(self.valor_medicao or 0),
             'observacao': self.observacao or '',
+            'acao_realizada': self.acao_realizada or '',
             'responsavel': self.responsavel,
             'semana': self.semana,
             'criado_em': self.formatar_criado_em(),

@@ -200,14 +200,14 @@
       </div>
       <div class="progress-block">
         <div class="progress-block__header">
-          <span class="progress-block__label">Empreendimentos lançados</span>
-          <span class="progress-block__pct" id="pct-empreendimentos">{{ indicadores.total_empreendimentos }}</span>
+          <span class="progress-block__label">Ações realizadas</span>
+          <span class="progress-block__pct" id="pct-acoes">{{ indicadores.pct_acoes }}%</span>
         </div>
         <div class="progress-track">
-          <div class="progress-fill progress-fill--acoes" id="bar-empreendimentos" style="width:{{ 100 if indicadores.total_empreendimentos else 0 }}%"></div>
+          <div class="progress-fill progress-fill--acoes" id="bar-acoes" style="width:{{ indicadores.pct_acoes if indicadores.pct_acoes <= 100 else 100 }}%"></div>
         </div>
         <div class="progress-block__detail">
-          <span id="txt-empreendimentos">{{ indicadores.total_empreendimentos }} empreendimentos com medição na semana</span>
+          <span id="txt-acoes">{{ indicadores.acoes_realizadas }} de {{ indicadores.acoes_planejadas }} ações realizadas</span>
         </div>
       </div>
     </section>
@@ -218,6 +218,7 @@
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
           Novo Registro de Medição - Semana {{ semana_atual }}
         </h3>
+        <span class="section-header__count">Meta base total: R$ {{ indicadores.meta_base_total | brl_int }}</span>
         <button class="btn btn--sm btn--ghost" id="toggle-form">▼ Expandir</button>
       </div>
       <div id="form-wrapper" style="display:none">
@@ -245,6 +246,10 @@
           <div class="field field--full">
             <label class="field__label">Observações</label>
             <textarea class="field__input field__textarea" name="observacao" rows="2" placeholder="Observações opcionais..."></textarea>
+          </div>
+          <div class="field field--full">
+            <label class="field__label">Ação realizada</label>
+            <textarea class="field__input field__textarea" name="acao_realizada" rows="2" placeholder="Descreva a ação realizada..."></textarea>
           </div>
           <div class="form-actions">
             <button type="reset" class="btn btn--ghost">Limpar</button>
@@ -297,6 +302,7 @@
       <div class="field"><label class="field__label">Semana</label><input class="field__input" id="fi-semana" type="text" readonly /></div>
       <div class="field"><label class="field__label">Data / Hora</label><input class="field__input" id="fi-data" type="text" readonly /></div>
       <div class="field field--full"><label class="field__label">Observações</label><textarea class="field__input field__textarea" id="fi-obs" rows="3"></textarea></div>
+      <div class="field field--full"><label class="field__label">Ação realizada</label><textarea class="field__input field__textarea" id="fi-acao" rows="3"></textarea></div>
       <div class="modal__actions field--full">
         <span id="fi-permissao" class="ficha-permission"></span>
         <button class="btn btn--ghost" type="button" onclick="closeFicha()">Fechar</button>

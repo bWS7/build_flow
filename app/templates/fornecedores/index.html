@@ -166,17 +166,18 @@
       </div>
       <div class="progress-block">
         <div class="progress-block__header">
-          <span class="progress-block__label">Empreendimentos com registro</span>
-          <span class="progress-block__pct" id="pct-empreendimentos">{{ indicadores.total_empreendimentos }}</span>
+          <span class="progress-block__label">Ações realizadas</span>
+          <span class="progress-block__pct" id="pct-acoes">{{ indicadores.pct_acoes }}%</span>
         </div>
-        <div class="progress-track"><div class="progress-fill progress-fill--acoes" id="bar-empreendimentos" style="width:{{ 100 if indicadores.total_empreendimentos else 0 }}%"></div></div>
-        <div class="progress-block__detail"><span id="txt-empreendimentos">{{ indicadores.total_empreendimentos }} empreendimentos com registro na semana</span></div>
+        <div class="progress-track"><div class="progress-fill progress-fill--acoes" id="bar-acoes" style="width:{{ indicadores.pct_acoes if indicadores.pct_acoes <= 100 else 100 }}%"></div></div>
+        <div class="progress-block__detail"><span id="txt-acoes">{{ indicadores.acoes_realizadas }} de {{ indicadores.acoes_planejadas }} ações realizadas</span></div>
       </div>
     </section>
 
     <section class="form-section">
       <div class="section-header">
         <h3 class="section-header__title">Novo Registro de Fornecedor - Semana {{ semana_atual }}</h3>
+        <span class="section-header__count">Meta base total: R$ {{ indicadores.meta_base_total | brl_int }}</span>
         <button class="btn btn--sm btn--ghost" id="toggle-form">▼ Expandir</button>
       </div>
       <div id="form-wrapper" style="display:none">
@@ -228,6 +229,10 @@
             <div class="field field--full">
               <label class="field__label">Observacoes</label>
               <textarea class="field__input field__input--textarea" name="observacao" rows="3"></textarea>
+            </div>
+            <div class="field field--full">
+              <label class="field__label">Ação realizada</label>
+              <textarea class="field__input field__input--textarea" name="acao_realizada" rows="3"></textarea>
             </div>
           </div>
           <div class="form-actions">
@@ -287,6 +292,7 @@
         <div class="field"><label class="field__label">Semana</label><input class="field__input" id="fi-semana" type="text" readonly /></div>
         <div class="field"><label class="field__label">Criado em</label><input class="field__input" id="fi-data" type="text" readonly /></div>
         <div class="field field--full"><label class="field__label">Observacoes</label><textarea class="field__input field__input--textarea" id="fi-obs" rows="3"></textarea></div>
+        <div class="field field--full"><label class="field__label">Ação realizada</label><textarea class="field__input field__input--textarea" id="fi-acao" rows="3"></textarea></div>
       </div>
       <div class="form-actions">
         <span class="form-feedback" id="fi-permissao"></span>

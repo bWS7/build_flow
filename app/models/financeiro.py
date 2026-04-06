@@ -43,6 +43,7 @@ class FinanceiroBanco(db.Model):
     valor_arrecadado = db.Column(db.Numeric(15, 2), nullable=False, default=0)
     tipo_negociacao = db.Column(db.String(120), nullable=False)
     observacao = db.Column(db.Text, nullable=True)
+    acao_realizada = db.Column(db.Text, nullable=True)
     referencia = db.Column(db.String(120), nullable=True)
     responsavel = db.Column(db.String(120), nullable=False)
     semana = db.Column(db.Integer, nullable=False, default=1)
@@ -69,6 +70,7 @@ class FinanceiroBanco(db.Model):
             'valor_arrecadado': float(self.valor_arrecadado or 0),
             'tipo_negociacao': self.tipo_negociacao,
             'observacao': self.observacao or '',
+            'acao_realizada': self.acao_realizada or '',
             'referencia': self.referencia or '',
             'responsavel': self.responsavel,
             'semana': self.semana,

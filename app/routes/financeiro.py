@@ -6,6 +6,7 @@ from flask_login import current_user, login_required
 from app import db, socketio
 from app.models.financeiro import BANCOS_BRASIL, NEGOCIACAO_OPCOES, FinanceiroBanco
 from app.models.meta_financeiro import MetaFinanceiroSemana
+from app.models.meta_configuracao import MetaConfiguracaoIndicador
 
 
 financeiro_bp = Blueprint('financeiro', __name__)
@@ -35,18 +36,26 @@ def _parse_semana(valor) -> int | None:
 def _calcular_indicadores_financeiro(semana: int, registros: list[FinanceiroBanco] | None = None) -> dict:
     meta = MetaFinanceiroSemana.query.filter_by(semana=semana).first()
     valor_meta = float(meta.valor_meta) if meta else 0.0
+    acoes_planejadas = int(meta.acoes_planejadas or 0) if meta else 0
     todos = registros if registros is not None else FinanceiroBanco.query.filter_by(semana=semana).all()
     valor_arrecadado = sum(float(item.valor_arrecadado or 0) for item in todos)
     total_negociacoes = len(todos)
     total_bancos = len({(item.banco or '').strip() for item in todos if (item.banco or '').strip()})
+    acoes_realizadas = sum(1 for item in todos if (item.acao_realizada or '').strip())
     percentual = (valor_arrecadado / valor_meta * 100) if valor_meta > 0 else 0
+    percentual_acoes = (acoes_realizadas / acoes_planejadas * 100) if acoes_planejadas > 0 else 0
+    meta_base = MetaConfiguracaoIndicador.query.filter_by(scope='financeiro').first()
 
     return {
         'semana': semana,
         'valor_meta': valor_meta,
+        'meta_base_total': float(meta_base.meta_base_total or 0) if meta_base else 0.0,
         'valor_arrecadado': valor_arrecadado,
         'total_negociacoes': total_negociacoes,
         'total_bancos': total_bancos,
+        'acoes_planejadas': acoes_planejadas,
+        'acoes_realizadas': acoes_realizadas,
+        'pct_acoes': min(round(percentual_acoes, 1), 100),
         'pct_valor': min(round(percentual, 1), 100),
     }
 
@@ -56,12 +65,19 @@ def resumir_financeiro_bancos_trimestre() -> dict:
     metas = MetaFinanceiroSemana.query.filter(MetaFinanceiroSemana.semana.in_(range(1, 13))).all()
     valor_realizado = sum(float(item.valor_arrecadado or 0) for item in registros)
     valor_meta = sum(float(item.valor_meta or 0) for item in metas)
+    acoes_planejadas = sum(int(item.acoes_planejadas or 0) for item in metas)
+    acoes_realizadas = sum(1 for item in registros if (item.acao_realizada or '').strip())
+    meta_base = MetaConfiguracaoIndicador.query.filter_by(scope='financeiro').first()
     return {
         'valor_realizado': valor_realizado,
         'valor_meta': valor_meta,
+        'meta_base_total': float(meta_base.meta_base_total or 0) if meta_base else 0.0,
         'percentual_atingimento': round((valor_realizado / valor_meta) * 100, 1) if valor_meta > 0 else 0.0,
         'total_negociacoes': len(registros),
         'total_bancos': len({(item.banco or '').strip() for item in registros if (item.banco or '').strip()}),
+        'acoes_planejadas': acoes_planejadas,
+        'acoes_realizadas': acoes_realizadas,
+        'percentual_acoes': round((acoes_realizadas / acoes_planejadas) * 100, 1) if acoes_planejadas > 0 else 0.0,
     }
 
 
@@ -136,6 +152,7 @@ def cadastrar():
         valor_arrecadado=valor_arrecadado,
         tipo_negociacao=(dados.get('tipo_negociacao') or '').upper().strip(),
         observacao=(dados.get('observacao') or '').upper().strip() or None,
+        acao_realizada=(dados.get('acao_realizada') or '').upper().strip() or None,
         referencia=(dados.get('referencia') or '').upper().strip() or None,
         responsavel=current_user.nome.upper(),
         semana=semana,
@@ -200,6 +217,7 @@ def editar_registro(reg_id):
     reg.valor_arrecadado = valor_arrecadado
     reg.tipo_negociacao = (dados.get('tipo_negociacao') or '').upper().strip()
     reg.observacao = (dados.get('observacao') or '').upper().strip() or None
+    reg.acao_realizada = (dados.get('acao_realizada') or '').upper().strip() or None
     reg.referencia = (dados.get('referencia') or '').upper().strip() or None
 
     db.session.commit()
