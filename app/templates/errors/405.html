@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+{% block title %}M&eacute;todo n&atilde;o permitido{% endblock %}
+
+{% block body %}
+<main class="error-page">
+  <section class="error-card">
+    <p class="error-code">405</p>
+    <h1 class="error-title">M&eacute;todo n&atilde;o permitido</h1>
+    <p class="error-copy">A requisi&ccedil;&atilde;o foi recebida, mas esse m&eacute;todo HTTP n&atilde;o &eacute; aceito nesta rota.</p>
+    <a class="btn btn--primary" href="{{ url_for('auth.login') }}">Voltar para o login</a>
+  </section>
+</main>
+{% endblock %}

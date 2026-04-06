@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+{% block title %}P&aacute;gina n&atilde;o encontrada{% endblock %}
+
+{% block body %}
+<main class="error-page">
+  <section class="error-card">
+    <p class="error-code">404</p>
+    <h1 class="error-title">P&aacute;gina n&atilde;o encontrada</h1>
+    <p class="error-copy">O endere&ccedil;o informado n&atilde;o existe ou n&atilde;o est&aacute; dispon&iacute;vel.</p>
+    <a class="btn btn--primary" href="{{ url_for('auth.login') }}">Voltar para o login</a>
+  </section>
+</main>
+{% endblock %}

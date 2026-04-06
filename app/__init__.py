@@ -1,6 +1,6 @@
 import os
 import secrets
-from flask import Flask, flash, redirect, request, url_for
+from flask import Flask, flash, redirect, render_template, request, url_for
 from flask_sqlalchemy import SQLAlchemy
 from flask_login import LoginManager
 from flask_migrate import Migrate
@@ -89,6 +89,50 @@ def _resolve_socketio_async_mode():
     return 'eventlet' if os.environ.get('FLASK_ENV') == 'production' else 'threading'
 
 
+def _build_csp_header():
+    directives = {
+        'default-src': ["'self'"],
+        'base-uri': ["'self'"],
+        'form-action': ["'self'"],
+        'frame-ancestors': ["'self'"],
+        'object-src': ["'none'"],
+        'script-src': [
+            "'self'",
+            "'unsafe-inline'",
+            'https://cdnjs.cloudflare.com',
+            'https://cdn.socket.io',
+        ],
+        'style-src': [
+            "'self'",
+            "'unsafe-inline'",
+            'https://fonts.googleapis.com',
+        ],
+        'font-src': [
+            "'self'",
+            'https://fonts.gstatic.com',
+            'data:',
+        ],
+        'img-src': [
+            "'self'",
+            'data:',
+            'https:',
+        ],
+        'connect-src': [
+            "'self'",
+            'https:',
+            'wss:',
+        ],
+        'frame-src': ["'none'"],
+        'manifest-src': ["'self'"],
+        'worker-src': ["'self'", 'blob:'],
+        'upgrade-insecure-requests': [],
+    }
+    return '; '.join(
+        f"{directive} {' '.join(values)}".rstrip()
+        for directive, values in directives.items()
+    )
+
+
 def create_app():
     app = Flask(__name__)
     app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1)
@@ -158,10 +202,15 @@ def create_app():
 
     @app.after_request
     def _apply_security_headers(response):
+        response.headers['Content-Security-Policy'] = _build_csp_header()
         response.headers['X-Frame-Options'] = 'SAMEORIGIN'
         response.headers['X-Content-Type-Options'] = 'nosniff'
         response.headers['Referrer-Policy'] = 'strict-origin-when-cross-origin'
         response.headers['Permissions-Policy'] = 'camera=(), microphone=(), geolocation=()'
+        response.headers['Cross-Origin-Opener-Policy'] = 'same-origin'
+        response.headers['Cross-Origin-Resource-Policy'] = 'same-origin'
+        if request.endpoint == 'auth.login':
+            response.headers['Cache-Control'] = 'no-store'
         if app.config.get('SESSION_COOKIE_SECURE'):
             response.headers['Strict-Transport-Security'] = 'max-age=31536000; includeSubDomains'
         return response
@@ -186,6 +235,14 @@ def create_app():
     @app.get('/health')
     def healthcheck():
         return {'status': 'ok'}, 200
+
+    @app.errorhandler(404)
+    def _handle_not_found(error):
+        return render_template('errors/404.html'), 404
+
+    @app.errorhandler(405)
+    def _handle_method_not_allowed(error):
+        return render_template('errors/405.html'), 405
 
     return app
 
