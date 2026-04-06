@@ -1,4 +1,4 @@
-# Sousa Araujo
+# Build Flow
 
 Aplicacao web corporativa para acompanhamento operacional, comercial e gerencial, desenvolvida em Flask com arquitetura modular, interface server-rendered e atualizacao em tempo real via Socket.IO.
 
