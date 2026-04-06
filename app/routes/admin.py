@@ -1178,34 +1178,34 @@ def _montar_master_painel() -> dict:
         },
         {
             'slug': 'giro',
-            'nome': 'Giro',
+            'nome': 'Capital de giro',
             'realizado': float(resumo_giro['valor_realizado']),
             'meta': float(resumo_giro['valor_meta']),
             'percentual': float(resumo_giro['percentual_atingimento']),
             'descricao': 'Valor captado para reforco de caixa frente a meta semanal cadastrada no admin.',
-            'comparativo_label': 'valor captado x meta de giro',
+            'comparativo_label': 'valor captado x meta de capital de giro',
             'ficticio': False,
             'monetario': True,
         },
         {
             'slug': 'medicao',
-            'nome': 'Medição',
+            'nome': 'Medição de obras',
             'realizado': float(resumo_medicao['valor_realizado']),
             'meta': float(resumo_medicao['valor_meta']),
             'percentual': float(resumo_medicao['percentual_atingimento']),
             'descricao': 'Valor de medicao lancado frente a meta semanal cadastrada no admin.',
-            'comparativo_label': 'valor de medicao x meta de medicao',
+            'comparativo_label': 'valor de medição x meta de medição de obras',
             'ficticio': False,
             'monetario': True,
         },
         {
             'slug': 'fornecedores',
-            'nome': 'Fornecedores',
+            'nome': 'Renegociação Fornecedores',
             'realizado': float(resumo_fornecedores['valor_realizado']),
             'meta': float(resumo_fornecedores['valor_meta']),
             'percentual': float(resumo_fornecedores['percentual_atingimento']),
             'descricao': 'Valor negociado com fornecedores frente a meta semanal cadastrada no admin.',
-            'comparativo_label': 'valor negociado x meta de fornecedores',
+            'comparativo_label': 'valor negociado x meta de renegociação de fornecedores',
             'ficticio': False,
             'monetario': True,
         },
@@ -1240,12 +1240,12 @@ def _montar_master_painel() -> dict:
 
     cards.append({
         'slug': 'bancos',
-        'nome': 'Bancos',
+        'nome': 'Renegociação Bancária',
         'realizado': float(resumo_bancos['valor_realizado']),
         'meta': float(resumo_bancos['valor_meta']),
         'percentual': float(resumo_bancos['percentual_atingimento']),
-        'descricao': 'Valor arrecadado em negociacoes bancarias frente a meta semanal cadastrada no admin.',
-        'comparativo_label': 'valor arrecadado x meta de bancos',
+        'descricao': 'Valor arrecadado em renegociações bancárias frente a meta semanal cadastrada no admin.',
+        'comparativo_label': 'valor arrecadado x meta de renegociação bancária',
         'ficticio': False,
         'monetario': True,
     })
@@ -1552,12 +1552,12 @@ def _montar_master_painel_periodizado(view: str | None = None, period: str | Non
 
     cards = [
         {'slug': 'venda_varejo', 'nome': 'Venda Varejo', 'realizado': float(resumo_vendas['realizado']), 'meta': float(resumo_vendas['meta']), 'percentual': float(resumo_vendas['percentual']), 'descricao': f"Total vendido no período selecionado: {periodo['label']}.", 'comparativo_label': 'vendas realizadas x vendas planejadas', 'ficticio': False, 'monetario': False},
-        {'slug': 'giro', 'nome': 'Giro', 'realizado': giro_realizado, 'meta': giro_meta, 'percentual': _safe_pct(giro_realizado, giro_meta), 'descricao': f"Valor captado frente à meta do período {periodo['label']}.", 'comparativo_label': 'valor captado x meta de giro', 'ficticio': False, 'monetario': True},
+        {'slug': 'giro', 'nome': 'Capital de giro', 'realizado': giro_realizado, 'meta': giro_meta, 'percentual': _safe_pct(giro_realizado, giro_meta), 'descricao': f"Valor captado frente à meta do período {periodo['label']}.", 'comparativo_label': 'valor captado x meta de capital de giro', 'ficticio': False, 'monetario': True},
         {'slug': 'inadimplencia', 'nome': 'Inadimplencia', 'realizado': float(resumo_inadimplencia['realizado']), 'meta': float(resumo_inadimplencia['meta']), 'percentual': float(resumo_inadimplencia['percentual']), 'descricao': f"Valor realizado frente ao planejado no período {periodo['label']}.", 'comparativo_label': 'valor realizado x valor planejado', 'ficticio': False, 'monetario': True},
-        {'slug': 'medicao', 'nome': 'Medição', 'realizado': medicao_realizado, 'meta': medicao_meta, 'percentual': _safe_pct(medicao_realizado, medicao_meta), 'descricao': f"Valor de medição acumulado no período {periodo['label']}.", 'comparativo_label': 'valor de medicao x meta de medicao', 'ficticio': False, 'monetario': True},
+        {'slug': 'medicao', 'nome': 'Medição de obras', 'realizado': medicao_realizado, 'meta': medicao_meta, 'percentual': _safe_pct(medicao_realizado, medicao_meta), 'descricao': f"Valor de medição acumulado no período {periodo['label']}.", 'comparativo_label': 'valor de medição x meta de medição de obras', 'ficticio': False, 'monetario': True},
         {'slug': 'investidor', 'nome': 'Investidor', 'realizado': float(resumo_investidores['realizado']), 'meta': float(resumo_investidores['meta']), 'percentual': float(resumo_investidores['percentual']), 'descricao': f"Valor realizado de investidores no período {periodo['label']}.", 'comparativo_label': 'valor realizado x meta de investidores', 'ficticio': False, 'monetario': True},
-        {'slug': 'fornecedores', 'nome': 'Fornecedores', 'realizado': fornecedores_realizado, 'meta': fornecedores_meta, 'percentual': _safe_pct(fornecedores_realizado, fornecedores_meta), 'descricao': f"Valor negociado com fornecedores no período {periodo['label']}.", 'comparativo_label': 'valor negociado x meta de fornecedores', 'ficticio': False, 'monetario': True},
-        {'slug': 'bancos', 'nome': 'Bancos', 'realizado': bancos_realizado, 'meta': bancos_meta, 'percentual': _safe_pct(bancos_realizado, bancos_meta), 'descricao': f"Valor arrecadado com bancos no período {periodo['label']}.", 'comparativo_label': 'valor arrecadado x meta de bancos', 'ficticio': False, 'monetario': True},
+        {'slug': 'fornecedores', 'nome': 'Renegociação Fornecedores', 'realizado': fornecedores_realizado, 'meta': fornecedores_meta, 'percentual': _safe_pct(fornecedores_realizado, fornecedores_meta), 'descricao': f"Valor negociado com fornecedores no período {periodo['label']}.", 'comparativo_label': 'valor negociado x meta de renegociação de fornecedores', 'ficticio': False, 'monetario': True},
+        {'slug': 'bancos', 'nome': 'Renegociação Bancária', 'realizado': bancos_realizado, 'meta': bancos_meta, 'percentual': _safe_pct(bancos_realizado, bancos_meta), 'descricao': f"Valor arrecadado com bancos no período {periodo['label']}.", 'comparativo_label': 'valor arrecadado x meta de renegociação bancária', 'ficticio': False, 'monetario': True},
     ]
     ordem = ['venda_varejo', 'giro', 'inadimplencia', 'medicao', 'investidor', 'fornecedores', 'bancos']
     cards_ordenados = sorted(cards, key=lambda item: ordem.index(item['slug']))

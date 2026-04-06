@@ -95,25 +95,25 @@
       {% if current_user.can_access_panel('financeiro') %}
       <a href="{{ url_for('admin.financeiro_painel') }}" class="drawer__sublink{% if active_panel == 'financeiro' %} drawer__sublink--active{% endif %}">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"/><path d="M7 14l3-3 3 2 4-5"/></svg>
-        Painel Financeiro
+        Renegociação Bancária
       </a>
       {% endif %}
       {% if current_user.can_access_panel('giro') %}
       <a href="{{ url_for('admin.giro_painel') }}" class="drawer__sublink{% if active_panel == 'giro' %} drawer__sublink--active{% endif %}">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"/><path d="M7 14l3-3 3 2 4-5"/></svg>
-        Painel Giro
+        Capital de giro
       </a>
       {% endif %}
       {% if current_user.can_access_panel('fornecedores') %}
       <a href="{{ url_for('admin.fornecedores_painel') }}" class="drawer__sublink{% if active_panel == 'fornecedores' %} drawer__sublink--active{% endif %}">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"/><path d="M7 14l3-3 3 2 4-5"/></svg>
-        Painel Fornecedores
+        Renegociação Fornecedores
       </a>
       {% endif %}
       {% if current_user.can_access_panel('medicao') %}
       <a href="{{ url_for('admin.medicao_painel') }}" class="drawer__sublink{% if active_panel == 'medicao' %} drawer__sublink--active{% endif %}">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"/><path d="M7 14l3-3 3 2 4-5"/></svg>
-        Painel Medicao
+        Medição de obras
       </a>
       {% endif %}
     </div>
