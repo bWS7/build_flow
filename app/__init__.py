@@ -9,6 +9,7 @@ from sqlalchemy import inspect, text
 from flask_wtf import CSRFProtect
 from flask_wtf.csrf import CSRFError
 from dotenv import load_dotenv
+from werkzeug.middleware.proxy_fix import ProxyFix
 
 load_dotenv()
 
@@ -90,6 +91,7 @@ def _resolve_socketio_async_mode():
 
 def create_app():
     app = Flask(__name__)
+    app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1)
 
     # ── Filtros Jinja ──────────────────────────────────────────────────────────
     app.jinja_env.filters['brl'] = _format_brl
@@ -106,6 +108,7 @@ def create_app():
     app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
     app.config['REMEMBER_COOKIE_HTTPONLY'] = True
     app.config['REMEMBER_COOKIE_SAMESITE'] = 'Lax'
+    app.config['PREFERRED_URL_SCHEME'] = 'https'
 
     # Cookies seguros em produção
     if os.environ.get('FLASK_ENV') == 'production':
@@ -179,6 +182,10 @@ def create_app():
             return {'erro': mensagem, 'detalhe': error.description}, 400
         flash(mensagem, 'error')
         return redirect(url_for('auth.login'))
+
+    @app.get('/health')
+    def healthcheck():
+        return {'status': 'ok'}, 200
 
     return app
 
