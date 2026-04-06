@@ -1,5 +1,5 @@
 /* ---------------------------------------------------------------------------
-   SOUSA ARAUJO — admin.css
+   SOUSA ARAUJO â€” admin.css
    --------------------------------------------------------------------------- */
 
 .admin-grid {
@@ -92,6 +92,20 @@
   flex-wrap: wrap;
 }
 
+.analytics-period-toolbar {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: 100%;
+}
+
+.analytics-period-toolbar__group,
+.analytics-period-toolbar__months {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
 .analytics-filter-bar {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr)) auto;
@@ -167,6 +181,66 @@
   background: var(--wine);
   border-color: var(--wine);
   color: var(--white);
+}
+
+.analytics-week-card {
+  background: #171b21;
+  border: 1px solid rgba(255,255,255,.08);
+  border-radius: 18px;
+  padding: 10px 12px;
+  min-width: 220px;
+  box-shadow: 0 10px 24px rgba(0,0,0,.18);
+}
+
+.analytics-week-card--active {
+  border-color: rgba(195,79,103,.55);
+  box-shadow: 0 12px 28px rgba(154,48,72,.16);
+}
+
+.analytics-week-card__title {
+  display: flex;
+  align-items: center;
+  margin-bottom: 10px;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: #d8c1b6;
+}
+
+.analytics-week-card__buttons {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.analytics-week-btn {
+  min-width: 42px;
+  min-height: 34px;
+  padding: 0 12px;
+  border-radius: 999px;
+  border: 1px solid rgba(255,255,255,.08);
+  background: #222730;
+  color: #f3ece8;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: .04em;
+  transition: background .18s ease, border-color .18s ease, color .18s ease, transform .18s ease;
+}
+
+.analytics-week-btn:hover {
+  border-color: rgba(195,79,103,.35);
+  transform: translateY(-1px);
+}
+
+.analytics-week-btn--active {
+  background: linear-gradient(135deg, #c34f67 0%, #9a3048 100%);
+  border-color: #c34f67;
+  color: #fff;
 }
 
 .analytics-summary-grid {
@@ -616,6 +690,8 @@
   .sales-admin-grid { grid-template-columns: 1fr; }
   .metas-grid { grid-template-columns: 1fr; }
   .analytics-month { width: 100%; }
+  .analytics-period-toolbar__group,
+  .analytics-period-toolbar__months { flex-direction: column; }
 }
 
 .analytics-ai {
@@ -917,6 +993,26 @@ html[data-theme='dark'] .analytics-month--active {
   background: linear-gradient(135deg, var(--wine-light), var(--wine));
   border-color: transparent;
   color: #fffaf7;
+}
+html[data-theme='dark'] .analytics-week-card {
+  background: linear-gradient(180deg, rgba(25, 28, 36, 0.98), rgba(17, 19, 25, 0.98));
+  border-color: rgba(255,255,255,.08);
+}
+html[data-theme='dark'] .analytics-week-card--active {
+  border-color: rgba(195,79,103,.55);
+  box-shadow: 0 12px 28px rgba(154,48,72,.16);
+}
+html[data-theme='dark'] .analytics-week-card__title { color: #d8c1b6; }
+html[data-theme='dark'] .analytics-week-btn {
+  background: #222730;
+  border-color: rgba(255,255,255,.08);
+  color: #f3ece8;
+}
+html[data-theme='dark'] .analytics-week-btn:hover { border-color: rgba(195,79,103,.35); }
+html[data-theme='dark'] .analytics-week-btn--active {
+  background: linear-gradient(135deg, #c34f67 0%, #9a3048 100%);
+  border-color: #c34f67;
+  color: #fff;
 }
 html[data-theme='dark'] .analytics-card__value,
 html[data-theme='dark'] .analytics-highlight__value,

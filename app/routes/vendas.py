@@ -90,24 +90,26 @@ def _semana_global_por_data(data_reserva, mes_slug: str | None = None) -> int | 
 def montar_contexto_template_vendas(mes_slug: str, incluir_resumo: bool = False, semana_local: int | None = None) -> dict:
     if mes_slug == RESUMO_TRIMESTRAL[0] and not incluir_resumo:
         mes_slug = 'abril'
-    semana_local = semana_local or 1
+    semana_local_normalizada = semana_local if semana_local in {1, 2, 3, 4} else None
     mes_info = {'nome': RESUMO_TRIMESTRAL[1]} if mes_slug == RESUMO_TRIMESTRAL[0] else MESES_MAP[mes_slug]
     empreendimentos = Empreendimento.query.filter_by(ativo=True).order_by(Empreendimento.nome).all()
-    vendas = _consultar_vendas_periodo(mes_slug, semana_local=semana_local)
+    vendas = _consultar_vendas_periodo(mes_slug, semana_local=semana_local_normalizada)
     meses = [(slug, nome, numero) for slug, nome, numero, _ in MESES_VENDAS]
     if incluir_resumo:
         meses.append(RESUMO_TRIMESTRAL)
-    semana_global = None if mes_slug == RESUMO_TRIMESTRAL[0] else MESES_MAP[mes_slug]['semana_inicio'] + semana_local - 1
+    semana_global = None
+    if mes_slug != RESUMO_TRIMESTRAL[0] and semana_local_normalizada is not None:
+        semana_global = MESES_MAP[mes_slug]['semana_inicio'] + semana_local_normalizada - 1
     return {
         'meses': meses,
         'mes_atual': mes_slug,
-        'semana_atual': semana_local,
+        'semana_atual': semana_local_normalizada,
         'semana_global_atual': semana_global,
         'mes_atual_nome': mes_info['nome'],
         'empreendimentos': empreendimentos,
         'situacoes': SITUACAO_VENDA_OPCOES,
         'tipos_venda': TIPO_VENDA_OPCOES,
-        'financeiro': _calcular_financeiro(mes_slug, vendas=vendas, semana_local=semana_local),
+        'financeiro': _calcular_financeiro(mes_slug, vendas=vendas, semana_local=semana_local_normalizada),
         'registros': vendas,
         'registros_json': [venda.to_dict() for venda in vendas],
         'resumo_trimestral': mes_slug == RESUMO_TRIMESTRAL[0],

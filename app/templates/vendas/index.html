@@ -7,6 +7,7 @@
 {% endblock %}
 
 {% set logo_svg %}<img src="{{ url_for('static', filename='images/logo2.webp') }}" alt="Build Flow" />{% endset %}
+{% set period_label = analytics_period_label if painel_admin_vendas else (mes_atual_nome ~ (' S' ~ semana_atual if semana_atual and not resumo_trimestral else '')) %}
 
 {% block body %}
 <div class="app-layout">
@@ -138,6 +139,35 @@
           <span class="topbar__pulse"></span> AO VIVO
         </span>
       </div>
+      {% if painel_admin_vendas %}
+      <div class="analytics-period-toolbar">
+        <div class="analytics-period-toolbar__group">
+          <a href="{{ url_for('admin.vendas_painel', view='trimestral') }}" class="analytics-month {% if analytics_view == 'trimestral' %}analytics-month--active{% endif %}">Trimestre</a>
+          <a href="{{ url_for('admin.vendas_painel', view='mensal', period=(analytics_period if analytics_view == 'mensal' else 'abril')) }}" class="analytics-month {% if analytics_view == 'mensal' %}analytics-month--active{% endif %}">Meses</a>
+          <a href="{{ url_for('admin.vendas_painel', view='semanal', period=(analytics_period if analytics_view == 'semanal' else 's1')) }}" class="analytics-month {% if analytics_view == 'semanal' %}analytics-month--active{% endif %}">Semanas</a>
+        </div>
+        {% if analytics_view == 'mensal' %}
+        <div class="analytics-period-toolbar__months">
+          {% for option in analytics_month_options %}
+          <a href="{{ url_for('admin.vendas_painel', view='mensal', period=option.slug) }}" class="analytics-month {% if option.slug == analytics_period %}analytics-month--active{% endif %}">{{ option.label }}</a>
+          {% endfor %}
+        </div>
+        {% elif analytics_view == 'semanal' %}
+        <div class="analytics-week-grid">
+          {% for group in analytics_week_groups %}
+          <div class="analytics-week-card {% if analytics_period in (group.weeks | map(attribute='slug') | list) %}analytics-week-card--active{% endif %}">
+            <div class="analytics-week-card__title"><span>{{ group.label }}</span></div>
+            <div class="analytics-week-card__buttons">
+              {% for week in group.weeks %}
+              <a href="{{ url_for('admin.vendas_painel', view='semanal', period=week.slug) }}" class="analytics-week-btn {% if week.slug == analytics_period %}analytics-week-btn--active{% endif %}">{{ week.short_label }}</a>
+              {% endfor %}
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+        {% endif %}
+      </div>
+      {% else %}
       <div class="topbar__weeks">
         {% for mes_nome, mes_ini, mes_id in [('Abril', 1, 'abril'), ('Maio', 5, 'maio'), ('Junho', 9, 'junho')] %}
         <div class="week-month">
@@ -158,6 +188,7 @@
         <a href="{{ url_for('admin.vendas_painel', mes='resumo_trimestral') }}" class="week-pill week-pill--active">Resumo Trimestral</a>
         {% endif %}
       </div>
+      {% endif %}
     </header>
 
     <section class="indicators">
@@ -251,7 +282,7 @@
       <div class="section-header">
         <h3 class="section-header__title">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
-          Nova Venda - {{ mes_atual_nome }}{% if not resumo_trimestral %} S{{ semana_atual }}{% endif %}
+          Nova Venda - {{ period_label }}
         </h3>
         <button class="btn btn--sm btn--ghost" id="toggle-form">▼ Expandir</button>
       </div>
@@ -298,7 +329,7 @@
       <div class="section-header">
         <h3 class="section-header__title">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M3 15h18"/></svg>
-          Grid de Vendas - {{ mes_atual_nome }}{% if not resumo_trimestral %} S{{ semana_atual }}{% endif %}
+          Grid de Vendas - {{ period_label }}
         </h3>
         <div class="section-header__tools">
           <span class="section-header__count" id="total-registros">{{ registros|length }} reservas</span>
@@ -450,6 +481,8 @@
 <script>
   const MES_ATUAL = {{ mes_atual | tojson }};
   const SEMANA_ATUAL = {{ semana_atual | tojson }};
+  const ANALYTICS_VIEW = {{ (analytics_view if painel_admin_vendas else 'semanal') | tojson }};
+  const IS_ADMIN_PANEL = {{ painel_admin_vendas | tojson }};
   const INITIAL_REGISTROS = {{ registros_json | tojson }};
   const INITIAL_FINANCEIRO = {{ financeiro | tojson }};
   const EMPREENDIMENTOS = {{ empreendimentos | map(attribute='nome') | list | tojson }};

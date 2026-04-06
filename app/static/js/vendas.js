@@ -473,7 +473,9 @@ function parseBulkText(texto) {
 
 async function recarregarDados() {
   try {
-    const resp = await fetch(`/vendas/registros?mes=${MES_ATUAL}&semana=${SEMANA_ATUAL}`);
+    const params = new URLSearchParams({ mes: MES_ATUAL });
+    if (SEMANA_ATUAL) params.set('semana', SEMANA_ATUAL);
+    const resp = await fetch(`/vendas/registros?${params.toString()}`);
     const json = await resp.json();
     vendasCache = json.registros || [];
     Object.assign(INITIAL_FINANCEIRO, json.financeiro || {});
@@ -565,10 +567,8 @@ function conectarSocket() {
     if (badge) badge.style.opacity = '.4';
   });
   socket.on('vendas_atualizadas', (payload) => {
-    if (payload.mes !== MES_ATUAL) return;
-    vendasCache = payload.registros || [];
-    Object.assign(INITIAL_FINANCEIRO, payload.financeiro || {});
-    aplicarFiltros();
+    if (MES_ATUAL !== 'resumo_trimestral' && payload.mes !== MES_ATUAL) return;
+    recarregarDados();
   });
 }
 

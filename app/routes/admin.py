@@ -1397,6 +1397,73 @@ def _master_mes_e_semana_local_v2(semana_global: int) -> tuple[str, int]:
     return 'abril', 1
 
 
+def _resolver_periodo_painel(view: str | None, period: str | None, meses_base: list[tuple[str, str, int, int]]) -> dict:
+    view_normalizada = (view or 'trimestral').strip().lower()
+    if view_normalizada not in {'semanal', 'mensal', 'trimestral'}:
+        view_normalizada = 'trimestral'
+
+    view_options = [
+        {'slug': 'trimestral', 'label': 'Trimestre'},
+        {'slug': 'mensal', 'label': 'Meses'},
+        {'slug': 'semanal', 'label': 'Semanas'},
+    ]
+    meses_map = {slug: {'slug': slug, 'label': nome, 'numero': numero, 'semana_inicio': semana_inicio} for slug, nome, numero, semana_inicio in meses_base}
+    semanas_map = {}
+    week_groups = []
+    for slug, nome, _numero, semana_inicio in meses_base:
+        semanas = []
+        for offset in range(4):
+            semana_global = semana_inicio + offset
+            semana_slug = f's{semana_global}'
+            semana = {
+                'slug': semana_slug,
+                'label': f'{nome} - Semana {offset + 1}',
+                'short_label': f'S{offset + 1}',
+                'mes_slug': slug,
+                'semana_local': offset + 1,
+            }
+            semanas_map[semana_slug] = semana
+            semanas.append(semana)
+        week_groups.append({'slug': slug, 'label': nome, 'weeks': semanas})
+
+    if view_normalizada == 'semanal':
+        selecionado = semanas_map.get((period or 's1').strip().lower(), next(iter(semanas_map.values())))
+        return {
+            'view': 'semanal',
+            'period': selecionado['slug'],
+            'label': selecionado['label'],
+            'mes_slug': selecionado['mes_slug'],
+            'semana_local': selecionado['semana_local'],
+            'view_options': view_options,
+            'month_options': list(meses_map.values()),
+            'week_groups': week_groups,
+        }
+
+    if view_normalizada == 'mensal':
+        selecionado = meses_map.get((period or 'abril').strip().lower(), next(iter(meses_map.values())))
+        return {
+            'view': 'mensal',
+            'period': selecionado['slug'],
+            'label': selecionado['label'],
+            'mes_slug': selecionado['slug'],
+            'semana_local': None,
+            'view_options': view_options,
+            'month_options': list(meses_map.values()),
+            'week_groups': week_groups,
+        }
+
+    return {
+        'view': 'trimestral',
+        'period': PERIODO_TRIMESTRAL[0],
+        'label': PERIODO_TRIMESTRAL[1],
+        'mes_slug': PERIODO_TRIMESTRAL[0],
+        'semana_local': None,
+        'view_options': view_options,
+        'month_options': list(meses_map.values()),
+        'week_groups': week_groups,
+    }
+
+
 def _sumario_valor_por_semanas_v2(modelo_meta, modelo_registro, campo_meta: str, campo_valor: str, semanas: list[int], filtro_valor=None) -> tuple[float, float]:
     metas = modelo_meta.query.filter(modelo_meta.semana.in_(semanas)).all()
     registros = modelo_registro.query.filter(modelo_registro.semana.in_(semanas)).all()
@@ -1726,9 +1793,15 @@ def relacionamento_painel():
 @login_required
 @requer_painel('vendas')
 def vendas_painel():
-    semana_local = int(request.args.get('semana', 1) or 1)
-    dados = montar_contexto_template_vendas(request.args.get('mes', PERIODO_TRIMESTRAL[0]), incluir_resumo=True, semana_local=semana_local)
+    periodo = _resolver_periodo_painel(request.args.get('view'), request.args.get('period'), MESES_VENDAS)
+    dados = montar_contexto_template_vendas(periodo['mes_slug'], incluir_resumo=True, semana_local=periodo['semana_local'])
     dados['painel_admin_vendas'] = True
+    dados['analytics_view'] = periodo['view']
+    dados['analytics_period'] = periodo['period']
+    dados['analytics_period_label'] = periodo['label']
+    dados['analytics_view_options'] = periodo['view_options']
+    dados['analytics_month_options'] = periodo['month_options']
+    dados['analytics_week_groups'] = periodo['week_groups']
     return render_template('vendas/index.html', **dados)
 
 
@@ -1736,9 +1809,15 @@ def vendas_painel():
 @login_required
 @requer_painel('investidores')
 def investidores_painel():
-    semana_local = int(request.args.get('semana', 1) or 1)
-    dados = montar_contexto_template_investidores(request.args.get('mes', PERIODO_INVESTIDORES[0]), incluir_resumo=True, semana_local=semana_local)
+    periodo = _resolver_periodo_painel(request.args.get('view'), request.args.get('period'), MESES_INVESTIDORES)
+    dados = montar_contexto_template_investidores(periodo['mes_slug'], incluir_resumo=True, semana_local=periodo['semana_local'])
     dados['painel_admin_investidores'] = True
+    dados['analytics_view'] = periodo['view']
+    dados['analytics_period'] = periodo['period']
+    dados['analytics_period_label'] = periodo['label']
+    dados['analytics_view_options'] = periodo['view_options']
+    dados['analytics_month_options'] = periodo['month_options']
+    dados['analytics_week_groups'] = periodo['week_groups']
     return render_template('investidores/index.html', **dados)
 
 

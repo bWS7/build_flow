@@ -85,19 +85,19 @@ def _semana_global_por_data(data_reserva, mes_slug: str | None = None) -> int | 
 def montar_contexto_template_investidores(mes_slug: str, incluir_resumo: bool = False, semana_local: int | None = None) -> dict:
     if mes_slug == PERIODO_INVESTIDORES[0] and not incluir_resumo:
         mes_slug = 'abril'
-    semana_local = semana_local or 1
+    semana_local_normalizada = semana_local if semana_local in {1, 2, 3, 4} else None
     mes_info = {'nome': PERIODO_INVESTIDORES[1]} if mes_slug == PERIODO_INVESTIDORES[0] else MESES_MAP[mes_slug]
     empreendimentos = Empreendimento.query.filter_by(ativo=True).order_by(Empreendimento.nome).all()
-    investidores = _consultar_investidores_periodo(mes_slug, semana_local=semana_local)
+    investidores = _consultar_investidores_periodo(mes_slug, semana_local=semana_local_normalizada)
     return {
         'meses': [(slug, nome, numero) for slug, nome, numero, _ in MESES_INVESTIDORES] + ([PERIODO_INVESTIDORES] if incluir_resumo else []),
         'mes_atual': mes_slug,
-        'semana_atual': semana_local,
+        'semana_atual': semana_local_normalizada,
         'mes_atual_nome': mes_info['nome'],
         'empreendimentos': empreendimentos,
         'situacoes': SITUACAO_INVESTIDOR_OPCOES,
         'tipos_venda': TIPO_VENDA_OPCOES,
-        'financeiro': _calcular_financeiro(mes_slug, investidores=investidores, semana_local=semana_local),
+        'financeiro': _calcular_financeiro(mes_slug, investidores=investidores, semana_local=semana_local_normalizada),
         'registros': investidores,
         'registros_json': [investidor.to_dict() for investidor in investidores],
         'resumo_trimestral': mes_slug == PERIODO_INVESTIDORES[0],
