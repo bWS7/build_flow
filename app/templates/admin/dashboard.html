@@ -571,51 +571,57 @@
 </div>
 {% if is_admin_dashboard %}
 <div id="modal-usuario" class="modal-overlay" hidden>
-  <div class="modal">
+  <div class="modal__dialog">
     <div class="modal__header">
       <h4>Novo Usuário</h4>
-      <button class="modal__close" onclick="closeModal('modal-usuario')">✕</button>
+      <button class="modal__close" type="button" onclick="closeModal('modal-usuario')">✕</button>
     </div>
-    <div class="field"><label class="field__label">Nome *</label><input class="field__input" id="u-nome" type="text" /></div>
-    <div class="field"><label class="field__label">E-mail *</label><input class="field__input" id="u-email" type="email" placeholder="nome@sousaaraujo.com.br" /></div>
-    <div class="field"><label class="field__label">Senha *</label><input class="field__input" id="u-senha" type="password" /></div>
-    <div class="field"><label class="field__label">Tipo *</label>
-      <select class="field__input" id="u-tipo">{% for t in tipos %}<option value="{{ t }}">{{ t | user_type_label }}</option>{% endfor %}</select></div>
+    <div class="modal__body">
+      <div class="field"><label class="field__label">Nome *</label><input class="field__input" id="u-nome" type="text" /></div>
+      <div class="field"><label class="field__label">E-mail *</label><input class="field__input" id="u-email" type="email" placeholder="nome@sousaaraujo.com.br" /></div>
+      <div class="field"><label class="field__label">Senha *</label><input class="field__input" id="u-senha" type="password" /></div>
+      <div class="field"><label class="field__label">Tipo *</label>
+        <select class="field__input" id="u-tipo">{% for t in tipos %}<option value="{{ t }}">{{ t | user_type_label }}</option>{% endfor %}</select></div>
+    </div>
     <div class="modal__actions">
-      <button class="btn btn--ghost" onclick="closeModal('modal-usuario')">Cancelar</button>
-      <button class="btn btn--primary" onclick="criarUsuario()">Criar</button>
+      <button class="btn btn--ghost" type="button" onclick="closeModal('modal-usuario')">Cancelar</button>
+      <button class="btn btn--primary" type="button" onclick="criarUsuario()">Criar</button>
     </div>
   </div>
 </div>
 
 <div id="modal-editar-usuario" class="modal-overlay" hidden>
-  <div class="modal">
+  <div class="modal__dialog">
     <div class="modal__header">
       <h4>Editar Usuário</h4>
-      <button class="modal__close" onclick="closeModal('modal-editar-usuario')">✕</button>
+      <button class="modal__close" type="button" onclick="closeModal('modal-editar-usuario')">✕</button>
     </div>
     <input type="hidden" id="edit-u-id" />
-    <div class="field"><label class="field__label">Nome *</label><input class="field__input" id="edit-u-nome" type="text" /></div>
-    <div class="field"><label class="field__label">E-mail *</label><input class="field__input" id="edit-u-email" type="email" placeholder="nome@sousaaraujo.com.br" /></div>
-    <div class="field"><label class="field__label">Tipo *</label>
-      <select class="field__input" id="edit-u-tipo">{% for t in tipos %}<option value="{{ t }}">{{ t | user_type_label }}</option>{% endfor %}</select></div>
-    <div class="field"><label class="field__label">Nova senha</label><input class="field__input" id="edit-u-senha" type="password" placeholder="Deixe em branco para manter" /></div>
+    <div class="modal__body">
+      <div class="field"><label class="field__label">Nome *</label><input class="field__input" id="edit-u-nome" type="text" /></div>
+      <div class="field"><label class="field__label">E-mail *</label><input class="field__input" id="edit-u-email" type="email" placeholder="nome@sousaaraujo.com.br" /></div>
+      <div class="field"><label class="field__label">Tipo *</label>
+        <select class="field__input" id="edit-u-tipo">{% for t in tipos %}<option value="{{ t }}">{{ t | user_type_label }}</option>{% endfor %}</select></div>
+      <div class="field"><label class="field__label">Nova senha</label><input class="field__input" id="edit-u-senha" type="password" placeholder="Deixe em branco para manter" /></div>
+    </div>
     <div class="modal__actions">
-      <button class="btn btn--ghost" onclick="closeModal('modal-editar-usuario')">Cancelar</button>
-      <button class="btn btn--primary" onclick="salvarEdicaoUsuario()">Salvar alterações</button>
+      <button class="btn btn--ghost" type="button" onclick="closeModal('modal-editar-usuario')">Cancelar</button>
+      <button class="btn btn--primary" type="button" onclick="salvarEdicaoUsuario()">Salvar alterações</button>
     </div>
   </div>
 </div>
 <div id="modal-empreendimento" class="modal-overlay" hidden>
-  <div class="modal">
+  <div class="modal__dialog">
     <div class="modal__header">
       <h4>Novo Empreendimento</h4>
-      <button class="modal__close" onclick="closeModal('modal-empreendimento')">✕</button>
+      <button class="modal__close" type="button" onclick="closeModal('modal-empreendimento')">✕</button>
     </div>
-    <div class="field"><label class="field__label">Nome *</label><input class="field__input" id="emp-nome" type="text" /></div>
+    <div class="modal__body">
+      <div class="field"><label class="field__label">Nome *</label><input class="field__input" id="emp-nome" type="text" /></div>
+    </div>
     <div class="modal__actions">
-      <button class="btn btn--ghost" onclick="closeModal('modal-empreendimento')">Cancelar</button>
-      <button class="btn btn--primary" onclick="criarEmpreendimento()">Criar</button>
+      <button class="btn btn--ghost" type="button" onclick="closeModal('modal-empreendimento')">Cancelar</button>
+      <button class="btn btn--primary" type="button" onclick="criarEmpreendimento()">Criar</button>
     </div>
   </div>
 </div>

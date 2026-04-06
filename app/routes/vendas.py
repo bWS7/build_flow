@@ -173,6 +173,10 @@ def _consultar_vendas_por_mes(mes_numero: int):
     )
 
 
+def _mes_slug_por_numero(mes_numero: int) -> str:
+    return next(slug for slug, _, numero, _ in MESES_VENDAS if numero == mes_numero)
+
+
 def _consultar_vendas_periodo(mes_slug: str, semana_local: int | None = None):
     if mes_slug == RESUMO_TRIMESTRAL[0]:
         return (
@@ -430,7 +434,7 @@ def cadastrar():
     db.session.add(venda)
     db.session.commit()
 
-    mes_slug = next(slug for slug, _, numero in MESES_VENDAS if numero == venda.data_reserva.month)
+    mes_slug = _mes_slug_por_numero(venda.data_reserva.month)
     _broadcast_update(mes_slug)
     return jsonify({'sucesso': True, 'id': venda.id}), 201
 
@@ -469,7 +473,7 @@ def bulk_cadastrar():
             criado_por=current_user.nome.upper(),
         )
         vendas.append(venda)
-        meses_afetados.add(next(slug for slug, _, numero in MESES_VENDAS if numero == venda.data_reserva.month))
+        meses_afetados.add(_mes_slug_por_numero(venda.data_reserva.month))
 
     if vendas:
         db.session.add_all(vendas)
@@ -493,7 +497,7 @@ def editar_registro(reg_id):
     if erro:
         return jsonify({'erro': erro}), 400
 
-    mes_anterior = next(slug for slug, _, numero in MESES_VENDAS if numero == venda.data_reserva.month)
+    mes_anterior = _mes_slug_por_numero(venda.data_reserva.month)
     venda.reserva = registro['reserva']
     venda.data_reserva = registro['data_reserva']
     venda.situacao = registro['situacao']
@@ -507,7 +511,7 @@ def editar_registro(reg_id):
     venda.tipo_venda = registro['tipo_venda']
     db.session.commit()
 
-    mes_atual = next(slug for slug, _, numero in MESES_VENDAS if numero == venda.data_reserva.month)
+    mes_atual = _mes_slug_por_numero(venda.data_reserva.month)
     _broadcast_update(mes_atual)
     if mes_atual != mes_anterior:
         _broadcast_update(mes_anterior)
@@ -521,7 +525,7 @@ def deletar_registro(reg_id):
     venda = db.session.get(Venda, reg_id)
     if not venda:
         return jsonify({'erro': 'Registro não encontrado.'}), 404
-    mes_slug = next(slug for slug, _, numero in MESES_VENDAS if numero == venda.data_reserva.month)
+    mes_slug = _mes_slug_por_numero(venda.data_reserva.month)
     db.session.delete(venda)
     db.session.commit()
     _broadcast_update(mes_slug)
@@ -539,7 +543,7 @@ def deletar_todos_registros():
     meses_afetados = {
         slug
         for venda in vendas
-        for slug, _, numero in MESES_VENDAS
+        for slug, _, numero, _ in MESES_VENDAS
         if venda.data_reserva and venda.data_reserva.month == numero
     }
 

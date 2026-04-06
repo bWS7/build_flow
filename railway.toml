@@ -1,5 +1,6 @@
 [build]
 builder = "NIXPACKS"
+buildCommand = null
 
 [deploy]
 startCommand = "gunicorn run:app --worker-class eventlet -w 1 --bind 0.0.0.0:$PORT"

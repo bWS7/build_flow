@@ -108,7 +108,14 @@ function renderizarTabela(registros) {
   tbody.innerHTML = registros.map((r) => {
     const classeRow = r.situacao === 'SIM (INTEGRAL)' ? 'row--sim' : (r.situacao === 'SIM (PARCIAL)' ? 'row--ligar' : '');
     const acaoExcluir = podeGerenciarRegistro(r)
-      ? `<button class="btn-del" onclick="deletarRegistro(${r.id}, this)" title="Excluir">X</button>`
+      ? `<button class="btn-del" onclick="deletarRegistro(${r.id}, this)" title="Excluir" aria-label="Excluir registro">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="3 6 5 6 21 6"/>
+            <path d="M19 6l-1 14H6L5 6"/>
+            <path d="M10 11v6M14 11v6"/>
+            <path d="M9 6V4h6v2"/>
+          </svg>
+        </button>`
       : '';
 
     return `
@@ -185,7 +192,12 @@ async function confirmarExclusaoRegistro() {
   try {
     const resp = await fetch(`/fornecedores/registro/${id}`, { method: 'DELETE', headers: csrfHeaders() });
     const json = await resp.json();
-    if (!resp.ok) {
+    if (resp.ok && json.sucesso) {
+      showToast('Registro excluido com sucesso!', 'success');
+      const atualizados = registrosCache.filter((registro) => registro.id !== id);
+      renderizarTabela(atualizados);
+      _buscarAtualizacao();
+    } else {
       showToast(json.erro || 'Erro ao excluir.', 'error');
       btnEl.disabled = false;
     }
