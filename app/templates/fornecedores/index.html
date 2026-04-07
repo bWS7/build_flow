@@ -295,7 +295,162 @@
     <section class="form-section">
       <div class="section-header section-header--stacked">
         <div class="section-header__group">
-          <h3 class="section-header__title">Novo Registro de Acoes - Semana {{ semana_atual }}</h3>
+          <h3 class="section-header__title"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg> Novo Registro de Acoes - Semana {{ semana_atual }}</h3>
+          <span class="section-header__subtitle">Selecione um fornecedor da semana e informe a acao realizada.</span>
+        </div>
+        <button class="btn btn--sm btn--ghost" id="toggle-action-form">+ Expandir</button>
+      </div>
+
+      <div id="action-form-wrapper" style="display:none">
+        <form id="form-acao" class="cadastro-form" novalidate>
+        <div class="action-form-grid">
+          <div class="field">
+            <label class="field__label">Registro de fornecedor *</label>
+            <select class="field__input" id="acao-registro-id" name="id" required>
+              <option value="">Selecione...</option>
+              {% for item in registros %}
+              <option value="{{ item.id }}">{{ item.nome_fornecedor }} - {{ item.servico_prestado }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="field field--full">
+            <label class="field__label">Acao realizada *</label>
+            <textarea class="field__input field__textarea" id="acao-descricao" name="acao_realizada" rows="3" placeholder="Descreva a acao realizada..." required></textarea>
+          </div>
+        </div>
+        <div class="form-actions">
+          <span class="form-feedback" id="acao-feedback"></span>
+          <button type="button" class="btn btn--ghost" id="btn-limpar-acao">Limpar</button>
+          <button type="submit" class="btn btn--primary" id="btn-salvar-acao">Salvar Acao</button>
+        </div>
+      </form>
+      </div>
+    </section>
+
+    <section class="table-section">
+      <div class="section-header">
+        <h3 class="section-header__title">Registros da Semana</h3>
+        <span class="section-header__count" id="total-registros">{{ registros|length }} registros</span>
+      </div>
+      <div class="table-wrap">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>Empreendimento</th>
+              <th>Fornecedor</th>
+              <th>Servico</th>
+              <th>Situacao</th>
+              <th>Valor</th>
+              <th>Responsavel</th>
+              <th>Data</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody id="tbody-fornecedores">
+            {% if not registros %}
+            <tr id="empty-row"><td colspan="9" class="td-empty">Nenhum registro nesta semana. Cadastre o primeiro acima.</td></tr>
+            {% endif %}
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    
+    <section class="table-section">
+      <div class="section-header">
+        <h3 class="section-header__title">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M3 15h18M9 3v18"/></svg>
+          Acoes Registradas - Semana {{ semana_atual }}
+        </h3>
+        <span class="section-header__count" id="total-acoes">0 acoes</span>
+      </div>
+      <div class="table-wrap">
+        <table class="data-table" id="tabela-acoes-fornecedores">
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>REGISTRO</th>
+              <th>ACAO REALIZADA</th>
+              <th>RESPONSAVEL</th>
+              <th>DATA</th>
+            </tr>
+          </thead>
+          <tbody id="tbody-acoes-fornecedores"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="form-section">
+      <div class="section-header section-header--stacked">
+        <div class="section-header__group">
+          <h3 class="section-header__title">Novo Registro de Fornecedor - Semana {{ semana_atual }}</h3>
+        <span class="section-header__subtitle">Cadastre o resultado da semana e mantenha as acoes em um card separado.</span>
+        </div>
+        <button class="btn btn--sm btn--ghost" id="toggle-form">+ Expandir</button>
+      </div>
+      <div id="form-wrapper" style="display:none">
+        <form id="form-cadastro" class="cadastro-form" novalidate>
+          <input type="hidden" name="semana" value="{{ semana_atual }}" />
+          <div class="form-grid">
+            <div class="field">
+              <label class="field__label">Empreendimento *</label>
+              <select class="field__input" name="empreendimento" required>
+                <option value="">Selecione...</option>
+                {% for empreendimento in empreendimentos %}
+                <option value="{{ empreendimento.nome }}">{{ empreendimento.nome }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="field">
+              <label class="field__label">Nome do fornecedor *</label>
+              <input class="field__input" type="text" name="nome_fornecedor" required />
+            </div>
+            <div class="field">
+              <label class="field__label">Servico prestado *</label>
+              <input class="field__input" type="text" name="servico_prestado" required />
+            </div>
+            <div class="field">
+              <label class="field__label">E-mail *</label>
+              <input class="field__input" type="email" name="email" required />
+            </div>
+            <div class="field">
+              <label class="field__label">Telefone *</label>
+              <input class="field__input" type="text" name="telefone" required />
+            </div>
+            <div class="field">
+              <label class="field__label">Situacao / Negociado *</label>
+              <select class="field__input" name="situacao" required>
+                <option value="">Selecione...</option>
+                {% for item in situacoes %}
+                <option value="{{ item }}">{{ item }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="field">
+              <label class="field__label">Valor negociado (R$) *</label>
+              <input class="field__input" type="number" name="valor_negociado" min="0" step="0.01" required />
+            </div>
+            <div class="field">
+              <label class="field__label">Responsavel</label>
+              <input class="field__input" type="text" value="{{ current_user.nome | upper }}" readonly />
+            </div>
+            <div class="field field--full">
+              <label class="field__label">Observacoes</label>
+              <textarea class="field__input field__input--textarea" name="observacao" rows="3"></textarea>
+            </div>
+          </div>
+          <div class="form-actions">
+            <button type="submit" class="btn btn--primary" id="btn-salvar">Salvar Registro</button>
+          </div>
+        </form>
+      </div>
+    </section>
+
+    <section class="form-section">
+      <div class="section-header section-header--stacked">
+        <div class="section-header__group">
+          <h3 class="section-header__title"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg> Novo Registro de Acoes - Semana {{ semana_atual }}</h3>
           <span class="section-header__subtitle">Selecione um fornecedor da semana e informe a acao realizada.</span>
         </div>
         <button class="btn btn--sm btn--ghost" id="toggle-action-form">+ Expandir</button>

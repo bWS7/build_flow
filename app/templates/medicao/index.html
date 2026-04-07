@@ -233,33 +233,6 @@
       </div>
     </section>
 
-    
-
-    <section class="table-section">
-      <div class="section-header">
-        <h3 class="section-header__title">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M3 15h18M9 3v18"/></svg>
-          Medições - Semana {{ semana_atual }}
-        </h3>
-        <span class="section-header__count" id="total-registros">{{ registros|length }} registros</span>
-      </div>
-      <div class="table-wrap">
-        <table class="data-table" id="tabela-medicoes">
-          <thead>
-            <tr>
-              <th>#</th>
-              <th>EMPREENDIMENTO</th>
-              <th>VALOR MEDIÇÃO</th>
-              <th>RESPONSÁVEL</th>
-              <th>DATA</th>
-              <th></th>
-            </tr>
-          </thead>
-          <tbody id="tbody-medicoes"></tbody>
-        </table>
-      </div>
-    </section>
-
     <section class="form-section">
       <div class="section-header section-header--stacked">
         <div class="section-header__group">
@@ -311,7 +284,7 @@
     <section class="form-section">
       <div class="section-header section-header--stacked">
         <div class="section-header__group">
-          <h3 class="section-header__title">Novo Registro de Acoes - Semana {{ semana_atual }}</h3>
+          <h3 class="section-header__title"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg> Novo Registro de Acoes - Semana {{ semana_atual }}</h3>
           <span class="section-header__subtitle">Selecione um registro de medicao e informe a acao realizada nesta semana.</span>
         </div>
         <button class="btn btn--sm btn--ghost" id="toggle-action-form">+ Expandir</button>
@@ -342,6 +315,56 @@
       </form>
       </div>
     </section>
+
+    <section class="table-section">
+      <div class="section-header">
+        <h3 class="section-header__title">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M3 15h18M9 3v18"/></svg>
+          Medições - Semana {{ semana_atual }}
+        </h3>
+        <span class="section-header__count" id="total-registros">{{ registros|length }} registros</span>
+      </div>
+      <div class="table-wrap">
+        <table class="data-table" id="tabela-medicoes">
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>EMPREENDIMENTO</th>
+              <th>VALOR MEDIÇÃO</th>
+              <th>RESPONSÁVEL</th>
+              <th>DATA</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody id="tbody-medicoes"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="table-section">
+      <div class="section-header">
+        <h3 class="section-header__title">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M3 15h18M9 3v18"/></svg>
+          Acoes Registradas - Semana {{ semana_atual }}
+        </h3>
+        <span class="section-header__count" id="total-acoes">0 acoes</span>
+      </div>
+      <div class="table-wrap">
+        <table class="data-table" id="tabela-acoes-medicao">
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>REGISTRO</th>
+              <th>ACAO REALIZADA</th>
+              <th>RESPONSAVEL</th>
+              <th>DATA</th>
+            </tr>
+          </thead>
+          <tbody id="tbody-acoes-medicao"></tbody>
+        </table>
+      </div>
+    </section>
+
   </main>
 </div>
 

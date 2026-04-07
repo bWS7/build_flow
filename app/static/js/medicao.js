@@ -144,6 +144,29 @@ function renderizarTabela(registros) {
   }).join('');
 }
 
+function renderizarTabelaAcoes(registros) {
+  const tbody = document.getElementById('tbody-acoes-medicao');
+  const counter = document.getElementById('total-acoes');
+  if (!tbody || !counter) return;
+  const registrosComAcao = (registros || []).filter((r) => (r.acao_realizada || '').trim());
+  counter.textContent = `${registrosComAcao.length} acoes`;
+
+  if (!registrosComAcao.length) {
+    tbody.innerHTML = '<tr><td colspan="5" class="td-empty">Nenhuma acao registrada nesta semana.</td></tr>';
+    return;
+  }
+
+  tbody.innerHTML = registrosComAcao.map((r) => `
+      <tr>
+        <td class="td-id">${r.id}</td>
+        <td>${r.empreendimento || '-'} - ${fmtValor(r.valor_medicao || 0)}</td>
+        <td>${r.acao_realizada || '-'}</td>
+        <td>${r.responsavel || '-'}</td>
+        <td class="td-data">${(r.criado_em || '').split(' ')[0] || '-'}</td>
+      </tr>`).join('');
+}
+
+
 let socket;
 function conectarSocket() {
   socket = io({ transports: ['polling'] });
@@ -157,6 +180,7 @@ function conectarSocket() {
     if (payload.indicadores && payload.indicadores.semana === SEMANA_ATUAL) {
       atualizarIndicadores(payload.indicadores);
       renderizarTabela(payload.registros || []);
+      renderizarTabelaAcoes(payload.registros || []);
       renderizarOpcoesAcao();
     }
   });
@@ -276,6 +300,7 @@ async function _buscarAtualizacao() {
     const json = await resp.json();
     atualizarIndicadores(json.indicadores || {});
     renderizarTabela(json.registros || []);
+    renderizarTabelaAcoes(json.registros || []);
     renderizarOpcoesAcao();
   } catch {
     // websocket cobre esse fluxo na maior parte do tempo
@@ -308,6 +333,7 @@ if (actionToggleBtn && actionFormWrapper) {
 document.addEventListener('DOMContentLoaded', () => {
   registrosCache = Array.isArray(INITIAL_REGISTROS) ? INITIAL_REGISTROS : [];
   renderizarTabela(registrosCache);
+  renderizarTabelaAcoes(registrosCache);
   renderizarOpcoesAcao();
   const formAcao = document.getElementById('form-acao');
   if (formAcao) {
