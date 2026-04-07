@@ -337,12 +337,26 @@ async function _buscarAtualizacao() {
 
 const toggleBtn = document.getElementById('toggle-form');
 const formWrapper = document.getElementById('form-wrapper');
+const actionToggleBtn = document.getElementById('toggle-action-form');
+const actionFormWrapper = document.getElementById('action-form-wrapper');
 let formVisible = false;
-toggleBtn.addEventListener('click', () => {
-  formVisible = !formVisible;
-  formWrapper.style.display = formVisible ? '' : 'none';
-  toggleBtn.textContent = formVisible ? '▲ Recolher' : '▼ Expandir';
-});
+let actionFormVisible = false;
+
+if (toggleBtn && formWrapper) {
+  toggleBtn.addEventListener('click', () => {
+    formVisible = !formVisible;
+    formWrapper.style.display = formVisible ? '' : 'none';
+    toggleBtn.textContent = formVisible ? '- Recolher' : '+ Expandir';
+  });
+}
+
+if (actionToggleBtn && actionFormWrapper) {
+  actionToggleBtn.addEventListener('click', () => {
+    actionFormVisible = !actionFormVisible;
+    actionFormWrapper.style.display = actionFormVisible ? '' : 'none';
+    actionToggleBtn.textContent = actionFormVisible ? '- Recolher' : '+ Expandir';
+  });
+}
 
 document.addEventListener('DOMContentLoaded', () => {
   registrosCache = Array.isArray(INITIAL_REGISTROS) ? INITIAL_REGISTROS : [];
@@ -379,7 +393,11 @@ document.addEventListener('DOMContentLoaded', () => {
   });
   if (formWrapper && toggleBtn) {
     formWrapper.style.display = 'none';
-    toggleBtn.textContent = '▼ Expandir';
+    toggleBtn.textContent = '+ Expandir';
+  }
+  if (actionFormWrapper && actionToggleBtn) {
+    actionFormWrapper.style.display = 'none';
+    actionToggleBtn.textContent = '+ Expandir';
   }
 });
 

@@ -136,7 +136,7 @@
       </div>
       <div class="progress-block summary-banner">
         <div class="progress-block__header">
-          <span class="progress-block__label">Progressao do valor realizado e acoes realizadas x valor planejado e acoes planejadas</span>
+          <span class="progress-block__label">Planejado X Realizado Geral</span>
         </div>
         <div class="progress-track">
           <div class="progress-fill progress-fill--valor" id="bar-resumo" style="width:{{ indicadores.pct_valor if indicadores.pct_valor <= 100 else 100 }}%"></div>
@@ -195,13 +195,44 @@
       </div>
     </section>
 
+    
+
+    <section class="table-section">
+      <div class="section-header">
+        <h3 class="section-header__title">Registros da Semana</h3>
+        <span class="section-header__count" id="total-registros">{{ registros|length }} registros</span>
+      </div>
+      <div class="table-wrap">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>Empreendimento</th>
+              <th>Fornecedor</th>
+              <th>Servico</th>
+              <th>Situacao</th>
+              <th>Valor</th>
+              <th>Responsavel</th>
+              <th>Data</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody id="tbody-fornecedores">
+            {% if not registros %}
+            <tr id="empty-row"><td colspan="9" class="td-empty">Nenhum registro nesta semana. Cadastre o primeiro acima.</td></tr>
+            {% endif %}
+          </tbody>
+        </table>
+      </div>
+    </section>
+
     <section class="form-section">
       <div class="section-header section-header--stacked">
         <div class="section-header__group">
-        <h3 class="section-header__title">Novo Registro de Fornecedor - Semana {{ semana_atual }}</h3>
+          <h3 class="section-header__title">Novo Registro de Fornecedor - Semana {{ semana_atual }}</h3>
         <span class="section-header__subtitle">Cadastre o resultado da semana e mantenha as acoes em um card separado.</span>
         </div>
-        <button class="btn btn--sm btn--ghost" id="toggle-form">▼ Expandir</button>
+        <button class="btn btn--sm btn--ghost" id="toggle-form">+ Expandir</button>
       </div>
       <div id="form-wrapper" style="display:none">
         <form id="form-cadastro" class="cadastro-form" novalidate>
@@ -267,8 +298,11 @@
           <h3 class="section-header__title">Novo Registro de Acoes - Semana {{ semana_atual }}</h3>
           <span class="section-header__subtitle">Selecione um fornecedor da semana e informe a acao realizada.</span>
         </div>
+        <button class="btn btn--sm btn--ghost" id="toggle-action-form">+ Expandir</button>
       </div>
-      <form id="form-acao" class="cadastro-form" novalidate>
+
+      <div id="action-form-wrapper" style="display:none">
+        <form id="form-acao" class="cadastro-form" novalidate>
         <div class="action-form-grid">
           <div class="field">
             <label class="field__label">Registro de fornecedor *</label>
@@ -290,34 +324,6 @@
           <button type="submit" class="btn btn--primary" id="btn-salvar-acao">Salvar Acao</button>
         </div>
       </form>
-    </section>
-
-    <section class="table-section">
-      <div class="section-header">
-        <h3 class="section-header__title">Registros da Semana</h3>
-        <span class="section-header__count" id="total-registros">{{ registros|length }} registros</span>
-      </div>
-      <div class="table-wrap">
-        <table class="data-table">
-          <thead>
-            <tr>
-              <th>ID</th>
-              <th>Empreendimento</th>
-              <th>Fornecedor</th>
-              <th>Servico</th>
-              <th>Situacao</th>
-              <th>Valor</th>
-              <th>Responsavel</th>
-              <th>Data</th>
-              <th></th>
-            </tr>
-          </thead>
-          <tbody id="tbody-fornecedores">
-            {% if not registros %}
-            <tr id="empty-row"><td colspan="9" class="td-empty">Nenhum registro nesta semana. Cadastre o primeiro acima.</td></tr>
-            {% endif %}
-          </tbody>
-        </table>
       </div>
     </section>
   </main>
