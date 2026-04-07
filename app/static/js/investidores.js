@@ -344,6 +344,29 @@ function renderizarTabela(registros) {
   `).join('');
 }
 
+function renderizarTabelaAcoes(registros) {
+  const tbody = document.getElementById('tbody-acoes-investidores');
+  const counter = document.getElementById('total-acoes');
+  if (!tbody || !counter) return;
+  const registrosComAcao = (registros || []).filter((r) => String(r.acao_realizada || '').trim());
+  counter.textContent = `${registrosComAcao.length} acoes`;
+
+  if (!registrosComAcao.length) {
+    tbody.innerHTML = '<tr><td colspan="5" class="td-empty">Nenhuma acao registrada neste periodo.</td></tr>';
+    return;
+  }
+
+  tbody.innerHTML = registrosComAcao.map((r) => `
+    <tr>
+      <td class="td-id">${r.id}</td>
+      <td>${r.reserva || '-'} - ${r.cliente || '-'}</td>
+      <td>${r.acao_realizada || '-'}</td>
+      <td>${r.criado_por || '-'}</td>
+      <td class="td-data">${(r.data || '').trim() || '-'}</td>
+    </tr>
+  `).join('');
+}
+
 function calcularFinanceiroFiltrado(registros) {
   const base = {};
   for (const item of INITIAL_FINANCEIRO.funil || []) {
@@ -410,6 +433,7 @@ function aplicarFiltros() {
 
   investidoresFiltradosCache = filtrados;
   renderizarTabela(filtrados);
+  renderizarTabelaAcoes(filtrados);
   atualizarFinanceiro(calcularFinanceiroFiltrado(filtrados));
 }
 
@@ -788,6 +812,8 @@ document.addEventListener('DOMContentLoaded', () => {
       if (feedbackEl) feedbackEl.textContent = 'Selecione um investidor do periodo para registrar a acao.';
     });
   }
+
+  renderizarTabelaAcoes(investidoresCache);
 
   if (toggleBtn && formWrapper) {
     let formVisible = false;
