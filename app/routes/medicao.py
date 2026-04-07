@@ -165,10 +165,19 @@ def cadastrar():
 def registrar_acao():
     dados = request.get_json(silent=True) or request.form.to_dict()
     reg_id = dados.get('id')
-    if not reg_id:
-        return jsonify({'erro': 'Registro nao informado.'}), 400
+    semana = _parse_semana(dados.get('semana', 1))
+    if semana is None:
+        return jsonify({'erro': 'Semana invalida.'}), 400
 
-    reg = db.session.get(MedicaoRegistro, int(reg_id))
+    reg = None
+    if reg_id:
+        reg = db.session.get(MedicaoRegistro, int(reg_id))
+    else:
+        query = MedicaoRegistro.query.filter_by(semana=semana)
+        if current_user.tipo != 'admin':
+            query = query.filter_by(responsavel=current_user.nome.upper())
+        reg = query.order_by(MedicaoRegistro.criado_em.desc()).first()
+
     if not reg:
         return jsonify({'erro': 'Registro nao encontrado.'}), 404
     if not _pode_gerenciar_registro(reg):

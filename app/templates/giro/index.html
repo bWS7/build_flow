@@ -245,7 +245,7 @@
     </section>
 
     <section class="form-section">
-      <div class="section-header section-header--stacked">
+      <div class="section-header">
         <div class="section-header__group">
           <h3 class="section-header__title">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
@@ -311,26 +311,18 @@
     </section>
 
     <section class="form-section">
-      <div class="section-header section-header--stacked">
+      <div class="section-header">
         <div class="section-header__group">
           <h3 class="section-header__title"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg> Novo Registro de Acoes - Semana {{ semana_atual }}</h3>
-          <span class="section-header__subtitle">Selecione um registro de capital de giro e informe a acao realizada nesta semana.</span>
+          <span class="section-header__subtitle">Registre uma acao realizada por vez em texto livre. A acao sera vinculada ao registro mais recente da semana.</span>
         </div>
         <button class="btn btn--sm btn--ghost" id="toggle-action-form">+ Expandir</button>
       </div>
 
       <div id="action-form-wrapper" style="display:none">
         <form id="form-acao" class="cadastro-form" novalidate>
+        <input type="hidden" name="semana" value="{{ semana_atual }}" />
         <div class="action-form-grid">
-          <div class="field">
-            <label class="field__label">Registro de capital de giro *</label>
-            <select class="field__input" id="acao-registro-id" name="id" required>
-              <option value="">Selecione...</option>
-              {% for item in registros %}
-              <option value="{{ item.id }}">{{ item.origem }} - {{ item.referencia }}</option>
-              {% endfor %}
-            </select>
-          </div>
           <div class="field field--full">
             <label class="field__label">Acao realizada *</label>
             <textarea class="field__input field__textarea" id="acao-descricao" name="acao_realizada" rows="3" placeholder="Descreva a acao realizada..." required></textarea>

@@ -5,16 +5,11 @@ let deleteState = { id: null, btnEl: null };
 const MESES_FINANCEIRO = ['abril', 'maio', 'junho'];
 
 function renderizarOpcoesAcao() {
-  const select = document.getElementById('acao-registro-id');
-  if (!select) return;
-  const atual = select.value;
-  const options = ['<option value="">Selecione...</option>'];
-  registrosCache.forEach((r) => {
-    options.push(`<option value="${r.id}">${r.banco || 'Registro'} - ${r.referencia || ('#' + r.id)}</option>`);
-  });
-  select.innerHTML = options.join('');
-  if (registrosCache.some((r) => String(r.id) === atual)) select.value = atual;
-  select.disabled = !registrosCache.length;
+  const feedback = document.getElementById('acao-feedback');
+  if (!feedback) return;
+  feedback.textContent = registrosCache.length
+    ? 'A acao sera vinculada ao registro mais recente da semana.'
+    : 'Cadastre um registro da semana antes de salvar uma acao.';
 }
 
 
@@ -54,23 +49,26 @@ function badgeClassNegociacao(negociacao) {
 function atualizarIndicadores(ind) {
   const metaBase = document.getElementById('meta-base-total');
   if (metaBase) metaBase.textContent = 'R$ ' + Math.round(ind.meta_base_total || 0).toLocaleString('pt-BR');
-  document.getElementById('valor-meta').textContent = 'R$ ' + Math.round(ind.valor_meta || 0).toLocaleString('pt-BR');
-  document.getElementById('valor-arrecadado').textContent = 'R$ ' + Math.round(ind.valor_arrecadado || 0).toLocaleString('pt-BR');
+  const valorMeta = document.getElementById('valor-meta');
+  if (valorMeta) valorMeta.textContent = 'R$ ' + Math.round(ind.valor_meta || 0).toLocaleString('pt-BR');
+  const valorPrincipal = document.getElementById('valor-arrecadado') || document.getElementById('valor-captado') || document.getElementById('valor-negociado') || document.getElementById('valor-realizado');
+  const valorAtual = ind.valor_arrecadado || 0;
+  if (valorPrincipal) valorPrincipal.textContent = 'R$ ' + Math.round(valorAtual).toLocaleString('pt-BR');
   const acoesPlanejadas = document.getElementById('acoes-planejadas');
   if (acoesPlanejadas) acoesPlanejadas.textContent = String(ind.acoes_planejadas || 0);
   const acoesRealizadas = document.getElementById('acoes-realizadas');
   if (acoesRealizadas) acoesRealizadas.textContent = String(ind.acoes_realizadas || 0);
   document.getElementById('bar-valor').style.width = `${ind.pct_valor || 0}%`;
   document.getElementById('pct-valor').textContent = `${ind.pct_valor || 0}%`;
-  document.getElementById('txt-valor').textContent = `${fmtValor(ind.valor_arrecadado || 0)} de ${fmtValor(ind.valor_meta || 0)}`;
+  document.getElementById('txt-valor').textContent = `${fmtValor(valorAtual)} de ${fmtValor(ind.valor_meta || 0)}`;
   document.getElementById('pct-acoes').textContent = `${ind.pct_acoes || 0}%`;
   document.getElementById('bar-acoes').style.width = `${Math.min(ind.pct_acoes || 0, 100)}%`;
-  document.getElementById('txt-acoes').textContent = `${ind.acoes_realizadas || 0} de ${ind.acoes_planejadas || 0} ações realizadas`;
-}
+  document.getElementById('txt-acoes').textContent = `${ind.acoes_realizadas || 0} de ${ind.acoes_planejadas || 0} acoes realizadas`;
   const resumoBar = document.getElementById('bar-resumo');
   if (resumoBar) resumoBar.style.width = `${Math.min(ind.pct_valor || 0, 100)}%`;
   const resumoTexto = document.getElementById('txt-resumo');
-  if (resumoTexto) resumoTexto.textContent = `${fmtValor(ind.valor_arrecadado || 0)} realizados e ${ind.acoes_realizadas || 0} acoes registradas nesta semana.`;
+  if (resumoTexto) resumoTexto.textContent = `${fmtValor(valorAtual)} realizados e ${ind.acoes_realizadas || 0} acoes registradas nesta semana.`;
+}
 
 function abrirFicha(id) {
   const r = registrosCache.find((item) => item.id === id);
@@ -362,12 +360,12 @@ document.addEventListener('DOMContentLoaded', () => {
   const btnLimparAcao = document.getElementById('btn-limpar-acao');
   if (btnLimparAcao) {
     btnLimparAcao.addEventListener('click', () => {
-      const select = document.getElementById('acao-registro-id');
       const textarea = document.getElementById('acao-descricao');
       const feedback = document.getElementById('acao-feedback');
-      if (select) select.value = '';
       if (textarea) textarea.value = '';
-      if (feedback) feedback.textContent = '';
+      if (feedback) feedback.textContent = registrosCache.length
+        ? 'A acao sera vinculada ao registro mais recente da semana.'
+        : 'Cadastre um registro da semana antes de salvar uma acao.';
     });
   }
   const confirmDeleteBtn = document.getElementById('confirm-delete-btn');
@@ -392,3 +390,39 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 conectarSocket();
+
+
+async function salvarAcaoRealizada() {
+  const textarea = document.getElementById('acao-descricao');
+  const feedback = document.getElementById('acao-feedback');
+  const btn = document.getElementById('btn-salvar-acao');
+  const acao = textarea ? textarea.value.trim() : '';
+  if (!acao) {
+    showToast('Descreva a acao realizada.', 'error');
+    return;
+  }
+  if (!registrosCache.length) {
+    showToast('Cadastre um registro da semana antes de salvar uma acao.', 'error');
+    return;
+  }
+  btn.disabled = true;
+  if (feedback) feedback.textContent = 'Salvando acao...';
+  try {
+    const resp = await fetch('/financeiro/acao', { method: 'POST', headers: csrfHeaders({ 'Content-Type': 'application/json' }), body: JSON.stringify({ semana: SEMANA_ATUAL, acao_realizada: acao }) });
+    const json = await resp.json();
+    if (resp.ok && json.sucesso) {
+      showToast('Acao registrada com sucesso!', 'success');
+      if (textarea) textarea.value = '';
+      if (feedback) feedback.textContent = 'Acao salva com sucesso.';
+      _buscarAtualizacao();
+    } else {
+      if (feedback) feedback.textContent = '';
+      showToast(json.erro || 'Erro ao salvar a acao.', 'error');
+    }
+  } catch {
+    if (feedback) feedback.textContent = '';
+    showToast('Falha de conexao. Tente novamente.', 'error');
+  } finally {
+    btn.disabled = false;
+  }
+}
