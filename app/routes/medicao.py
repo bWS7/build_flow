@@ -8,6 +8,7 @@ from app.models.empreendimento import Empreendimento
 from app.models.medicao import MedicaoRegistro
 from app.models.meta_medicao import MetaMedicaoSemana
 from app.models.meta_configuracao import MetaConfiguracaoIndicador
+from app.utils.quarter import semana_editavel
 
 
 medicao_bp = Blueprint('medicao', __name__)
@@ -98,6 +99,30 @@ def _pode_gerenciar_registro(registro: MedicaoRegistro) -> bool:
     return current_user.can_manage_admin() or registro.responsavel == current_user.nome.upper()
 
 
+def _garantir_semana_editavel(semana: int):
+    if not semana_editavel(semana, current_user.can_manage_admin()):
+        return jsonify({'erro': 'Esta semana esta bloqueada para edicao. Apenas o admin pode alterar semanas anteriores.'}), 403
+    return None
+
+
+def _empreendimento_padrao() -> str:
+    empreendimento = Empreendimento.query.filter_by(ativo=True).order_by(Empreendimento.nome).first()
+    return empreendimento.nome if empreendimento else 'NAO INFORMADO'
+
+
+def _criar_registro_acao_direta(semana: int, acao_realizada: str) -> MedicaoRegistro:
+    registro = MedicaoRegistro(
+        empreendimento=_empreendimento_padrao(),
+        valor_medicao=0.0,
+        observacao='REGISTRO TECNICO GERADO PARA ACAO DIRETA',
+        acao_realizada=acao_realizada,
+        responsavel=current_user.nome.upper(),
+        semana=semana,
+    )
+    db.session.add(registro)
+    return registro
+
+
 @medicao_bp.route('/')
 @login_required
 @requer_medicao_ou_admin
@@ -116,6 +141,7 @@ def index():
         registros=registros,
         registros_json=[item.to_dict() for item in registros],
         semana_atual=semana,
+        permite_edicao=semana_editavel(semana, current_user.can_manage_admin()),
     )
 
 
@@ -143,6 +169,9 @@ def cadastrar():
     semana = _parse_semana(dados.get('semana', 1))
     if semana is None:
         return jsonify({'erro': 'Semana invalida.'}), 400
+    bloqueio = _garantir_semana_editavel(semana)
+    if bloqueio:
+        return bloqueio
 
     novo = MedicaoRegistro(
         empreendimento=empreendimento,
@@ -168,6 +197,13 @@ def registrar_acao():
     semana = _parse_semana(dados.get('semana', 1))
     if semana is None:
         return jsonify({'erro': 'Semana invalida.'}), 400
+    bloqueio = _garantir_semana_editavel(semana)
+    if bloqueio:
+        return bloqueio
+
+    acao_realizada = (dados.get('acao_realizada') or '').upper().strip()
+    if not acao_realizada:
+        return jsonify({'erro': 'Informe a acao realizada.'}), 400
 
     reg = None
     if reg_id:
@@ -179,13 +215,15 @@ def registrar_acao():
         reg = query.order_by(MedicaoRegistro.criado_em.desc()).first()
 
     if not reg:
-        return jsonify({'erro': 'Registro nao encontrado.'}), 404
+        reg = _criar_registro_acao_direta(semana, acao_realizada)
+        db.session.commit()
+        _broadcast_update_medicao(semana)
+        return jsonify({'sucesso': True, 'registro': reg.to_dict(), 'acao_direta': True}), 201
     if not _pode_gerenciar_registro(reg):
         return jsonify({'erro': 'Voce so pode editar registros criados por voce.'}), 403
-
-    acao_realizada = (dados.get('acao_realizada') or '').upper().strip()
-    if not acao_realizada:
-        return jsonify({'erro': 'Informe a acao realizada.'}), 400
+    bloqueio = _garantir_semana_editavel(reg.semana)
+    if bloqueio:
+        return bloqueio
 
     reg.acao_realizada = acao_realizada
     db.session.commit()
@@ -220,6 +258,9 @@ def editar_registro(reg_id):
         return jsonify({'erro': 'Registro nao encontrado.'}), 404
     if not _pode_gerenciar_registro(reg):
         return jsonify({'erro': 'Voce so pode editar registros criados por voce.'}), 403
+    bloqueio = _garantir_semana_editavel(reg.semana)
+    if bloqueio:
+        return bloqueio
 
     dados = request.get_json(silent=True) or request.form.to_dict()
     campos_obrigatorios = ['empreendimento', 'valor_medicao']
@@ -257,6 +298,9 @@ def deletar_registro(reg_id):
         return jsonify({'erro': 'Registro nao encontrado.'}), 404
     if not _pode_gerenciar_registro(reg):
         return jsonify({'erro': 'Voce so pode excluir registros criados por voce.'}), 403
+    bloqueio = _garantir_semana_editavel(reg.semana)
+    if bloqueio:
+        return bloqueio
 
     semana = reg.semana
     db.session.delete(reg)

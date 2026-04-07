@@ -1719,6 +1719,9 @@ def _montar_master_painel_periodizado(view: str | None = None, period: str | Non
     total_realizado = sum(min(float(item['percentual']), 100.0) for item in cards_ordenados)
     total_meta = float(len(cards_ordenados) * 100)
     objetivo_geral = _safe_pct(total_realizado, total_meta)
+    total_acoes_realizadas = sum(float(item['realizado']) for item in cards_acoes_ordenados)
+    total_acoes_meta = sum(float(item['meta']) for item in cards_acoes_ordenados)
+    percentual_acoes_master = _safe_pct(total_acoes_realizadas, total_acoes_meta)
     destaque_principal = max(cards_ordenados, key=lambda item: item['percentual']) if cards_ordenados else None
     alerta_principal = min(cards_ordenados, key=lambda item: item['percentual']) if cards_ordenados else None
 
@@ -1728,6 +1731,9 @@ def _montar_master_painel_periodizado(view: str | None = None, period: str | Non
         'objetivo_geral': objetivo_geral,
         'objetivo_realizado_total': total_realizado,
         'objetivo_meta_total': total_meta,
+        'acoes_realizadas_master': total_acoes_realizadas,
+        'acoes_meta_master': total_acoes_meta,
+        'acoes_percentual_master': percentual_acoes_master,
         'tempo_pct': tempo_pct,
         'tempo_restante_label': _formatar_tempo_restante(tempo_decorrido),
         'data_limite_label': f'{inicio_contagem.strftime("%d/%m/%Y")} a {fim_periodo.strftime("%d/%m/%Y")}',
@@ -1752,6 +1758,9 @@ def _serializar_master_painel_periodizado(view: str | None = None, period: str |
         'objetivo_geral': painel['objetivo_geral'],
         'objetivo_realizado_total': painel['objetivo_realizado_total'],
         'objetivo_meta_total': painel['objetivo_meta_total'],
+        'acoes_realizadas_master': painel['acoes_realizadas_master'],
+        'acoes_meta_master': painel['acoes_meta_master'],
+        'acoes_percentual_master': painel['acoes_percentual_master'],
         'tempo_pct': painel['tempo_pct'],
         'tempo_restante_label': painel['tempo_restante_label'],
         'data_limite_label': painel['data_limite_label'],
@@ -1882,56 +1891,45 @@ def _mapa_metas_liberadas() -> dict[str, set[int]]:
     return mapa
 
 
+def _contexto_dashboard_metas(show_admin_cards: bool, show_meta_cards: bool) -> dict:
+    return {
+        'usuarios': User.query.order_by(User.nome).all() if show_admin_cards and current_user.can_manage_admin() else [],
+        'empreendimentos': Empreendimento.query.order_by(Empreendimento.nome).all() if show_admin_cards and current_user.can_manage_admin() else [],
+        'metas': MetaSemana.query.order_by(MetaSemana.semana).all(),
+        'metas_vendas': {meta.semana: meta for meta in MetaVendaSemana.query.order_by(MetaVendaSemana.semana).all()},
+        'metas_investidores': {meta.semana: meta for meta in MetaInvestidorSemana.query.order_by(MetaInvestidorSemana.semana).all()},
+        'metas_financeiro': {meta.semana: meta for meta in MetaFinanceiroSemana.query.order_by(MetaFinanceiroSemana.semana).all()},
+        'metas_fornecedores': {meta.semana: meta for meta in MetaFornecedorSemana.query.order_by(MetaFornecedorSemana.semana).all()},
+        'metas_giro': {meta.semana: meta for meta in MetaGiroSemana.query.order_by(MetaGiroSemana.semana).all()},
+        'metas_medicao': {meta.semana: meta for meta in MetaMedicaoSemana.query.order_by(MetaMedicaoSemana.semana).all()},
+        'metas_base_total': _mapa_meta_base_total(),
+        'metas_liberadas': _mapa_metas_liberadas(),
+        'meses_vendas': MESES_VENDAS,
+        'periodo_investidores': PERIODO_INVESTIDORES,
+        'tipos': TIPOS_VALIDOS,
+        'is_admin_dashboard': current_user.can_manage_admin(),
+        'meta_scopes': current_user.meta_scopes() if show_meta_cards else set(),
+        'show_admin_cards': show_admin_cards,
+        'show_meta_cards': show_meta_cards,
+    }
+
+
 @admin_bp.route('/')
 @login_required
 @requer_dashboard_metas
 def dashboard():
-    usuarios = User.query.order_by(User.nome).all() if current_user.can_manage_admin() else []
-    empreendimentos = Empreendimento.query.order_by(Empreendimento.nome).all() if current_user.can_manage_admin() else []
-    metas = MetaSemana.query.order_by(MetaSemana.semana).all()
-    metas_vendas = {
-        meta.semana: meta
-        for meta in MetaVendaSemana.query.order_by(MetaVendaSemana.semana).all()
-    }
-    metas_investidores = {
-        meta.semana: meta
-        for meta in MetaInvestidorSemana.query.order_by(MetaInvestidorSemana.semana).all()
-    }
-    metas_financeiro = {
-        meta.semana: meta
-        for meta in MetaFinanceiroSemana.query.order_by(MetaFinanceiroSemana.semana).all()
-    }
-    metas_fornecedores = {
-        meta.semana: meta
-        for meta in MetaFornecedorSemana.query.order_by(MetaFornecedorSemana.semana).all()
-    }
-    metas_giro = {
-        meta.semana: meta
-        for meta in MetaGiroSemana.query.order_by(MetaGiroSemana.semana).all()
-    }
-    metas_medicao = {
-        meta.semana: meta
-        for meta in MetaMedicaoSemana.query.order_by(MetaMedicaoSemana.semana).all()
-    }
-    metas_liberadas = _mapa_metas_liberadas()
-    metas_base_total = _mapa_meta_base_total()
-    return render_template('admin/dashboard.html',
-                           usuarios=usuarios,
-                           empreendimentos=empreendimentos,
-                           metas=metas,
-                           metas_vendas=metas_vendas,
-                           metas_investidores=metas_investidores,
-                           metas_financeiro=metas_financeiro,
-                           metas_fornecedores=metas_fornecedores,
-                           metas_giro=metas_giro,
-                           metas_medicao=metas_medicao,
-                           metas_base_total=metas_base_total,
-                           metas_liberadas=metas_liberadas,
-                           meses_vendas=MESES_VENDAS,
-                           periodo_investidores=PERIODO_INVESTIDORES,
-                           tipos=TIPOS_VALIDOS,
-                           is_admin_dashboard=current_user.can_manage_admin(),
-                           meta_scopes=current_user.meta_scopes())
+    if current_user.can_manage_admin():
+        contexto = _contexto_dashboard_metas(show_admin_cards=True, show_meta_cards=False)
+    else:
+        contexto = _contexto_dashboard_metas(show_admin_cards=False, show_meta_cards=True)
+    return render_template('admin/dashboard.html', **contexto)
+
+
+@admin_bp.route('/metas')
+@login_required
+@requer_dashboard_metas
+def metas_dashboard():
+    return render_template('admin/dashboard.html', **_contexto_dashboard_metas(show_admin_cards=False, show_meta_cards=True))
 
 
 @admin_bp.route('/relacionamento')
@@ -2320,6 +2318,30 @@ def disponibilizar_meta():
     liberacao.liberada_em = datetime.now()
     db.session.commit()
     return jsonify({'sucesso': True, 'scope': scope, 'semana': semana, 'liberada': True})
+
+
+@admin_bp.route('/meta-base/salvar', methods=['POST'])
+@login_required
+@requer_admin
+def salvar_meta_base():
+    dados = request.get_json(silent=True) or request.form.to_dict()
+    scope = (dados.get('scope') or '').strip().lower()
+    tipo = (dados.get('tipo') or 'monetario').strip().lower()
+    if scope not in {'relacionamento', 'vendas', 'investidores', 'financeiro', 'giro', 'fornecedores', 'medicao'}:
+        return jsonify({'erro': 'Escopo de meta invalido.'}), 400
+
+    try:
+        valor = float(dados.get('valor', 0) or 0)
+    except (TypeError, ValueError):
+        return jsonify({'erro': 'Valor invalido.'}), 400
+
+    valor_normalizado = max(round(valor, 2), 0.0)
+    if tipo == 'inteiro':
+        valor_normalizado = int(valor_normalizado)
+
+    _salvar_meta_base_total(scope, valor_normalizado)
+    db.session.commit()
+    return jsonify({'sucesso': True, 'scope': scope, 'valor': valor_normalizado})
 
 
 @admin_bp.route('/meta/salvar', methods=['POST'])

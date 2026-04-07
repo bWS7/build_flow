@@ -13,8 +13,14 @@
   {% if current_user.can_access_metas_dashboard() %}
   <a href="{{ url_for('admin.dashboard') }}" class="drawer__link{% if active_page == 'dashboard' %} drawer__link--active{% endif %}">
     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
-    {{ 'Admin' if current_user.can_manage_admin() else 'Metas' }}
+    {{ 'Painel Administrativo' if current_user.can_manage_admin() else 'Metas' }}
   </a>
+  {% if current_user.can_manage_admin() %}
+  <a href="{{ url_for('admin.metas_dashboard') }}" class="drawer__link{% if active_page == 'metas_dashboard' %} drawer__link--active{% endif %}">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19h16"/><path d="M6 15l4-4 3 3 5-6"/></svg>
+    Gestão de Metas
+  </a>
+  {% endif %}
   {% endif %}
   {% if current_user.can_access_page('relacionamento') %}
   <a href="{{ url_for('relacionamento.index') }}" class="drawer__link{% if active_page == 'relacionamento' %} drawer__link--active{% endif %}">

@@ -121,7 +121,42 @@ function atualizarCard(card) {
   if (signalEl) {
     signalEl.textContent = card.desempenho_status === 'positivo' ? '↑' : card.desempenho_status === 'negativo' ? '↓' : '•';
     signalEl.className = `master-chip__signal master-chip__signal--${card.desempenho_status || 'neutro'}`;
+    normalizarSinalMasterFinal(signalEl);
   }
+}
+
+function normalizarSinalMaster(signalEl) {
+  if (!signalEl) return;
+  if (signalEl.classList.contains('master-chip__signal--positivo')) signalEl.textContent = '↑';
+  else if (signalEl.classList.contains('master-chip__signal--negativo')) signalEl.textContent = '↓';
+  else signalEl.textContent = '•';
+}
+
+function atualizarCardAcoes(card) {
+  const item = document.querySelector(`[data-master-card-acoes="${card.slug}"]`);
+  if (!item) return;
+
+  const percentualEl = item.querySelector('.master-chip__value');
+  const metaEls = item.querySelectorAll('.master-chip__meta');
+  const fillEl = item.querySelector('.master-chip__fill');
+  const signalEl = item.querySelector('.master-chip__signal');
+
+  if (percentualEl) percentualEl.textContent = `${formatarNumeroBr(card.percentual, 1)}%`;
+  if (metaEls[0]) metaEls[0].textContent = `${formatarInteiroBr(card.realizado)} x ${formatarInteiroBr(card.meta)}`;
+  if (metaEls[1]) metaEls[1].textContent = card.comparativo_label || '';
+  if (fillEl) fillEl.style.width = `${Math.min(Number(card.percentual || 0), 100)}%`;
+  if (signalEl) {
+    signalEl.className = `master-chip__signal master-chip__signal--${card.desempenho_status || 'neutro'}`;
+    normalizarSinalMaster(signalEl);
+    normalizarSinalMasterFinal(signalEl);
+  }
+}
+
+function normalizarSinalMasterFinal(signalEl) {
+  if (!signalEl) return;
+  if (signalEl.classList.contains('master-chip__signal--positivo')) signalEl.textContent = '\u2191';
+  else if (signalEl.classList.contains('master-chip__signal--negativo')) signalEl.textContent = '\u2193';
+  else signalEl.textContent = '\u2022';
 }
 
 function renderizarTabela(cards) {
@@ -141,12 +176,17 @@ function renderizarTabela(cards) {
 
 function aplicarDadosMaster(payload) {
   const cards = Array.isArray(payload.cards_master) ? payload.cards_master : [];
+  const cardsAcoes = Array.isArray(payload.cards_master_acoes) ? payload.cards_master_acoes : [];
   cards.forEach(atualizarCard);
+  cardsAcoes.forEach(atualizarCardAcoes);
   renderizarTabela(cards);
 
   const goalValueEl = document.querySelector('[data-master-goal-value]');
   const goalCopyEl = document.querySelector('[data-master-goal-copy]');
   const timerEl = document.querySelector('[data-master-timer]');
+  const actionsBarEl = document.querySelector('[data-master-actions-bar]');
+  const actionsValueEl = document.querySelector('[data-master-actions-value]');
+  const actionsCopyEl = document.querySelector('[data-master-actions-copy]');
   const highlightNameEl = document.querySelector('[data-master-highlight-name]');
   const highlightCopyEl = document.querySelector('[data-master-highlight-copy]');
   const alertNameEl = document.querySelector('[data-master-alert-name]');
@@ -159,6 +199,13 @@ function aplicarDadosMaster(payload) {
   if (timerEl) {
     timerEl.dataset.startedAt = payload.timer_started_at_iso;
     timerEl.dataset.deadlineAt = payload.timer_deadline_at_iso;
+  }
+  if (actionsValueEl) actionsValueEl.textContent = formatarNumeroBr(payload.acoes_percentual_master, 1);
+  if (actionsCopyEl) {
+    actionsCopyEl.textContent = `${formatarInteiroBr(payload.acoes_realizadas_master)} de ${formatarInteiroBr(payload.acoes_meta_master)} ações realizadas frente à meta do período.`;
+  }
+  if (actionsBarEl) {
+    actionsBarEl.style.setProperty('--panel-progress', `${Math.min(Number(payload.acoes_percentual_master || 0), 100)}%`);
   }
   if (highlightNameEl) highlightNameEl.textContent = payload.destaque_principal?.nome || 'Sem dados';
   if (highlightCopyEl) highlightCopyEl.textContent = `${formatarNumeroBr(payload.destaque_principal?.percentual || 0, 1)}% da meta trimestral.`;
@@ -208,6 +255,7 @@ function conectarSocketMaster() {
 }
 
 document.addEventListener('DOMContentLoaded', () => {
+  document.querySelectorAll('.master-chip__signal').forEach(normalizarSinalMasterFinal);
   iniciarObjetivoMaster();
   iniciarTimerMaster();
   conectarSocketMaster();

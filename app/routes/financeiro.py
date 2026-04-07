@@ -7,6 +7,7 @@ from app import db, socketio
 from app.models.financeiro import BANCOS_BRASIL, NEGOCIACAO_OPCOES, FinanceiroBanco
 from app.models.meta_financeiro import MetaFinanceiroSemana
 from app.models.meta_configuracao import MetaConfiguracaoIndicador
+from app.utils.quarter import semana_editavel
 
 
 financeiro_bp = Blueprint('financeiro', __name__)
@@ -97,6 +98,28 @@ def _pode_gerenciar_registro(registro: FinanceiroBanco) -> bool:
     return current_user.can_manage_admin() or registro.responsavel == current_user.nome.upper()
 
 
+def _garantir_semana_editavel(semana: int):
+    if not semana_editavel(semana, current_user.can_manage_admin()):
+        return jsonify({'erro': 'Esta semana esta bloqueada para edicao. Apenas o admin pode alterar semanas anteriores.'}), 403
+    return None
+
+
+def _criar_registro_acao_direta(semana: int, acao_realizada: str) -> FinanceiroBanco:
+    registro = FinanceiroBanco(
+        banco='BANCO DO BRASIL',
+        negociacao='PARCIAL',
+        valor_arrecadado=0.0,
+        tipo_negociacao='ACAO DIRETA',
+        observacao='REGISTRO TECNICO GERADO PARA ACAO DIRETA',
+        acao_realizada=acao_realizada,
+        referencia='ACAO DIRETA',
+        responsavel=current_user.nome.upper(),
+        semana=semana,
+    )
+    db.session.add(registro)
+    return registro
+
+
 @financeiro_bp.route('/')
 @login_required
 @requer_financeiro_ou_admin
@@ -115,6 +138,7 @@ def index():
         registros=registros,
         registros_json=[item.to_dict() for item in registros],
         semana_atual=semana,
+        permite_edicao=semana_editavel(semana, current_user.can_manage_admin()),
     )
 
 
@@ -145,6 +169,9 @@ def cadastrar():
     semana = _parse_semana(dados.get('semana', 1))
     if semana is None:
         return jsonify({'erro': 'Semana invalida.'}), 400
+    bloqueio = _garantir_semana_editavel(semana)
+    if bloqueio:
+        return bloqueio
 
     novo = FinanceiroBanco(
         banco=banco,
@@ -173,6 +200,13 @@ def registrar_acao():
     semana = _parse_semana(dados.get('semana', 1))
     if semana is None:
         return jsonify({'erro': 'Semana invalida.'}), 400
+    bloqueio = _garantir_semana_editavel(semana)
+    if bloqueio:
+        return bloqueio
+
+    acao_realizada = (dados.get('acao_realizada') or '').upper().strip()
+    if not acao_realizada:
+        return jsonify({'erro': 'Informe a acao realizada.'}), 400
 
     reg = None
     if reg_id:
@@ -184,13 +218,12 @@ def registrar_acao():
         reg = query.order_by(FinanceiroBanco.criado_em.desc()).first()
 
     if not reg:
-        return jsonify({'erro': 'Registro nao encontrado.'}), 404
+        reg = _criar_registro_acao_direta(semana, acao_realizada)
+        db.session.commit()
+        _broadcast_update_financeiro(semana)
+        return jsonify({'sucesso': True, 'registro': reg.to_dict(), 'acao_direta': True}), 201
     if not _pode_gerenciar_registro(reg):
         return jsonify({'erro': 'Voce so pode editar registros criados por voce.'}), 403
-
-    acao_realizada = (dados.get('acao_realizada') or '').upper().strip()
-    if not acao_realizada:
-        return jsonify({'erro': 'Informe a acao realizada.'}), 400
 
     reg.acao_realizada = acao_realizada
     db.session.commit()
@@ -225,6 +258,9 @@ def editar_registro(reg_id):
         return jsonify({'erro': 'Registro nao encontrado.'}), 404
     if not _pode_gerenciar_registro(reg):
         return jsonify({'erro': 'Voce so pode editar registros criados por voce.'}), 403
+    bloqueio = _garantir_semana_editavel(reg.semana)
+    if bloqueio:
+        return bloqueio
 
     dados = request.get_json(silent=True) or request.form.to_dict()
     campos_obrigatorios = ['banco', 'negociacao', 'valor_arrecadado', 'tipo_negociacao', 'referencia']
@@ -268,6 +304,9 @@ def deletar_registro(reg_id):
         return jsonify({'erro': 'Registro nao encontrado.'}), 404
     if not _pode_gerenciar_registro(reg):
         return jsonify({'erro': 'Voce so pode excluir registros criados por voce.'}), 403
+    bloqueio = _garantir_semana_editavel(reg.semana)
+    if bloqueio:
+        return bloqueio
 
     semana = reg.semana
     db.session.delete(reg)

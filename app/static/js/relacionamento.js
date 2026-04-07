@@ -5,14 +5,11 @@ let deleteState = { id: null, btnEl: null };
 const MESES_RELACIONAMENTO = ['abril', 'maio', 'junho'];
 
 function renderizarOpcoesAcao() {
-  const select = document.getElementById('acao-registro-id');
-  if (!select) return;
-  const atual = select.value;
-  const options = ['<option value="">Selecione...</option>'];
-  registrosCache.forEach((r) => options.push(`<option value="${r.id}">${r.cliente || 'Registro'} - ${r.empreendimento || ('#' + r.id)}</option>`));
-  select.innerHTML = options.join('');
-  if (registrosCache.some((r) => String(r.id) === atual)) select.value = atual;
-  select.disabled = !registrosCache.length;
+  const feedback = document.getElementById('acao-feedback');
+  if (!feedback) return;
+  feedback.textContent = registrosCache.length
+    ? 'A acao sera registrada normalmente nesta semana.'
+    : 'Voce pode registrar uma acao diretamente, mesmo sem registro anterior.';
 }
 
 function csrfHeaders(extra = {}) {
@@ -289,7 +286,14 @@ async function confirmarExclusaoRegistro() {
       headers: csrfHeaders(),
     });
     const json = await resp.json();
-    if (!resp.ok) {
+    if (resp.ok && json.sucesso) {
+      const atualizados = registrosCache.filter((registro) => registro.id !== id);
+      renderizarTabela(atualizados);
+      renderizarTabelaAcoes(atualizados);
+      renderizarOpcoesAcao();
+      showToast('Registro excluido com sucesso!', 'success');
+      _buscarAtualizacao();
+    } else {
       showToast(json.erro || 'Erro ao excluir.', 'error');
       btnEl.disabled = false;
     }
@@ -354,6 +358,8 @@ async function _buscarAtualizacao() {
     const json = await resp.json();
     atualizarIndicadores(json.indicadores);
     renderizarTabela(json.registros);
+    renderizarTabelaAcoes(json.registros || []);
+    renderizarOpcoesAcao();
   } catch {
     // websocket cobre esse fluxo na maior parte do tempo
   }
@@ -400,9 +406,10 @@ document.addEventListener('DOMContentLoaded', () => {
       const select = document.getElementById('acao-registro-id');
       const textarea = document.getElementById('acao-descricao');
       const feedback = document.getElementById('acao-feedback');
-      if (select) select.value = '';
       if (textarea) textarea.value = '';
-      if (feedback) feedback.textContent = '';
+      if (feedback) feedback.textContent = registrosCache.length
+        ? 'A acao sera registrada normalmente nesta semana.'
+        : 'Voce pode registrar uma acao diretamente, mesmo sem registro anterior.';
     });
   }
   const confirmDeleteBtn = document.getElementById('confirm-delete-btn');
@@ -430,20 +437,18 @@ conectarSocket();
 
 
 async function salvarAcaoRealizada() {
-  const select = document.getElementById('acao-registro-id');
   const textarea = document.getElementById('acao-descricao');
   const feedback = document.getElementById('acao-feedback');
   const btn = document.getElementById('btn-salvar-acao');
-  const id = select ? select.value : '';
   const acao = textarea ? textarea.value.trim() : '';
-  if (!id || !acao) {
-    showToast('Selecione um registro e descreva a acao realizada.', 'error');
+  if (!acao) {
+    showToast('Descreva a acao realizada.', 'error');
     return;
   }
   btn.disabled = true;
   if (feedback) feedback.textContent = 'Salvando acao...';
   try {
-    const resp = await fetch('/relacionamento/acao', { method: 'POST', headers: csrfHeaders({ 'Content-Type': 'application/json' }), body: JSON.stringify({ id, acao_realizada: acao }) });
+    const resp = await fetch('/relacionamento/acao', { method: 'POST', headers: csrfHeaders({ 'Content-Type': 'application/json' }), body: JSON.stringify({ semana: SEMANA_ATUAL, acao_realizada: acao }) });
     const json = await resp.json();
     if (resp.ok && json.sucesso) {
       showToast('Acao registrada com sucesso!', 'success');

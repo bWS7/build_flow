@@ -1,0 +1,2 @@
+"""Helpers compartilhados da aplicação."""
+

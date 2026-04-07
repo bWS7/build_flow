@@ -235,6 +235,37 @@ function obterMetaBase(scope, monetario = true) {
   return monetario ? Math.max(parsearValorBR(input.value), 0) : parsearInteiroSeguro(input.value);
 }
 
+async function salvarMetaBase(scope, btn, monetario = true) {
+  const valor = obterMetaBase(scope, monetario);
+  if (!btn) return;
+  btn.disabled = true;
+  const textoOriginal = btn.textContent;
+  btn.textContent = 'Salvando...';
+
+  try {
+    const resp = await fetch('/admin/meta-base/salvar', {
+      method: 'POST',
+      headers: csrfHeaders({ 'Content-Type': 'application/json' }),
+      body: JSON.stringify({
+        scope,
+        valor,
+        tipo: monetario ? 'monetario' : 'inteiro',
+      }),
+    });
+    const json = await resp.json();
+    if (resp.ok && json.sucesso) {
+      showToast('Meta base salva com sucesso!', 'success');
+    } else {
+      showToast(json.erro || 'Erro ao salvar meta base.', 'error');
+    }
+  } catch {
+    showToast('Falha de conexao ao salvar meta base.', 'error');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = textoOriginal;
+  }
+}
+
 function obterMetaEls(semana) {
   return {
     item: document.querySelector(`.meta-item[data-semana="${semana}"]`),

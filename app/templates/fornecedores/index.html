@@ -136,7 +136,7 @@
       </div>
       <div class="progress-block summary-banner">
         <div class="progress-block__header">
-          <span class="progress-block__label">Planejado X Realizado Geral</span>
+          <span class="progress-block__label">Planejado X Realizado (Metrica e Acoes) - Semana {{ semana_atual }}</span>
         </div>
         <div class="progress-track">
           <div class="progress-fill progress-fill--valor" id="bar-resumo" style="width:{{ indicadores.pct_valor if indicadores.pct_valor <= 100 else 100 }}%"></div>
@@ -198,7 +198,7 @@
     <section class="form-section">
       <div class="section-header">
         <div class="section-header__group">
-          <h3 class="section-header__title">Novo Registro de Fornecedor - Semana {{ semana_atual }}</h3>
+          <h3 class="section-header__title"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg> Novo Registro de Fornecedor - Semana {{ semana_atual }}</h3>
           <span class="section-header__subtitle">Cadastre o resultado da semana e mantenha as acoes em um card separado.</span>
         </div>
         <button class="btn btn--sm btn--ghost" id="toggle-form">+ Expandir</button>
@@ -265,7 +265,7 @@
       <div class="section-header">
         <div class="section-header__group">
           <h3 class="section-header__title"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg> Novo Registro de Acoes - Semana {{ semana_atual }}</h3>
-          <span class="section-header__subtitle">Registre uma acao realizada por vez em texto livre. A acao sera vinculada ao registro mais recente da semana.</span>
+          <span class="section-header__subtitle">Registre uma acao realizada por vez em texto livre. O sistema aceita acao direta, mesmo sem registro anterior.</span>
         </div>
         <button class="btn btn--sm btn--ghost" id="toggle-action-form">+ Expandir</button>
       </div>

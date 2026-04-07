@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import date, datetime
 from functools import wraps
 import unicodedata
 
@@ -12,6 +12,7 @@ from app.models.meta_configuracao import MetaConfiguracaoIndicador
 from app.models.investidor import Investidor, SITUACAO_INVESTIDOR_OPCOES, TIPO_VENDA_OPCOES
 from app.models.meta_investidor_semana import MetaInvestidorSemana
 from app.services.analytics_ai import analytics_ai_available, analytics_ai_enabled, ask_analytics_assistant, build_global_ai_context, fallback_analytics_answer
+from app.utils.quarter import semana_editavel
 
 
 investidores_bp = Blueprint('investidores', __name__)
@@ -83,6 +84,42 @@ def _semana_global_por_data(data_reserva, mes_slug: str | None = None) -> int | 
     return None
 
 
+def _data_referencia_da_semana(mes_slug: str, semana_local: int) -> date:
+    mes_info = MESES_MAP.get(mes_slug, MESES_MAP['abril'])
+    dia_inicial = {1: 1, 2: 8, 3: 15, 4: 22}.get(semana_local, 1)
+    return date(datetime.now().year, mes_info['numero'], dia_inicial)
+
+
+def _criar_investidor_acao_direta(mes_slug: str, semana_local: int, acao_realizada: str) -> Investidor:
+    empreendimento = Empreendimento.query.filter_by(ativo=True).order_by(Empreendimento.nome).first()
+    investidor = Investidor(
+        reserva=f'ACAO-DIRETA-{mes_slug.upper()}-S{semana_local}',
+        data_reserva=_data_referencia_da_semana(mes_slug, semana_local),
+        situacao='NOVA RESERVA',
+        tipo_venda='DIRETA',
+        empreendimento=empreendimento.nome if empreendimento else 'NAO INFORMADO',
+        bloco=None,
+        unidade=None,
+        cliente='ACAO DIRETA',
+        corretor=None,
+        imobiliaria=None,
+        valor_presente=0,
+        acao_realizada=acao_realizada,
+        criado_por=current_user.nome.upper(),
+    )
+    db.session.add(investidor)
+    return investidor
+
+
+def _garantir_semana_editavel_por_data(data_referencia):
+    semana_global = _semana_global_por_data(data_referencia)
+    if semana_global is None:
+        return jsonify({'erro': 'Nao foi possivel identificar a semana do registro.'}), 400
+    if not semana_editavel(semana_global, current_user.can_manage_admin()):
+        return jsonify({'erro': 'Esta semana esta bloqueada para edicao. Apenas o admin pode alterar semanas anteriores.'}), 403
+    return None
+
+
 def montar_contexto_template_investidores(mes_slug: str, incluir_resumo: bool = False, semana_local: int | None = None) -> dict:
     if mes_slug == PERIODO_INVESTIDORES[0] and not incluir_resumo:
         mes_slug = 'abril'
@@ -90,6 +127,11 @@ def montar_contexto_template_investidores(mes_slug: str, incluir_resumo: bool = 
     mes_info = {'nome': PERIODO_INVESTIDORES[1]} if mes_slug == PERIODO_INVESTIDORES[0] else MESES_MAP[mes_slug]
     empreendimentos = Empreendimento.query.filter_by(ativo=True).order_by(Empreendimento.nome).all()
     investidores = _consultar_investidores_periodo(mes_slug, semana_local=semana_local_normalizada)
+    semana_global = None
+    if mes_slug != PERIODO_INVESTIDORES[0] and semana_local_normalizada is not None:
+        semana_inicio = next(semana_inicio for slug, _, _, semana_inicio in MESES_INVESTIDORES if slug == mes_slug)
+        semana_global = semana_inicio + semana_local_normalizada - 1
+    permite_edicao = True if mes_slug == PERIODO_INVESTIDORES[0] else semana_editavel(semana_global, current_user.can_manage_admin())
     return {
         'meses': [(slug, nome, numero) for slug, nome, numero, _ in MESES_INVESTIDORES] + ([PERIODO_INVESTIDORES] if incluir_resumo else []),
         'mes_atual': mes_slug,
@@ -102,6 +144,7 @@ def montar_contexto_template_investidores(mes_slug: str, incluir_resumo: bool = 
         'registros': investidores,
         'registros_json': [investidor.to_dict() for investidor in investidores],
         'resumo_trimestral': mes_slug == PERIODO_INVESTIDORES[0],
+        'permite_edicao': permite_edicao,
         'analytics_ai_enabled': analytics_ai_enabled() and analytics_ai_available(),
         'incluir_resumo_tabs': incluir_resumo,
         'painel_admin_investidores': False,
@@ -328,6 +371,26 @@ def registrar_acao():
     except (TypeError, ValueError):
         investidor_id = 0
     if investidor_id <= 0:
+        acao_realizada = _normalizar_texto(dados.get('acao_realizada'))
+        if not acao_realizada:
+            return jsonify({'erro': 'Descreva a acao realizada.'}), 400
+        mes_slug = (dados.get('mes') or '').strip().lower()
+        try:
+            semana_local = int(dados.get('semana', 1) or 1)
+        except (TypeError, ValueError):
+            semana_local = 0
+        if mes_slug not in MESES_MAP:
+            return jsonify({'erro': 'Mes invalido para registrar a acao.'}), 400
+        if semana_local not in {1, 2, 3, 4}:
+            return jsonify({'erro': 'Semana invalida para registrar a acao.'}), 400
+        bloqueio = _garantir_semana_editavel_por_data(_data_referencia_da_semana(mes_slug, semana_local))
+        if bloqueio:
+            return bloqueio
+        investidor = _criar_investidor_acao_direta(mes_slug, semana_local, acao_realizada)
+        db.session.commit()
+        _broadcast_update(PERIODO_INVESTIDORES[0])
+        return jsonify({'sucesso': True, 'registro': investidor.to_dict(), 'acao_direta': True}), 201
+    if investidor_id <= 0:
         return jsonify({'erro': 'Selecione um investidor para registrar a acao.'}), 400
 
     acao_realizada = _normalizar_texto(dados.get('acao_realizada'))
@@ -337,6 +400,10 @@ def registrar_acao():
     investidor = db.session.get(Investidor, investidor_id)
     if not investidor:
         return jsonify({'erro': 'Investidor nao encontrado.'}), 404
+
+    bloqueio = _garantir_semana_editavel_por_data(investidor.data_reserva)
+    if bloqueio:
+        return bloqueio
 
     investidor.acao_realizada = acao_realizada
     db.session.commit()
@@ -444,6 +511,10 @@ def cadastrar():
         status = 202 if 'desconsiderado' in erro.lower() else 400
         return jsonify({'sucesso': status == 202, 'ignorado': status == 202, 'erro': erro}), status
 
+    bloqueio = _garantir_semana_editavel_por_data(registro['data_reserva'])
+    if bloqueio:
+        return bloqueio
+
     investidor = Investidor(
         reserva=registro['reserva'],
         data_reserva=registro['data_reserva'],
@@ -485,6 +556,10 @@ def bulk_cadastrar():
                 ignoradas += 1
                 continue
             return jsonify({'erro': f'Linha {indice}: {erro}'}), 400
+        bloqueio = _garantir_semana_editavel_por_data(registro['data_reserva'])
+        if bloqueio:
+            return bloqueio
+
         investidor = Investidor(
             reserva=registro['reserva'],
             data_reserva=registro['data_reserva'],
@@ -520,10 +595,18 @@ def editar_registro(reg_id):
     if not investidor:
         return jsonify({'erro': 'Registro nao encontrado.'}), 404
 
+    bloqueio = _garantir_semana_editavel_por_data(investidor.data_reserva)
+    if bloqueio:
+        return bloqueio
+
     dados = request.get_json(silent=True) or request.form.to_dict()
     registro, erro = _validar_payload_investidor(dados)
     if erro:
         return jsonify({'erro': erro}), 400
+
+    bloqueio = _garantir_semana_editavel_por_data(registro['data_reserva'])
+    if bloqueio:
+        return bloqueio
 
     mes_anterior = PERIODO_INVESTIDORES[0]
     investidor.reserva = registro['reserva']
@@ -554,6 +637,10 @@ def deletar_registro(reg_id):
     investidor = db.session.get(Investidor, reg_id)
     if not investidor:
         return jsonify({'erro': 'Registro nao encontrado.'}), 404
+    bloqueio = _garantir_semana_editavel_por_data(investidor.data_reserva)
+    if bloqueio:
+        return bloqueio
+
     db.session.delete(investidor)
     db.session.commit()
     _broadcast_update(PERIODO_INVESTIDORES[0])
@@ -567,6 +654,10 @@ def deletar_todos_registros():
     investidores = Investidor.query.all()
     if not investidores:
         return jsonify({'sucesso': True, 'quantidade': 0})
+    for investidor in investidores:
+        bloqueio = _garantir_semana_editavel_por_data(investidor.data_reserva)
+        if bloqueio:
+            return bloqueio
 
     for investidor in investidores:
         db.session.delete(investidor)

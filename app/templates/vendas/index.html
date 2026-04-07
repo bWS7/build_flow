@@ -213,6 +213,12 @@
       </div>
     </section>
 
+    {% if not permite_edicao and not resumo_trimestral and not painel_admin_vendas %}
+    <section class="table-section" style="padding:14px 18px;margin-top:12px">
+      <div class="progress-block__detail">Semana {{ semana_atual }} bloqueada para edicao. Apenas visualizacao disponivel para este periodo.</div>
+    </section>
+    {% endif %}
+
     <section class="indicators sales-kpi-grid">
       <div class="kpi-card kpi-card--compact">
         <div class="kpi-card__body">
@@ -297,7 +303,7 @@
               <div class="field"><label class="field__label">Cliente *</label><input class="field__input" name="cliente" type="text" required /></div>
               <div class="field"><label class="field__label">Corretor</label><input class="field__input" name="corretor" type="text" /></div>
               <div class="field"><label class="field__label">Imobiliaria</label><input class="field__input" name="imobiliaria" type="text" /></div>
-              <div class="field"><label class="field__label">Valor Presente</label><input class="field__input" name="valor_presente" type="number" min="0" step="0.01" /></div>
+              <div class="field"><label class="field__label">Valor Presente</label><input class="field__input" name="valor_presente" type="text" inputmode="decimal" data-money-field="true" placeholder="R$ 0,00" /></div>
               <div class="field"><label class="field__label">Tipo de Venda *</label><select class="field__input" name="tipo_venda" required>{% for tipo in tipos_venda %}<option value="{{ tipo }}">{{ tipo }}</option>{% endfor %}</select></div>
             </div>
             <div class="form-actions">
@@ -333,19 +339,13 @@
       <div id="action-form-wrapper" style="display:none">
         <form class="cadastro-form sales-action-form" novalidate>
           <div class="form-grid sales-action-form__grid">
-            <div class="field">
-              <label class="field__label">Venda *</label>
-              <select id="acao-venda-id" class="field__input">
-                <option value="">Selecione...</option>
-              </select>
-            </div>
             <div class="field field--full">
               <label class="field__label">Acao realizada *</label>
               <textarea id="acao-descricao" class="field__input field__textarea" rows="4" placeholder="Descreva a acao realizada..."></textarea>
             </div>
           </div>
           <div class="form-actions">
-            <span class="bulk-card__feedback" id="acao-feedback">Selecione uma venda do periodo para registrar a acao.</span>
+            <span class="bulk-card__feedback" id="acao-feedback">Voce pode registrar uma acao diretamente, mesmo sem venda anterior.</span>
             <button class="btn btn--ghost" type="button" id="btn-limpar-acao">Limpar</button>
             <button class="btn btn--primary" type="button" id="btn-salvar-acao">Salvar acao</button>
           </div>
@@ -361,14 +361,6 @@
         </h3>
         <div class="section-header__tools">
           <span class="section-header__count" id="total-registros">{{ registros|length }} reservas</span>
-          <button class="btn-del btn-del--subtle" type="button" id="btn-delete-all" title="Excluir todos os registros">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <polyline points="3 6 5 6 21 6"/>
-              <path d="M19 6l-1 14H6L5 6"/>
-              <path d="M10 11v6M14 11v6"/>
-              <path d="M9 6V4h6v2"/>
-            </svg>
-          </button>
         </div>
       </div>
       <div class="sales-filters">
@@ -429,7 +421,7 @@
       <div class="field"><label class="field__label">Cliente</label><input class="field__input" id="vi-cliente" type="text" /></div>
       <div class="field"><label class="field__label">Corretor</label><input class="field__input" id="vi-corretor" type="text" /></div>
       <div class="field"><label class="field__label">Imobiliária</label><input class="field__input" id="vi-imobiliaria" type="text" /></div>
-      <div class="field"><label class="field__label">Valor Presente</label><input class="field__input" id="vi-valor" type="number" min="0" step="0.01" /></div>
+      <div class="field"><label class="field__label">Valor Presente</label><input class="field__input" id="vi-valor" type="text" inputmode="decimal" data-money-field="true" placeholder="R$ 0,00" /></div>
       <div class="field"><label class="field__label">Tipo de Venda</label><select class="field__input" id="vi-tipo-venda"></select></div>
       <div class="field field--full"><label class="field__label">Ação realizada</label><textarea class="field__input field__textarea" id="vi-acao" rows="3"></textarea></div>
       <div class="modal__actions field--full">
@@ -512,6 +504,7 @@
   const SEMANA_ATUAL = {{ semana_atual | tojson }};
   const ANALYTICS_VIEW = {{ (analytics_view if painel_admin_vendas else 'semanal') | tojson }};
   const IS_ADMIN_PANEL = {{ painel_admin_vendas | tojson }};
+  const PODE_EDITAR_SEMANA = {{ permite_edicao | tojson }};
   const INITIAL_REGISTROS = {{ registros_json | tojson }};
   const INITIAL_FINANCEIRO = {{ financeiro | tojson }};
   const EMPREENDIMENTOS = {{ empreendimentos | map(attribute='nome') | list | tojson }};

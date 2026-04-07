@@ -7,6 +7,7 @@ from app.models.empreendimento import Empreendimento
 from app.models.meta import MetaSemana
 from app.models.meta_configuracao import MetaConfiguracaoIndicador
 from sqlalchemy import func
+from app.utils.quarter import semana_editavel
 
 relacionamento_bp = Blueprint('relacionamento', __name__)
 
@@ -78,6 +79,35 @@ def _pode_gerenciar_registro(registro: Relacionamento) -> bool:
     return current_user.can_manage_admin() or registro.responsavel == current_user.nome.upper()
 
 
+def _garantir_semana_editavel(semana: int):
+    if not semana_editavel(semana, current_user.can_manage_admin()):
+        return jsonify({'erro': 'Esta semana esta bloqueada para edicao. Apenas o admin pode alterar semanas anteriores.'}), 403
+    return None
+
+
+def _empreendimento_padrao() -> str:
+    empreendimento = Empreendimento.query.filter_by(ativo=True).order_by(Empreendimento.nome).first()
+    return empreendimento.nome if empreendimento else 'NAO INFORMADO'
+
+
+def _criar_registro_acao_direta(semana: int, acao_realizada: str) -> Relacionamento:
+    registro = Relacionamento(
+        empreendimento=_empreendimento_padrao(),
+        cliente='ACAO DIRETA',
+        telefone='00000000000',
+        email_cliente='acao.direta@buildflow.local',
+        tipo_contato='WHATSAPP',
+        situacao='LIGAR EM OUTRO MOMENTO',
+        observacao='REGISTRO TECNICO GERADO PARA ACAO DIRETA',
+        acao_realizada=acao_realizada,
+        valor=0.0,
+        responsavel=current_user.nome.upper(),
+        semana=semana,
+    )
+    db.session.add(registro)
+    return registro
+
+
 def _parse_semana(valor) -> int | None:
     try:
         semana = int(valor)
@@ -107,6 +137,7 @@ def index():
         registros=registros,
         registros_json=[r.to_dict() for r in registros],
         semana_atual=semana,
+        permite_edicao=semana_editavel(semana, current_user.can_manage_admin()),
     )
 
 
@@ -138,6 +169,10 @@ def cadastrar():
     semana = _parse_semana(dados.get('semana', 1))
     if semana is None:
         return jsonify({'erro': 'Semana inválida.'}), 400
+
+    bloqueio = _garantir_semana_editavel(semana)
+    if bloqueio:
+        return bloqueio
 
     novo = Relacionamento(
         empreendimento=dados['empreendimento'].upper().strip(),
@@ -210,18 +245,34 @@ def editar_registro(reg_id):
 def registrar_acao():
     dados = request.get_json(silent=True) or request.form.to_dict()
     reg_id = dados.get('id')
-    if not reg_id:
-        return jsonify({'erro': 'Cliente nao informado.'}), 400
-
-    reg = db.session.get(Relacionamento, int(reg_id))
-    if not reg:
-        return jsonify({'erro': 'Cliente nao encontrado.'}), 404
-    if not _pode_gerenciar_registro(reg):
-        return jsonify({'erro': 'Voce so pode editar registros criados por voce.'}), 403
+    semana = _parse_semana(dados.get('semana', 1))
+    if semana is None:
+        return jsonify({'erro': 'Semana invalida.'}), 400
+    bloqueio = _garantir_semana_editavel(semana)
+    if bloqueio:
+        return bloqueio
 
     acao_realizada = (dados.get('acao_realizada') or '').upper().strip()
     if not acao_realizada:
         return jsonify({'erro': 'Informe a acao realizada.'}), 400
+
+    reg = db.session.get(Relacionamento, int(reg_id)) if reg_id else None
+    if reg is None and not reg_id:
+        query = Relacionamento.query.filter_by(semana=semana)
+        if current_user.tipo != 'admin':
+            query = query.filter_by(responsavel=current_user.nome.upper())
+        reg = query.order_by(Relacionamento.criado_em.desc()).first()
+    if not reg:
+        reg = _criar_registro_acao_direta(semana, acao_realizada)
+        db.session.commit()
+        _broadcast_update(semana)
+        return jsonify({'sucesso': True, 'registro': reg.to_dict(), 'acao_direta': True}), 201
+    if not _pode_gerenciar_registro(reg):
+        return jsonify({'erro': 'Voce so pode editar registros criados por voce.'}), 403
+
+    bloqueio = _garantir_semana_editavel(reg.semana)
+    if bloqueio:
+        return bloqueio
 
     reg.acao_realizada = acao_realizada
     db.session.commit()
@@ -254,6 +305,9 @@ def deletar_registro(reg_id):
         return jsonify({'erro': 'Registro não encontrado.'}), 404
     if not _pode_gerenciar_registro(reg):
         return jsonify({'erro': 'Você só pode excluir registros criados por você.'}), 403
+    bloqueio = _garantir_semana_editavel(reg.semana)
+    if bloqueio:
+        return bloqueio
     semana = reg.semana
     db.session.delete(reg)
     db.session.commit()

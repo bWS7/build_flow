@@ -31,6 +31,42 @@ function fmtMoedaInteira(valor) {
   return 'R$ ' + Math.round(Number(valor || 0)).toLocaleString('pt-BR');
 }
 
+function formatarCampoMoeda(valor) {
+  const digitos = String(valor || '').replace(/\D/g, '');
+  if (!digitos) return '';
+  const numero = Number(digitos) / 100;
+  return numero.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+}
+
+function aplicarMascaraMoeda(input) {
+  if (!input) return;
+  input.value = formatarCampoMoeda(input.value);
+}
+
+function renderizarBotaoExcluirRegistro(id) {
+  if (!PODE_EDITAR_SEMANA) return '';
+  return `<button class="btn-del" onclick="deletarVenda(${id}, this)" title="Excluir registro"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/></svg></button>`;
+}
+
+function aplicarBloqueioEdicao() {
+  if (PODE_EDITAR_SEMANA) return;
+  document.querySelectorAll('#form-cadastro-venda input, #form-cadastro-venda select, #form-cadastro-venda textarea, #action-form-wrapper input, #action-form-wrapper select, #action-form-wrapper textarea').forEach((el) => {
+    el.disabled = true;
+  });
+  document.querySelectorAll('#form-cadastro-venda button, #action-form-wrapper button').forEach((el) => {
+    el.disabled = true;
+  });
+  document.querySelectorAll('#form-venda input, #form-venda select, #form-venda textarea, #form-venda button').forEach((el) => {
+    el.disabled = true;
+  });
+  const toggleBtn = document.getElementById('toggle-form');
+  const toggleActionBtn = document.getElementById('toggle-action-form');
+  const deleteAllEl = document.getElementById('btn-delete-all');
+  if (toggleBtn) toggleBtn.disabled = true;
+  if (toggleActionBtn) toggleActionBtn.disabled = true;
+  if (deleteAllEl) deleteAllEl.disabled = true;
+}
+
 function normalizarSituacaoLabel(valor) {
   return String(valor || '').trim().toUpperCase();
 }
@@ -212,7 +248,14 @@ function atualizarFinanceiro(financeiro) {
 function renderizarOpcoesAcao() {
   const select = document.getElementById('acao-venda-id');
   const feedback = document.getElementById('acao-feedback');
-  if (!select) return;
+  if (!select) {
+    if (feedback) {
+      feedback.textContent = vendasCache.length
+        ? 'A acao sera registrada normalmente nesta semana.'
+        : 'Voce pode registrar uma acao diretamente, mesmo sem venda anterior.';
+    }
+    return;
+  }
 
   const registros = [...vendasCache]
     .sort((a, b) => String(a.reserva || '').localeCompare(String(b.reserva || ''), 'pt-BR'));
@@ -256,7 +299,7 @@ function renderizarTabela(registros) {
       <td>${r.imobiliaria || '—'}</td>
       <td>${r.valor_presente > 0 ? fmtMoeda(r.valor_presente) : '—'}</td>
       <td>${r.tipo_venda || ''}</td>
-      <td onclick="event.stopPropagation()"><button class="btn-del" onclick="deletarVenda(${r.id}, this)" title="Excluir"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/></svg></button></td>
+      <td onclick="event.stopPropagation()">${renderizarBotaoExcluirRegistro(r.id)}</td>
     </tr>
   `).join('');
 }
@@ -365,7 +408,7 @@ function openDeleteModal(id, btnEl) {
   const titleEl = document.getElementById('delete-modal-title');
   const textEl = document.getElementById('delete-modal-text');
   const confirmEl = document.getElementById('confirm-delete-btn');
-  if (titleEl) titleEl.textContent = 'Excluir venda';
+  if (titleEl) titleEl.textContent = 'Excluir registro';
   if (textEl) textEl.textContent = 'Deseja excluir esta venda? Essa ação não poderá ser desfeita.';
   if (confirmEl) confirmEl.textContent = 'Excluir';
   document.getElementById('modal-delete')?.removeAttribute('hidden');
@@ -381,7 +424,7 @@ function openDeleteAllModal() {
   const titleEl = document.getElementById('delete-modal-title');
   const textEl = document.getElementById('delete-modal-text');
   const confirmEl = document.getElementById('confirm-delete-btn');
-  if (titleEl) titleEl.textContent = 'Excluir todas as vendas';
+  if (titleEl) titleEl.textContent = 'Excluir todos os registros';
   if (textEl) textEl.textContent = 'Deseja realmente excluir todos os registros de vendas? Essa ação apagará todas as informações e não poderá ser desfeita.';
   if (confirmEl) confirmEl.textContent = 'Excluir tudo';
   document.getElementById('modal-delete')?.removeAttribute('hidden');
@@ -401,7 +444,7 @@ function abrirVenda(id) {
   document.getElementById('vi-cliente').value = venda.cliente;
   document.getElementById('vi-corretor').value = venda.corretor || '';
   document.getElementById('vi-imobiliaria').value = venda.imobiliaria || '';
-  document.getElementById('vi-valor').value = venda.valor_presente || 0;
+  document.getElementById('vi-valor').value = formatarCampoMoeda(venda.valor_presente || 0);
   const acaoEl = document.getElementById('vi-acao');
   if (acaoEl) acaoEl.value = venda.acao_realizada || '';
   document.getElementById('form-venda').dataset.id = String(venda.id);
@@ -502,6 +545,48 @@ async function recarregarDados() {
 }
 
 async function salvarAcaoRealizada() {
+  const vendaIdElFallback = document.getElementById('acao-venda-id');
+  if (!vendaIdElFallback) {
+    if (!PODE_EDITAR_SEMANA) {
+      showToast('Esta semana esta bloqueada para edicao.', 'error');
+      return;
+    }
+    const descricaoDiretaEl = document.getElementById('acao-descricao');
+    const feedbackDiretoEl = document.getElementById('acao-feedback');
+    const btnDiretoEl = document.getElementById('btn-salvar-acao');
+    if (!descricaoDiretaEl || !btnDiretoEl) return;
+    const acaoDireta = descricaoDiretaEl.value.trim();
+    if (!acaoDireta) {
+      showToast('Descreva a acao realizada.', 'error');
+      return;
+    }
+    btnDiretoEl.disabled = true;
+    try {
+      const resp = await fetch('/vendas/acao', {
+        method: 'POST',
+        headers: csrfHeaders({ 'Content-Type': 'application/json' }),
+        body: JSON.stringify({ mes: MES_ATUAL, semana: SEMANA_ATUAL, acao_realizada: acaoDireta }),
+      });
+      const json = await resp.json();
+      if (resp.ok && json.sucesso) {
+        descricaoDiretaEl.value = '';
+        if (feedbackDiretoEl) feedbackDiretoEl.textContent = 'Acao registrada com sucesso.';
+        showToast('Acao registrada com sucesso!');
+        recarregarDados();
+      } else {
+        showToast(json.erro || 'Erro ao salvar acao.', 'error');
+      }
+    } catch {
+      showToast('Falha de conexao.', 'error');
+    } finally {
+      btnDiretoEl.disabled = false;
+    }
+    return;
+  }
+  if (!PODE_EDITAR_SEMANA) {
+    showToast('Esta semana está bloqueada para edição.', 'error');
+    return;
+  }
   const vendaIdEl = document.getElementById('acao-venda-id');
   const descricaoEl = document.getElementById('acao-descricao');
   const feedbackEl = document.getElementById('acao-feedback');
@@ -544,6 +629,10 @@ async function salvarAcaoRealizada() {
 }
 
 async function salvarVendaEditada() {
+  if (!PODE_EDITAR_SEMANA) {
+    showToast('Esta semana está bloqueada para edição.', 'error');
+    return;
+  }
   const id = document.getElementById('form-venda').dataset.id;
   const btn = document.getElementById('btn-salvar-modal');
   const dados = {
@@ -588,6 +677,10 @@ async function salvarVendaEditada() {
 }
 
 async function deletarVenda(id, btnEl) {
+  if (!PODE_EDITAR_SEMANA) {
+    showToast('Esta semana está bloqueada para edição.', 'error');
+    return;
+  }
   openDeleteModal(id, btnEl);
 }
 
@@ -651,6 +744,11 @@ document.addEventListener('DOMContentLoaded', () => {
   const toggleActionBtn = document.getElementById('toggle-action-form');
   const formWrapper = document.getElementById('form-wrapper');
   const actionFormWrapper = document.getElementById('action-form-wrapper');
+
+  document.querySelectorAll('[data-money-field="true"]').forEach((input) => {
+    input.addEventListener('input', () => aplicarMascaraMoeda(input));
+    if (input.value) aplicarMascaraMoeda(input);
+  });
 
   window.toggleMesVendas = function toggleMesVendas(mesId) {
     const body = document.getElementById(`body-${mesId}`);
@@ -724,6 +822,10 @@ document.addEventListener('DOMContentLoaded', () => {
   if (formCadastro) {
     formCadastro.addEventListener('submit', async (e) => {
       e.preventDefault();
+      if (!PODE_EDITAR_SEMANA) {
+        showToast('Esta semana está bloqueada para edição.', 'error');
+        return;
+      }
       const btn = document.getElementById('btn-salvar-venda');
       const dados = coletarForm(formCadastro);
       if (!validarCamposBasicos(dados)) {
@@ -774,6 +876,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
   if (saveBulkEl) {
     saveBulkEl.addEventListener('click', async () => {
+      if (!PODE_EDITAR_SEMANA) {
+        showToast('Esta semana está bloqueada para edição.', 'error');
+        return;
+      }
       const linhas = parseBulkText(document.getElementById('bulk-paste').value);
       const feedback = document.getElementById('bulk-feedback');
       if (!linhas.length) {
@@ -819,5 +925,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
   aplicarFiltros();
   renderizarOpcoesAcao();
+  aplicarBloqueioEdicao();
   conectarSocket();
 });

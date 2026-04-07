@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import date, datetime
 from functools import wraps
 import unicodedata
 
@@ -12,6 +12,7 @@ from app.models.meta_configuracao import MetaConfiguracaoIndicador
 from app.models.meta_venda_semana import MetaVendaSemana
 from app.models.venda import SITUACAO_VENDA_OPCOES, TIPO_VENDA_OPCOES, Venda
 from app.services.analytics_ai import analytics_ai_available, analytics_ai_enabled, ask_analytics_assistant, build_global_ai_context, fallback_analytics_answer
+from app.utils.quarter import semana_editavel
 
 
 vendas_bp = Blueprint('vendas', __name__)
@@ -88,6 +89,33 @@ def _semana_global_por_data(data_reserva, mes_slug: str | None = None) -> int | 
     return None
 
 
+def _data_referencia_da_semana(mes_slug: str, semana_local: int) -> date:
+    mes_info = MESES_MAP.get(mes_slug, MESES_MAP['abril'])
+    dia_inicial = {1: 1, 2: 8, 3: 15, 4: 22}.get(semana_local, 1)
+    return date(datetime.now().year, mes_info['numero'], dia_inicial)
+
+
+def _criar_venda_acao_direta(mes_slug: str, semana_local: int, acao_realizada: str) -> Venda:
+    empreendimento = Empreendimento.query.filter_by(ativo=True).order_by(Empreendimento.nome).first()
+    venda = Venda(
+        reserva=f'ACAO-DIRETA-{mes_slug.upper()}-S{semana_local}',
+        data_reserva=_data_referencia_da_semana(mes_slug, semana_local),
+        situacao='NOVA RESERVA',
+        empreendimento=empreendimento.nome if empreendimento else 'NAO INFORMADO',
+        bloco=None,
+        unidade=None,
+        cliente='ACAO DIRETA',
+        corretor=None,
+        imobiliaria=None,
+        valor_presente=0,
+        tipo_venda='DIRETA',
+        acao_realizada=acao_realizada,
+        criado_por=current_user.nome.upper(),
+    )
+    db.session.add(venda)
+    return venda
+
+
 def montar_contexto_template_vendas(mes_slug: str, incluir_resumo: bool = False, semana_local: int | None = None) -> dict:
     if mes_slug == RESUMO_TRIMESTRAL[0] and not incluir_resumo:
         mes_slug = 'abril'
@@ -101,6 +129,7 @@ def montar_contexto_template_vendas(mes_slug: str, incluir_resumo: bool = False,
     semana_global = None
     if mes_slug != RESUMO_TRIMESTRAL[0] and semana_local_normalizada is not None:
         semana_global = MESES_MAP[mes_slug]['semana_inicio'] + semana_local_normalizada - 1
+    permite_edicao = True if mes_slug == RESUMO_TRIMESTRAL[0] else semana_editavel(semana_global, current_user.can_manage_admin())
     return {
         'meses': meses,
         'mes_atual': mes_slug,
@@ -114,6 +143,7 @@ def montar_contexto_template_vendas(mes_slug: str, incluir_resumo: bool = False,
         'registros': vendas,
         'registros_json': [venda.to_dict() for venda in vendas],
         'resumo_trimestral': mes_slug == RESUMO_TRIMESTRAL[0],
+        'permite_edicao': permite_edicao,
         'analytics_ai_enabled': analytics_ai_enabled() and analytics_ai_available(),
         'incluir_resumo_tabs': incluir_resumo,
         'painel_admin_vendas': False,
@@ -176,6 +206,15 @@ def _consultar_vendas_por_mes(mes_numero: int):
 
 def _mes_slug_por_numero(mes_numero: int) -> str:
     return next(slug for slug, _, numero, _ in MESES_VENDAS if numero == mes_numero)
+
+
+def _garantir_semana_editavel_por_data(data_referencia):
+    semana_global = _semana_global_por_data(data_referencia)
+    if semana_global is None:
+        return jsonify({'erro': 'Nao foi possivel identificar a semana do registro.'}), 400
+    if not semana_editavel(semana_global, current_user.can_manage_admin()):
+        return jsonify({'erro': 'Esta semana esta bloqueada para edicao. Apenas o admin pode alterar semanas anteriores.'}), 403
+    return None
 
 
 def _consultar_vendas_periodo(mes_slug: str, semana_local: int | None = None):
@@ -355,6 +394,26 @@ def registrar_acao():
     except (TypeError, ValueError):
         venda_id = 0
     if venda_id <= 0:
+        acao_realizada = _normalizar_texto(dados.get('acao_realizada'))
+        if not acao_realizada:
+            return jsonify({'erro': 'Descreva a acao realizada.'}), 400
+        mes_slug = (dados.get('mes') or '').strip().lower()
+        try:
+            semana_local = int(dados.get('semana', 1) or 1)
+        except (TypeError, ValueError):
+            semana_local = 0
+        if mes_slug not in MESES_MAP:
+            return jsonify({'erro': 'Mes invalido para registrar a acao.'}), 400
+        if semana_local not in {1, 2, 3, 4}:
+            return jsonify({'erro': 'Semana invalida para registrar a acao.'}), 400
+        bloqueio = _garantir_semana_editavel_por_data(_data_referencia_da_semana(mes_slug, semana_local))
+        if bloqueio:
+            return bloqueio
+        venda = _criar_venda_acao_direta(mes_slug, semana_local, acao_realizada)
+        db.session.commit()
+        _broadcast_update(mes_slug)
+        return jsonify({'sucesso': True, 'registro': venda.to_dict(), 'acao_direta': True}), 201
+    if venda_id <= 0:
         return jsonify({'erro': 'Selecione uma venda para registrar a ação.'}), 400
 
     acao_realizada = _normalizar_texto(dados.get('acao_realizada'))
@@ -364,6 +423,10 @@ def registrar_acao():
     venda = db.session.get(Venda, venda_id)
     if not venda:
         return jsonify({'erro': 'Venda não encontrada.'}), 404
+
+    bloqueio = _garantir_semana_editavel_por_data(venda.data_reserva)
+    if bloqueio:
+        return bloqueio
 
     venda.acao_realizada = acao_realizada
     db.session.commit()
@@ -474,6 +537,10 @@ def cadastrar():
         status = 202 if 'desconsiderado' in erro.lower() else 400
         return jsonify({'sucesso': status == 202, 'ignorado': status == 202, 'erro': erro}), status
 
+    bloqueio = _garantir_semana_editavel_por_data(registro['data_reserva'])
+    if bloqueio:
+        return bloqueio
+
     venda = Venda(
         reserva=registro['reserva'],
         data_reserva=registro['data_reserva'],
@@ -516,6 +583,10 @@ def bulk_cadastrar():
                 ignoradas += 1
                 continue
             return jsonify({'erro': f'Linha {indice}: {erro}'}), 400
+        bloqueio = _garantir_semana_editavel_por_data(registro['data_reserva'])
+        if bloqueio:
+            return bloqueio
+
         venda = Venda(
             reserva=registro['reserva'],
             data_reserva=registro['data_reserva'],
@@ -551,10 +622,18 @@ def editar_registro(reg_id):
     if not venda:
         return jsonify({'erro': 'Registro não encontrado.'}), 404
 
+    bloqueio = _garantir_semana_editavel_por_data(venda.data_reserva)
+    if bloqueio:
+        return bloqueio
+
     dados = request.get_json(silent=True) or request.form.to_dict()
     registro, erro = _validar_payload_venda(dados)
     if erro:
         return jsonify({'erro': erro}), 400
+
+    bloqueio = _garantir_semana_editavel_por_data(registro['data_reserva'])
+    if bloqueio:
+        return bloqueio
 
     mes_anterior = _mes_slug_por_numero(venda.data_reserva.month)
     venda.reserva = registro['reserva']
@@ -585,6 +664,10 @@ def deletar_registro(reg_id):
     venda = db.session.get(Venda, reg_id)
     if not venda:
         return jsonify({'erro': 'Registro não encontrado.'}), 404
+    bloqueio = _garantir_semana_editavel_por_data(venda.data_reserva)
+    if bloqueio:
+        return bloqueio
+
     mes_slug = _mes_slug_por_numero(venda.data_reserva.month)
     db.session.delete(venda)
     db.session.commit()
@@ -599,6 +682,10 @@ def deletar_todos_registros():
     vendas = Venda.query.all()
     if not vendas:
         return jsonify({'sucesso': True, 'quantidade': 0})
+    for venda in vendas:
+        bloqueio = _garantir_semana_editavel_por_data(venda.data_reserva)
+        if bloqueio:
+            return bloqueio
 
     meses_afetados = {
         slug

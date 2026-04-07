@@ -8,8 +8,8 @@ function renderizarOpcoesAcao() {
   const feedback = document.getElementById('acao-feedback');
   if (!feedback) return;
   feedback.textContent = registrosCache.length
-    ? 'A acao sera vinculada ao registro mais recente da semana.'
-    : 'Cadastre um registro da semana antes de salvar uma acao.';
+    ? 'A acao sera registrada normalmente nesta semana.'
+    : 'Voce pode registrar uma acao diretamente, mesmo sem registro anterior.';
 }
 
 function csrfHeaders(extra = {}) {
@@ -240,7 +240,14 @@ async function confirmarExclusaoRegistro() {
       headers: csrfHeaders(),
     });
     const json = await resp.json();
-    if (!resp.ok) {
+    if (resp.ok && json.sucesso) {
+      const atualizados = registrosCache.filter((registro) => registro.id !== id);
+      renderizarTabela(atualizados);
+      renderizarTabelaAcoes(atualizados);
+      renderizarOpcoesAcao();
+      showToast('Registro excluido com sucesso!', 'success');
+      _buscarAtualizacao();
+    } else {
       showToast(json.erro || 'Erro ao excluir.', 'error');
       btnEl.disabled = false;
     }
@@ -349,8 +356,8 @@ document.addEventListener('DOMContentLoaded', () => {
       const feedback = document.getElementById('acao-feedback');
       if (textarea) textarea.value = '';
       if (feedback) feedback.textContent = registrosCache.length
-        ? 'A acao sera vinculada ao registro mais recente da semana.'
-        : 'Cadastre um registro da semana antes de salvar uma acao.';
+        ? 'A acao sera registrada normalmente nesta semana.'
+        : 'Voce pode registrar uma acao diretamente, mesmo sem registro anterior.';
     });
   }
   const confirmDeleteBtn = document.getElementById('confirm-delete-btn');
@@ -384,10 +391,6 @@ async function salvarAcaoRealizada() {
   const acao = textarea ? textarea.value.trim() : '';
   if (!acao) {
     showToast('Descreva a acao realizada.', 'error');
-    return;
-  }
-  if (!registrosCache.length) {
-    showToast('Cadastre um registro da semana antes de salvar uma acao.', 'error');
     return;
   }
   btn.disabled = true;

@@ -241,7 +241,7 @@
           <div class="master-chip__topline">
             <span class="master-chip__label">{{ card.nome }}</span>
             <span class="master-chip__signal master-chip__signal--{{ card.desempenho_status }}">
-              {% if card.desempenho_status == 'positivo' %}â†‘{% elif card.desempenho_status == 'negativo' %}â†“{% else %}â€¢{% endif %}
+              {% if card.desempenho_status == 'positivo' %}↑{% elif card.desempenho_status == 'negativo' %}↓{% else %}•{% endif %}
             </span>
           </div>
           <strong class="master-chip__value">{{ card.percentual }}%</strong>
@@ -262,6 +262,14 @@
           <div class="master-panel__body">
             <strong class="master-panel__metric"><span data-master-goal-value>{{ objetivo_geral }}</span>%</strong>
             <p data-master-goal-copy>{{ objetivo_realizado_total | round(1) }} de {{ objetivo_meta_total | round(0) | int }} pontos percentuais rumo aos 100% em cada frente.</p>
+          </div>
+        </article>
+
+        <article class="master-panel master-panel--goal" data-master-actions-bar style="--panel-progress: {{ acoes_percentual_master if acoes_percentual_master <= 100 else 100 }}%;">
+          <div class="master-panel__rail">Ações realizadas</div>
+          <div class="master-panel__body">
+            <strong class="master-panel__metric master-panel__metric--time"><span data-master-actions-value>{{ acoes_percentual_master }}</span>%</strong>
+            <p data-master-actions-copy>{{ acoes_realizadas_master | round(0) | int }} de {{ acoes_meta_master | round(0) | int }} ações realizadas frente à meta do período.</p>
           </div>
         </article>
 
