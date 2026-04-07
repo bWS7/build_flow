@@ -4,6 +4,17 @@ let registrosCache = [];
 let deleteState = { id: null, btnEl: null };
 const MESES_RELACIONAMENTO = ['abril', 'maio', 'junho'];
 
+function renderizarOpcoesAcao() {
+  const select = document.getElementById('acao-registro-id');
+  if (!select) return;
+  const atual = select.value;
+  const options = ['<option value="">Selecione...</option>'];
+  registrosCache.forEach((r) => options.push(`<option value="${r.id}">${r.cliente || 'Registro'} - ${r.empreendimento || ('#' + r.id)}</option>`));
+  select.innerHTML = options.join('');
+  if (registrosCache.some((r) => String(r.id) === atual)) select.value = atual;
+  select.disabled = !registrosCache.length;
+}
+
 function csrfHeaders(extra = {}) {
   return { 'X-CSRFToken': window.APP_CSRF_TOKEN || '', ...extra };
 }
@@ -48,22 +59,29 @@ function fmtValor(v) {
 }
 
 function atualizarIndicadores(ind) {
-  document.getElementById('acoes-planejadas').textContent = ind.acoes_planejadas;
-  document.getElementById('acoes-realizadas').textContent = ind.acoes_realizadas;
+  const metaBase = document.getElementById('meta-base-total');
+  if (metaBase) metaBase.textContent = 'R$ ' + Math.round(ind.meta_base_total || 0).toLocaleString('pt-BR');
+  document.getElementById('acoes-planejadas').textContent = String(ind.acoes_planejadas || 0);
+  document.getElementById('acoes-realizadas').textContent = String(ind.acoes_realizadas || 0);
   document.getElementById('valor-meta').textContent =
-    'R$ ' + Math.round(ind.valor_meta).toLocaleString('pt-BR');
+    'R$ ' + Math.round(ind.valor_meta || 0).toLocaleString('pt-BR');
   document.getElementById('valor-realizado').textContent =
-    'R$ ' + Math.round(ind.soma_valores).toLocaleString('pt-BR');
+    'R$ ' + Math.round(ind.soma_valores || 0).toLocaleString('pt-BR');
 
-  document.getElementById('bar-acoes').style.width = ind.pct_acoes + '%';
-  document.getElementById('pct-acoes').textContent = ind.pct_acoes + '%';
+  document.getElementById('bar-acoes').style.width = `${Math.min(ind.pct_acoes || 0, 100)}%`;
+  document.getElementById('pct-acoes').textContent = `${ind.pct_acoes || 0}%`;
   document.getElementById('txt-acoes').textContent =
-    `${ind.acoes_realizadas} de ${ind.acoes_planejadas} ações`;
+    `${ind.acoes_realizadas || 0} de ${ind.acoes_planejadas || 0} acoes`;
 
-  document.getElementById('bar-valor').style.width = ind.pct_valor + '%';
-  document.getElementById('pct-valor').textContent = ind.pct_valor + '%';
+  document.getElementById('bar-valor').style.width = `${Math.min(ind.pct_valor || 0, 100)}%`;
+  document.getElementById('pct-valor').textContent = `${ind.pct_valor || 0}%`;
   document.getElementById('txt-valor').textContent =
-    `R$ ${ind.soma_valores.toLocaleString('pt-BR', { minimumFractionDigits: 2 })} de R$ ${ind.valor_meta.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`;
+    `${fmtValor(ind.soma_valores || 0)} de ${fmtValor(ind.valor_meta || 0)}`;
+
+  const resumoBar = document.getElementById('bar-resumo');
+  if (resumoBar) resumoBar.style.width = `${Math.min(ind.pct_valor || 0, 100)}%`;
+  const resumoTexto = document.getElementById('txt-resumo');
+  if (resumoTexto) resumoTexto.textContent = `${fmtValor(ind.soma_valores || 0)} realizados e ${ind.acoes_realizadas || 0} acoes registradas nesta semana.`;
 }
 
 function statusIcon(situacao) {
@@ -329,6 +347,25 @@ toggleBtn.addEventListener('click', () => {
 document.addEventListener('DOMContentLoaded', () => {
   registrosCache = Array.isArray(INITIAL_REGISTROS) ? INITIAL_REGISTROS : [];
   renderizarTabela(registrosCache);
+  renderizarOpcoesAcao();
+  const formAcao = document.getElementById('form-acao');
+  if (formAcao) {
+    formAcao.addEventListener('submit', (event) => {
+      event.preventDefault();
+      salvarAcaoRealizada();
+    });
+  }
+  const btnLimparAcao = document.getElementById('btn-limpar-acao');
+  if (btnLimparAcao) {
+    btnLimparAcao.addEventListener('click', () => {
+      const select = document.getElementById('acao-registro-id');
+      const textarea = document.getElementById('acao-descricao');
+      const feedback = document.getElementById('acao-feedback');
+      if (select) select.value = '';
+      if (textarea) textarea.value = '';
+      if (feedback) feedback.textContent = '';
+    });
+  }
   const confirmDeleteBtn = document.getElementById('confirm-delete-btn');
   if (confirmDeleteBtn) {
     confirmDeleteBtn.addEventListener('click', confirmarExclusaoRegistro);
@@ -347,3 +384,37 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 conectarSocket();
+
+
+async function salvarAcaoRealizada() {
+  const select = document.getElementById('acao-registro-id');
+  const textarea = document.getElementById('acao-descricao');
+  const feedback = document.getElementById('acao-feedback');
+  const btn = document.getElementById('btn-salvar-acao');
+  const id = select ? select.value : '';
+  const acao = textarea ? textarea.value.trim() : '';
+  if (!id || !acao) {
+    showToast('Selecione um registro e descreva a acao realizada.', 'error');
+    return;
+  }
+  btn.disabled = true;
+  if (feedback) feedback.textContent = 'Salvando acao...';
+  try {
+    const resp = await fetch('/relacionamento/acao', { method: 'POST', headers: csrfHeaders({ 'Content-Type': 'application/json' }), body: JSON.stringify({ id, acao_realizada: acao }) });
+    const json = await resp.json();
+    if (resp.ok && json.sucesso) {
+      showToast('Acao registrada com sucesso!', 'success');
+      if (textarea) textarea.value = '';
+      if (feedback) feedback.textContent = 'Acao salva com sucesso.';
+      _buscarAtualizacao();
+    } else {
+      if (feedback) feedback.textContent = '';
+      showToast(json.erro || 'Erro ao salvar a acao.', 'error');
+    }
+  } catch {
+    if (feedback) feedback.textContent = '';
+    showToast('Falha de conexao. Tente novamente.', 'error');
+  } finally {
+    btn.disabled = false;
+  }
+}

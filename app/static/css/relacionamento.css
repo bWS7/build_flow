@@ -1,5 +1,5 @@
 /* ---------------------------------------------------------------------------
-   SOUSA ARAUJO — relacionamento.css
+   SOUSA ARAUJO â€” relacionamento.css
    --------------------------------------------------------------------------- */
 
 /* -- WEEK PILLS ------------------------------------------------------------- */
@@ -115,6 +115,40 @@
   gap: 16px;
 }
 
+.summary-shell {
+  padding: 20px 28px 0;
+  display: grid;
+  grid-template-columns: minmax(220px, 280px) 1fr;
+  gap: 16px;
+  align-items: stretch;
+}
+
+.summary-kpi {
+  min-height: 118px;
+}
+
+.summary-banner {
+  justify-content: center;
+  min-height: 118px;
+}
+
+.summary-banner .progress-block__header {
+  align-items: flex-start;
+}
+
+.summary-banner .progress-block__label {
+  max-width: 680px;
+  font-size: 18px;
+  line-height: 1.35;
+  letter-spacing: .02em;
+  text-transform: none;
+  color: var(--gray-900);
+}
+
+.summary-banner .progress-block__detail {
+  font-size: 12px;
+}
+
 .progress-block {
   background: var(--white);
   border-radius: var(--radius-lg);
@@ -182,10 +216,26 @@
   padding: 16px 20px;
   border-bottom: 1px solid var(--gray-100);
 }
+
+.section-header--stacked {
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.section-header__group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
 .section-header__title {
   display: flex; align-items: center; gap: 8px;
   font-size: 13px; font-weight: 700;
   letter-spacing: .03em; color: var(--gray-900);
+}
+.section-header__subtitle {
+  font-size: 12px;
+  color: var(--gray-400);
 }
 .section-header__count {
   font-size: 12px; font-weight: 600;
@@ -207,6 +257,12 @@
   gap: 14px;
 }
 
+.action-form-grid {
+  display: grid;
+  grid-template-columns: minmax(240px, 320px) 1fr;
+  gap: 14px;
+}
+
 .field--full { grid-column: 1 / -1; }
 
 .form-actions {
@@ -215,6 +271,12 @@
   gap: 10px;
   padding-top: 4px;
   border-top: 1px solid var(--gray-100);
+}
+
+.form-feedback {
+  margin-right: auto;
+  font-size: 12px;
+  color: var(--gray-400);
 }
 
 /* -- TABLE SECTION ---------------------------------------------------------- */
@@ -253,10 +315,12 @@
 }
 
 @media (max-width: 900px) {
+  .summary-shell { grid-template-columns: 1fr; padding-inline: 16px; }
   .progress-section { grid-template-columns: 1fr; }
   .indicators { padding: 16px 16px 0; }
   .form-section, .table-section { margin-inline: 16px; }
   .progress-section { padding-inline: 16px; }
+  .action-form-grid { grid-template-columns: 1fr; }
 }
 
 @media (max-width: 640px) {
@@ -312,6 +376,7 @@ html[data-theme='dark'] .section-header__count,
 html[data-theme='dark'] .confirm-modal__text,
 html[data-theme='dark'] .progress-block__detail { color: var(--text-secondary); }
 html[data-theme='dark'] .progress-block__pct { color: #f2ccd3; }
+html[data-theme='dark'] .summary-banner .progress-block__label { color: var(--text-primary); }
 html[data-theme='dark'] .progress-track { background: rgba(255,255,255,.06); }
 html[data-theme='dark'] .progress-fill--valor { background: linear-gradient(90deg, #f0b35f, #996329); }
 html[data-theme='dark'] .section-header,
@@ -320,3 +385,5 @@ html[data-theme='dark'] .section-header__count {
   background: rgba(255,255,255,.04);
   border: 1px solid rgba(255,255,255,.06);
 }
+html[data-theme='dark'] .section-header__subtitle,
+html[data-theme='dark'] .form-feedback { color: var(--text-secondary); }

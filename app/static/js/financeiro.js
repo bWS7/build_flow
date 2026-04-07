@@ -4,6 +4,20 @@ let registrosCache = [];
 let deleteState = { id: null, btnEl: null };
 const MESES_FINANCEIRO = ['abril', 'maio', 'junho'];
 
+function renderizarOpcoesAcao() {
+  const select = document.getElementById('acao-registro-id');
+  if (!select) return;
+  const atual = select.value;
+  const options = ['<option value="">Selecione...</option>'];
+  registrosCache.forEach((r) => {
+    options.push(`<option value="${r.id}">${r.banco || 'Registro'} - ${r.referencia || ('#' + r.id)}</option>`);
+  });
+  select.innerHTML = options.join('');
+  if (registrosCache.some((r) => String(r.id) === atual)) select.value = atual;
+  select.disabled = !registrosCache.length;
+}
+
+
 function csrfHeaders(extra = {}) {
   return { 'X-CSRFToken': window.APP_CSRF_TOKEN || '', ...extra };
 }
@@ -38,10 +52,14 @@ function badgeClassNegociacao(negociacao) {
 }
 
 function atualizarIndicadores(ind) {
+  const metaBase = document.getElementById('meta-base-total');
+  if (metaBase) metaBase.textContent = 'R$ ' + Math.round(ind.meta_base_total || 0).toLocaleString('pt-BR');
   document.getElementById('valor-meta').textContent = 'R$ ' + Math.round(ind.valor_meta || 0).toLocaleString('pt-BR');
   document.getElementById('valor-arrecadado').textContent = 'R$ ' + Math.round(ind.valor_arrecadado || 0).toLocaleString('pt-BR');
-  document.getElementById('pct-atingimento').textContent = `${ind.pct_valor || 0}%`;
-  document.getElementById('total-negociacoes').textContent = String(ind.total_negociacoes || 0);
+  const acoesPlanejadas = document.getElementById('acoes-planejadas');
+  if (acoesPlanejadas) acoesPlanejadas.textContent = String(ind.acoes_planejadas || 0);
+  const acoesRealizadas = document.getElementById('acoes-realizadas');
+  if (acoesRealizadas) acoesRealizadas.textContent = String(ind.acoes_realizadas || 0);
   document.getElementById('bar-valor').style.width = `${ind.pct_valor || 0}%`;
   document.getElementById('pct-valor').textContent = `${ind.pct_valor || 0}%`;
   document.getElementById('txt-valor').textContent = `${fmtValor(ind.valor_arrecadado || 0)} de ${fmtValor(ind.valor_meta || 0)}`;
@@ -49,6 +67,10 @@ function atualizarIndicadores(ind) {
   document.getElementById('bar-acoes').style.width = `${Math.min(ind.pct_acoes || 0, 100)}%`;
   document.getElementById('txt-acoes').textContent = `${ind.acoes_realizadas || 0} de ${ind.acoes_planejadas || 0} ações realizadas`;
 }
+  const resumoBar = document.getElementById('bar-resumo');
+  if (resumoBar) resumoBar.style.width = `${Math.min(ind.pct_valor || 0, 100)}%`;
+  const resumoTexto = document.getElementById('txt-resumo');
+  if (resumoTexto) resumoTexto.textContent = `${fmtValor(ind.valor_arrecadado || 0)} realizados e ${ind.acoes_realizadas || 0} acoes registradas nesta semana.`;
 
 function abrirFicha(id) {
   const r = registrosCache.find((item) => item.id === id);
@@ -149,6 +171,7 @@ function conectarSocket() {
     if (payload.indicadores && payload.indicadores.semana === SEMANA_ATUAL) {
       atualizarIndicadores(payload.indicadores);
       renderizarTabela(payload.registros || []);
+      renderizarOpcoesAcao();
     }
   });
 }
@@ -270,6 +293,7 @@ async function _buscarAtualizacao() {
     const json = await resp.json();
     atualizarIndicadores(json.indicadores || {});
     renderizarTabela(json.registros || []);
+    renderizarOpcoesAcao();
   } catch {
     // websocket cobre esse fluxo na maior parte do tempo
   }
@@ -287,6 +311,25 @@ toggleBtn.addEventListener('click', () => {
 document.addEventListener('DOMContentLoaded', () => {
   registrosCache = Array.isArray(INITIAL_REGISTROS) ? INITIAL_REGISTROS : [];
   renderizarTabela(registrosCache);
+  renderizarOpcoesAcao();
+  const formAcao = document.getElementById('form-acao');
+  if (formAcao) {
+    formAcao.addEventListener('submit', (event) => {
+      event.preventDefault();
+      salvarAcaoRealizada();
+    });
+  }
+  const btnLimparAcao = document.getElementById('btn-limpar-acao');
+  if (btnLimparAcao) {
+    btnLimparAcao.addEventListener('click', () => {
+      const select = document.getElementById('acao-registro-id');
+      const textarea = document.getElementById('acao-descricao');
+      const feedback = document.getElementById('acao-feedback');
+      if (select) select.value = '';
+      if (textarea) textarea.value = '';
+      if (feedback) feedback.textContent = '';
+    });
+  }
   const confirmDeleteBtn = document.getElementById('confirm-delete-btn');
   if (confirmDeleteBtn) {
     confirmDeleteBtn.addEventListener('click', confirmarExclusaoRegistro);

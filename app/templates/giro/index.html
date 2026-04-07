@@ -153,10 +153,31 @@
       </div>
     </header>
 
+    <section class="summary-shell">
+      <div class="kpi-card summary-kpi">
+        <div class="kpi-card__body">
+          <span class="kpi-card__label">META TOTAL</span>
+          <span class="kpi-card__value" id="meta-base-total">R$ {{ indicadores.meta_base_total | brl_int }}</span>
+        </div>
+        <div class="kpi-card__icon kpi-card__icon--plan">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>
+        </div>
+      </div>
+      <div class="progress-block summary-banner">
+        <div class="progress-block__header">
+          <span class="progress-block__label">Progressao do valor realizado e acoes realizadas x valor planejado e acoes planejadas</span>
+        </div>
+        <div class="progress-track">
+          <div class="progress-fill progress-fill--valor" id="bar-resumo" style="width:{{ indicadores.pct_valor if indicadores.pct_valor <= 100 else 100 }}%"></div>
+        </div>
+        <div class="progress-block__detail" id="txt-resumo">R$ {{ indicadores.valor_captado | brl }} realizados e {{ indicadores.acoes_realizadas }} acoes registradas nesta semana.</div>
+      </div>
+    </section>
+
     <section class="indicators">
       <div class="kpi-card">
         <div class="kpi-card__body">
-          <span class="kpi-card__label">META GIRO</span>
+          <span class="kpi-card__label">META DA SEMANA</span>
           <span class="kpi-card__value" id="valor-meta">R$ {{ indicadores.valor_meta | brl_int }}</span>
         </div>
         <div class="kpi-card__icon kpi-card__icon--plan">
@@ -176,8 +197,8 @@
 
       <div class="kpi-card">
         <div class="kpi-card__body">
-          <span class="kpi-card__label">ATINGIMENTO</span>
-          <span class="kpi-card__value" id="pct-atingimento">{{ indicadores.pct_valor }}%</span>
+          <span class="kpi-card__label">ACOES PLANEJADAS</span>
+          <span class="kpi-card__value" id="acoes-planejadas">{{ indicadores.acoes_planejadas }}</span>
         </div>
         <div class="kpi-card__icon kpi-card__icon--target">
           <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20V10"/><path d="M18 20V4"/><path d="M6 20v-6"/></svg>
@@ -186,8 +207,8 @@
 
       <div class="kpi-card">
         <div class="kpi-card__body">
-          <span class="kpi-card__label">CAPTACOES</span>
-          <span class="kpi-card__value" id="total-captacoes">{{ indicadores.total_captacoes }}</span>
+          <span class="kpi-card__label">ACOES REALIZADAS</span>
+          <span class="kpi-card__value" id="acoes-realizadas">{{ indicadores.acoes_realizadas }}</span>
         </div>
         <div class="kpi-card__icon kpi-card__icon--done">
           <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
@@ -198,7 +219,7 @@
     <section class="progress-section">
       <div class="progress-block">
         <div class="progress-block__header">
-          <span class="progress-block__label">Progresso da Meta de Giro</span>
+          <span class="progress-block__label">Progresso da Meta</span>
           <span class="progress-block__pct" id="pct-valor">{{ indicadores.pct_valor }}%</span>
         </div>
         <div class="progress-track">
@@ -211,25 +232,27 @@
 
       <div class="progress-block">
         <div class="progress-block__header">
-          <span class="progress-block__label">Ações realizadas</span>
+          <span class="progress-block__label">Progresso das Acoes</span>
           <span class="progress-block__pct" id="pct-acoes">{{ indicadores.pct_acoes }}%</span>
         </div>
         <div class="progress-track">
           <div class="progress-fill progress-fill--acoes" id="bar-acoes" style="width:{{ indicadores.pct_acoes if indicadores.pct_acoes <= 100 else 100 }}%"></div>
         </div>
         <div class="progress-block__detail">
-          <span id="txt-acoes">{{ indicadores.acoes_realizadas }} de {{ indicadores.acoes_planejadas }} ações realizadas</span>
+          <span id="txt-acoes">{{ indicadores.acoes_realizadas }} de {{ indicadores.acoes_planejadas }} acoes realizadas</span>
         </div>
       </div>
     </section>
 
     <section class="form-section">
-      <div class="section-header">
+      <div class="section-header section-header--stacked">
+        <div class="section-header__group">
         <h3 class="section-header__title">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
-          Novo Registro de Giro - Semana {{ semana_atual }}
+          Novo Registro de Capital de Giro - Semana {{ semana_atual }}
         </h3>
-        <span class="section-header__count">Meta base total: R$ {{ indicadores.meta_base_total | brl_int }}</span>
+        <span class="section-header__subtitle">Cadastre o valor realizado da semana e acompanhe as acoes em um card separado.</span>
+        </div>
         <button class="btn btn--sm btn--ghost" id="toggle-form">▼ Expandir</button>
       </div>
 
@@ -276,10 +299,6 @@
             <label class="field__label">Observacoes</label>
             <textarea class="field__input field__textarea" name="observacao" rows="2" placeholder="Anotacoes importantes da captacao..."></textarea>
           </div>
-          <div class="field field--full">
-            <label class="field__label">Ação realizada</label>
-            <textarea class="field__input field__textarea" name="acao_realizada" rows="2" placeholder="Descreva a ação realizada..."></textarea>
-          </div>
           <div class="form-actions">
             <button type="reset" class="btn btn--ghost">Limpar</button>
             <button type="submit" class="btn btn--primary" id="btn-salvar">
@@ -289,6 +308,37 @@
           </div>
         </form>
       </div>
+    </section>
+
+    <section class="form-section">
+      <div class="section-header section-header--stacked">
+        <div class="section-header__group">
+          <h3 class="section-header__title">Novo Registro de Acoes - Semana {{ semana_atual }}</h3>
+          <span class="section-header__subtitle">Selecione um registro de capital de giro e informe a acao realizada nesta semana.</span>
+        </div>
+      </div>
+      <form id="form-acao" class="cadastro-form" novalidate>
+        <div class="action-form-grid">
+          <div class="field">
+            <label class="field__label">Registro de capital de giro *</label>
+            <select class="field__input" id="acao-registro-id" name="id" required>
+              <option value="">Selecione...</option>
+              {% for item in registros %}
+              <option value="{{ item.id }}">{{ item.origem }} - {{ item.referencia }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="field field--full">
+            <label class="field__label">Acao realizada *</label>
+            <textarea class="field__input field__textarea" id="acao-descricao" name="acao_realizada" rows="3" placeholder="Descreva a acao realizada..." required></textarea>
+          </div>
+        </div>
+        <div class="form-actions">
+          <span class="form-feedback" id="acao-feedback"></span>
+          <button type="button" class="btn btn--ghost" id="btn-limpar-acao">Limpar</button>
+          <button type="submit" class="btn btn--primary" id="btn-salvar-acao">Salvar Acao</button>
+        </div>
+      </form>
     </section>
 
     <section class="table-section">

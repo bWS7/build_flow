@@ -204,6 +204,31 @@ def editar_registro(reg_id):
     return jsonify({'sucesso': True, 'registro': reg.to_dict()})
 
 
+@relacionamento_bp.route('/acao', methods=['POST'])
+@login_required
+@requer_relacionamento_ou_admin
+def registrar_acao():
+    dados = request.get_json(silent=True) or request.form.to_dict()
+    reg_id = dados.get('id')
+    if not reg_id:
+        return jsonify({'erro': 'Cliente nao informado.'}), 400
+
+    reg = db.session.get(Relacionamento, int(reg_id))
+    if not reg:
+        return jsonify({'erro': 'Cliente nao encontrado.'}), 404
+    if not _pode_gerenciar_registro(reg):
+        return jsonify({'erro': 'Voce so pode editar registros criados por voce.'}), 403
+
+    acao_realizada = (dados.get('acao_realizada') or '').upper().strip()
+    if not acao_realizada:
+        return jsonify({'erro': 'Informe a acao realizada.'}), 400
+
+    reg.acao_realizada = acao_realizada
+    db.session.commit()
+    _broadcast_update(reg.semana)
+    return jsonify({'sucesso': True, 'registro': reg.to_dict()})
+
+
 @relacionamento_bp.route('/registros')
 @login_required
 @requer_relacionamento_ou_admin

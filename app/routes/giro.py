@@ -164,6 +164,31 @@ def cadastrar():
     return jsonify({'sucesso': True, 'id': novo.id}), 201
 
 
+@giro_bp.route('/acao', methods=['POST'])
+@login_required
+@requer_giro_ou_admin
+def registrar_acao():
+    dados = request.get_json(silent=True) or request.form.to_dict()
+    reg_id = dados.get('id')
+    if not reg_id:
+        return jsonify({'erro': 'Registro nao informado.'}), 400
+
+    reg = db.session.get(GiroCaptacao, int(reg_id))
+    if not reg:
+        return jsonify({'erro': 'Registro nao encontrado.'}), 404
+    if not _pode_gerenciar_registro(reg):
+        return jsonify({'erro': 'Voce so pode editar registros criados por voce.'}), 403
+
+    acao_realizada = (dados.get('acao_realizada') or '').upper().strip()
+    if not acao_realizada:
+        return jsonify({'erro': 'Informe a acao realizada.'}), 400
+
+    reg.acao_realizada = acao_realizada
+    db.session.commit()
+    _broadcast_update_giro(reg.semana)
+    return jsonify({'sucesso': True, 'registro': reg.to_dict()})
+
+
 @giro_bp.route('/registros')
 @login_required
 @requer_giro_ou_admin
