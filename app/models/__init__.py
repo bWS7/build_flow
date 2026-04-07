@@ -20,3 +20,4 @@ from .meta_liberacao import MetaLiberacaoSemana
 from .login_throttle import LoginThrottle
 from .meta_configuracao import MetaConfiguracaoIndicador
 from .meta_auditoria import MetaAlteracaoAuditoria
+from .indicador_acao import IndicadorAcao

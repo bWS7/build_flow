@@ -8,6 +8,7 @@ from sqlalchemy import extract, func
 
 from app import db, socketio
 from app.models.empreendimento import Empreendimento
+from app.models.indicador_acao import IndicadorAcao, consultar_acoes, contar_acoes
 from app.models.meta_configuracao import MetaConfiguracaoIndicador
 from app.models.investidor import Investidor, SITUACAO_INVESTIDOR_OPCOES, TIPO_VENDA_OPCOES
 from app.models.meta_investidor_semana import MetaInvestidorSemana
@@ -90,29 +91,16 @@ def _data_referencia_da_semana(mes_slug: str, semana_local: int) -> date:
     return date(datetime.now().year, mes_info['numero'], dia_inicial)
 
 
-def _criar_investidor_acao_direta(mes_slug: str, semana_local: int, acao_realizada: str) -> Investidor:
-    empreendimento = Empreendimento.query.filter_by(ativo=True).order_by(Empreendimento.nome).first()
-    investidor = Investidor(
-        reserva=f'ACAO-DIRETA-{mes_slug.upper()}-S{semana_local}',
-        data_reserva=_data_referencia_da_semana(mes_slug, semana_local),
-        situacao='NOVA RESERVA',
-        tipo_venda='DIRETA',
-        empreendimento=empreendimento.nome if empreendimento else 'NAO INFORMADO',
-        bloco=None,
-        unidade=None,
-        cliente='ACAO DIRETA',
-        corretor=None,
-        imobiliaria=None,
-        valor_presente=0,
-        acao_realizada=acao_realizada,
-        criado_por=current_user.nome.upper(),
-    )
-    db.session.add(investidor)
-    return investidor
-
-
 def _garantir_semana_editavel_por_data(data_referencia):
     semana_global = _semana_global_por_data(data_referencia)
+    if semana_global is None:
+        return jsonify({'erro': 'Nao foi possivel identificar a semana do registro.'}), 400
+    if not semana_editavel(semana_global, current_user.can_manage_admin()):
+        return jsonify({'erro': 'Esta semana esta bloqueada para edicao. Apenas o admin pode alterar semanas anteriores.'}), 403
+    return None
+
+
+def _garantir_semana_editavel_global(semana_global: int | None):
     if semana_global is None:
         return jsonify({'erro': 'Nao foi possivel identificar a semana do registro.'}), 400
     if not semana_editavel(semana_global, current_user.can_manage_admin()):
@@ -143,6 +131,7 @@ def montar_contexto_template_investidores(mes_slug: str, incluir_resumo: bool = 
         'financeiro': _calcular_financeiro(mes_slug, investidores=investidores, semana_local=semana_local_normalizada),
         'registros': investidores,
         'registros_json': [investidor.to_dict() for investidor in investidores],
+        'acoes_json': [item.to_dict() for item in consultar_acoes('investidores', _semanas_periodo_investidores(mes_slug, semana_local_normalizada))],
         'resumo_trimestral': mes_slug == PERIODO_INVESTIDORES[0],
         'permite_edicao': permite_edicao,
         'analytics_ai_enabled': analytics_ai_enabled() and analytics_ai_available(),
@@ -243,6 +232,15 @@ def _obter_meta_acoes_geral() -> int:
     return sum(_obter_meta_acoes_mes(slug) for slug, _, _, _ in MESES_INVESTIDORES)
 
 
+def _semanas_periodo_investidores(mes_slug: str, semana_local: int | None = None):
+    if mes_slug == PERIODO_INVESTIDORES[0]:
+        return range(1, 13)
+    inicio = MESES_MAP[mes_slug]['semana_inicio']
+    if semana_local:
+        return [inicio + semana_local - 1]
+    return [inicio + offset for offset in range(4)]
+
+
 def _montar_funil(investidores: list[Investidor]) -> list[dict]:
     agrupado: dict[str, int] = {
         'Vendida': 0,
@@ -306,9 +304,12 @@ def _calcular_financeiro(mes_slug: str, investidores: list[Investidor] | None = 
         if _normalizar_situacao(investidor.situacao) == 'VENDIDA'
     )
     total_vendidas = sum(1 for investidor in investidores if _normalizar_situacao(investidor.situacao) == 'VENDIDA')
-    acoes_realizadas = sum(1 for investidor in investidores if (investidor.acao_realizada or '').strip())
+    acoes_realizadas = contar_acoes('investidores', _semanas_periodo_investidores(mes_slug, semana_local))
     percentual = round((valor_realizado / meta_valor) * 100, 1) if meta_valor > 0 else 0.0
     percentual_acoes = round((acoes_realizadas / meta_acoes) * 100, 1) if meta_acoes > 0 else 0.0
+    planejado_total = meta_valor + meta_acoes
+    realizado_total = valor_realizado + acoes_realizadas
+    percentual_planejado_realizado = round((realizado_total / planejado_total) * 100, 1) if planejado_total > 0 else 0.0
     meta_base = MetaConfiguracaoIndicador.query.filter_by(scope='investidores').first()
     return {
         'mes': mes_slug,
@@ -321,6 +322,9 @@ def _calcular_financeiro(mes_slug: str, investidores: list[Investidor] | None = 
         'total_vendidas': total_vendidas,
         'acoes_realizadas': acoes_realizadas,
         'percentual_acoes': percentual_acoes,
+        'percentual_planejado_realizado': percentual_planejado_realizado,
+        'planejado_total': planejado_total,
+        'realizado_total': realizado_total,
         'funil': _montar_funil(investidores),
     }
 
@@ -358,6 +362,7 @@ def _broadcast_update(mes_slug: str):
         'mes': PERIODO_INVESTIDORES[0],
         'financeiro': _calcular_financeiro(PERIODO_INVESTIDORES[0], investidores=investidores),
         'registros': [investidor.to_dict() for investidor in investidores],
+        'acoes': [item.to_dict() for item in consultar_acoes('investidores', _semanas_periodo_investidores(PERIODO_INVESTIDORES[0]))],
     })
 
 
@@ -370,10 +375,12 @@ def registrar_acao():
         investidor_id = int(dados.get('investidor_id', 0) or 0)
     except (TypeError, ValueError):
         investidor_id = 0
+
+    acao_realizada = _normalizar_texto(dados.get('acao_realizada'))
+    if not acao_realizada:
+        return jsonify({'erro': 'Descreva a acao realizada.'}), 400
+
     if investidor_id <= 0:
-        acao_realizada = _normalizar_texto(dados.get('acao_realizada'))
-        if not acao_realizada:
-            return jsonify({'erro': 'Descreva a acao realizada.'}), 400
         mes_slug = (dados.get('mes') or '').strip().lower()
         try:
             semana_local = int(dados.get('semana', 1) or 1)
@@ -383,33 +390,43 @@ def registrar_acao():
             return jsonify({'erro': 'Mes invalido para registrar a acao.'}), 400
         if semana_local not in {1, 2, 3, 4}:
             return jsonify({'erro': 'Semana invalida para registrar a acao.'}), 400
-        bloqueio = _garantir_semana_editavel_por_data(_data_referencia_da_semana(mes_slug, semana_local))
+        semana_global = MESES_MAP[mes_slug]['semana_inicio'] + semana_local - 1
+        bloqueio = _garantir_semana_editavel_global(semana_global)
         if bloqueio:
             return bloqueio
-        investidor = _criar_investidor_acao_direta(mes_slug, semana_local, acao_realizada)
+        nova_acao = IndicadorAcao(
+            scope='investidores',
+            semana=semana_global,
+            descricao=acao_realizada,
+            responsavel=current_user.nome.upper(),
+        )
+        db.session.add(nova_acao)
         db.session.commit()
         _broadcast_update(PERIODO_INVESTIDORES[0])
-        return jsonify({'sucesso': True, 'registro': investidor.to_dict(), 'acao_direta': True}), 201
-    if investidor_id <= 0:
-        return jsonify({'erro': 'Selecione um investidor para registrar a acao.'}), 400
-
-    acao_realizada = _normalizar_texto(dados.get('acao_realizada'))
-    if not acao_realizada:
-        return jsonify({'erro': 'Descreva a acao realizada.'}), 400
+        return jsonify({'sucesso': True, 'acao': nova_acao.to_dict(), 'acao_direta': True}), 201
 
     investidor = db.session.get(Investidor, investidor_id)
     if not investidor:
         return jsonify({'erro': 'Investidor nao encontrado.'}), 404
 
-    bloqueio = _garantir_semana_editavel_por_data(investidor.data_reserva)
+    semana_global = _semana_global_por_data(investidor.data_reserva)
+    bloqueio = _garantir_semana_editavel_global(semana_global)
     if bloqueio:
         return bloqueio
 
-    investidor.acao_realizada = acao_realizada
+    nova_acao = IndicadorAcao(
+        scope='investidores',
+        semana=semana_global,
+        descricao=acao_realizada,
+        responsavel=current_user.nome.upper(),
+        registro_id=investidor.id,
+        registro_tipo='investidores',
+    )
+    db.session.add(nova_acao)
     db.session.commit()
 
     _broadcast_update(PERIODO_INVESTIDORES[0])
-    return jsonify({'sucesso': True, 'registro': investidor.to_dict()})
+    return jsonify({'sucesso': True, 'acao': nova_acao.to_dict()})
 
 
 def _validar_payload_investidor(dados: dict) -> tuple[dict, str | None]:
@@ -425,7 +442,6 @@ def _validar_payload_investidor(dados: dict) -> tuple[dict, str | None]:
         'corretor': _normalizar_texto(dados.get('corretor')),
         'imobiliaria': _normalizar_texto(dados.get('imobiliaria')),
         'valor_presente': _parse_decimal(dados.get('valor_presente')),
-        'acao_realizada': _normalizar_texto(dados.get('acao_realizada')),
     }
     obrigatorios = ('reserva', 'data_reserva', 'situacao', 'tipo_venda', 'empreendimento', 'cliente')
     for campo in obrigatorios:
@@ -457,7 +473,27 @@ def listar_registros():
     return jsonify({
         'registros': [investidor.to_dict() for investidor in investidores],
         'financeiro': _calcular_financeiro(mes_slug, investidores=investidores, semana_local=semana_local),
+        'acoes': [item.to_dict() for item in consultar_acoes('investidores', _semanas_periodo_investidores(mes_slug, semana_local))],
     })
+
+
+@investidores_bp.route('/acao/<int:acao_id>', methods=['DELETE'])
+@login_required
+@requer_investidores
+def deletar_acao(acao_id):
+    acao = db.session.get(IndicadorAcao, acao_id)
+    if not acao or acao.scope != 'investidores':
+        return jsonify({'erro': 'Acao nao encontrada.'}), 404
+    bloqueio = _garantir_semana_editavel_global(acao.semana)
+    if bloqueio:
+        return bloqueio
+    if not (current_user.can_manage_admin() or acao.responsavel == current_user.nome.upper()):
+        return jsonify({'erro': 'Voce so pode excluir acoes registradas por voce.'}), 403
+
+    db.session.delete(acao)
+    db.session.commit()
+    _broadcast_update(PERIODO_INVESTIDORES[0])
+    return jsonify({'sucesso': True})
 
 
 @investidores_bp.route('/ai-chat', methods=['POST'])
@@ -527,7 +563,6 @@ def cadastrar():
         corretor=registro['corretor'] or None,
         imobiliaria=registro['imobiliaria'] or None,
         valor_presente=registro['valor_presente'],
-        acao_realizada=registro['acao_realizada'] or None,
         criado_por=current_user.nome.upper(),
     )
     db.session.add(investidor)
@@ -572,7 +607,6 @@ def bulk_cadastrar():
             corretor=registro['corretor'] or None,
             imobiliaria=registro['imobiliaria'] or None,
             valor_presente=registro['valor_presente'],
-            acao_realizada=registro['acao_realizada'] or None,
             criado_por=current_user.nome.upper(),
         )
         investidores.append(investidor)
@@ -620,7 +654,6 @@ def editar_registro(reg_id):
     investidor.corretor = registro['corretor'] or None
     investidor.imobiliaria = registro['imobiliaria'] or None
     investidor.valor_presente = registro['valor_presente']
-    investidor.acao_realizada = registro['acao_realizada'] or None
     db.session.commit()
 
     mes_atual = PERIODO_INVESTIDORES[0]

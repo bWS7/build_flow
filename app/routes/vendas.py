@@ -8,6 +8,7 @@ from sqlalchemy import extract, func
 
 from app import db, socketio
 from app.models.empreendimento import Empreendimento
+from app.models.indicador_acao import IndicadorAcao, consultar_acoes, contar_acoes
 from app.models.meta_configuracao import MetaConfiguracaoIndicador
 from app.models.meta_venda_semana import MetaVendaSemana
 from app.models.venda import SITUACAO_VENDA_OPCOES, TIPO_VENDA_OPCOES, Venda
@@ -95,27 +96,6 @@ def _data_referencia_da_semana(mes_slug: str, semana_local: int) -> date:
     return date(datetime.now().year, mes_info['numero'], dia_inicial)
 
 
-def _criar_venda_acao_direta(mes_slug: str, semana_local: int, acao_realizada: str) -> Venda:
-    empreendimento = Empreendimento.query.filter_by(ativo=True).order_by(Empreendimento.nome).first()
-    venda = Venda(
-        reserva=f'ACAO-DIRETA-{mes_slug.upper()}-S{semana_local}',
-        data_reserva=_data_referencia_da_semana(mes_slug, semana_local),
-        situacao='NOVA RESERVA',
-        empreendimento=empreendimento.nome if empreendimento else 'NAO INFORMADO',
-        bloco=None,
-        unidade=None,
-        cliente='ACAO DIRETA',
-        corretor=None,
-        imobiliaria=None,
-        valor_presente=0,
-        tipo_venda='DIRETA',
-        acao_realizada=acao_realizada,
-        criado_por=current_user.nome.upper(),
-    )
-    db.session.add(venda)
-    return venda
-
-
 def montar_contexto_template_vendas(mes_slug: str, incluir_resumo: bool = False, semana_local: int | None = None) -> dict:
     if mes_slug == RESUMO_TRIMESTRAL[0] and not incluir_resumo:
         mes_slug = 'abril'
@@ -142,6 +122,7 @@ def montar_contexto_template_vendas(mes_slug: str, incluir_resumo: bool = False,
         'financeiro': _calcular_financeiro(mes_slug, vendas=vendas, semana_local=semana_local_normalizada),
         'registros': vendas,
         'registros_json': [venda.to_dict() for venda in vendas],
+        'acoes_json': [item.to_dict() for item in consultar_acoes('vendas', _semanas_periodo_vendas(mes_slug, semana_local_normalizada))],
         'resumo_trimestral': mes_slug == RESUMO_TRIMESTRAL[0],
         'permite_edicao': permite_edicao,
         'analytics_ai_enabled': analytics_ai_enabled() and analytics_ai_available(),
@@ -217,6 +198,14 @@ def _garantir_semana_editavel_por_data(data_referencia):
     return None
 
 
+def _garantir_semana_editavel_global(semana_global: int | None):
+    if semana_global is None:
+        return jsonify({'erro': 'Nao foi possivel identificar a semana do registro.'}), 400
+    if not semana_editavel(semana_global, current_user.can_manage_admin()):
+        return jsonify({'erro': 'Esta semana esta bloqueada para edicao. Apenas o admin pode alterar semanas anteriores.'}), 403
+    return None
+
+
 def _consultar_vendas_periodo(mes_slug: str, semana_local: int | None = None):
     if mes_slug == RESUMO_TRIMESTRAL[0]:
         return (
@@ -263,6 +252,15 @@ def _obter_meta_acoes_mes(mes_slug: str) -> int:
 
 def _obter_meta_acoes_trimestral() -> int:
     return sum(_obter_meta_acoes_mes(slug) for slug, _, _, _ in MESES_VENDAS)
+
+
+def _semanas_periodo_vendas(mes_slug: str, semana_local: int | None = None):
+    if mes_slug == RESUMO_TRIMESTRAL[0]:
+        return range(1, 13)
+    inicio = MESES_MAP[mes_slug]['semana_inicio']
+    if semana_local:
+        return [inicio + semana_local - 1]
+    return [inicio + offset for offset in range(4)]
 
 
 def _montar_funil(vendas: list[Venda]) -> list[dict]:
@@ -327,9 +325,12 @@ def _calcular_financeiro(mes_slug: str, vendas: list[Venda] | None = None, seman
         if _normalizar_situacao(venda.situacao) == 'VENDIDA'
     )
     total_vendidas = sum(1 for venda in vendas if _normalizar_situacao(venda.situacao) == 'VENDIDA')
-    acoes_realizadas = sum(1 for venda in vendas if (venda.acao_realizada or '').strip())
+    acoes_realizadas = contar_acoes('vendas', _semanas_periodo_vendas(mes_slug, semana_local))
     percentual = round((total_vendidas / meta_quantidade) * 100, 1) if meta_quantidade > 0 else 0.0
     percentual_acoes = round((acoes_realizadas / meta_acoes) * 100, 1) if meta_acoes > 0 else 0.0
+    planejado_total = meta_quantidade + meta_acoes
+    realizado_total = total_vendidas + acoes_realizadas
+    percentual_planejado_realizado = round((realizado_total / planejado_total) * 100, 1) if planejado_total > 0 else 0.0
     meta_base = MetaConfiguracaoIndicador.query.filter_by(scope='vendas').first()
     return {
         'mes': mes_slug,
@@ -343,6 +344,9 @@ def _calcular_financeiro(mes_slug: str, vendas: list[Venda] | None = None, seman
         'total_vendidas': total_vendidas,
         'acoes_realizadas': acoes_realizadas,
         'percentual_acoes': percentual_acoes,
+        'percentual_planejado_realizado': percentual_planejado_realizado,
+        'planejado_total': planejado_total,
+        'realizado_total': realizado_total,
         'funil': _montar_funil(vendas),
     }
 
@@ -381,6 +385,7 @@ def _broadcast_update(mes_slug: str):
         'mes': mes_slug,
         'financeiro': _calcular_financeiro(mes_slug),
         'registros': [venda.to_dict() for venda in vendas],
+        'acoes': [item.to_dict() for item in consultar_acoes('vendas', _semanas_periodo_vendas(mes_slug))],
     })
 
 
@@ -409,10 +414,17 @@ def registrar_acao():
         bloqueio = _garantir_semana_editavel_por_data(_data_referencia_da_semana(mes_slug, semana_local))
         if bloqueio:
             return bloqueio
-        venda = _criar_venda_acao_direta(mes_slug, semana_local, acao_realizada)
+        semana_global = MESES_MAP[mes_slug]['semana_inicio'] + semana_local - 1
+        nova_acao = IndicadorAcao(
+            scope='vendas',
+            semana=semana_global,
+            descricao=acao_realizada,
+            responsavel=current_user.nome.upper(),
+        )
+        db.session.add(nova_acao)
         db.session.commit()
         _broadcast_update(mes_slug)
-        return jsonify({'sucesso': True, 'registro': venda.to_dict(), 'acao_direta': True}), 201
+        return jsonify({'sucesso': True, 'acao': nova_acao.to_dict(), 'acao_direta': True}), 201
     if venda_id <= 0:
         return jsonify({'erro': 'Selecione uma venda para registrar a ação.'}), 400
 
@@ -428,12 +440,21 @@ def registrar_acao():
     if bloqueio:
         return bloqueio
 
-    venda.acao_realizada = acao_realizada
+    semana_global = _semana_global_por_data(venda.data_reserva, _mes_slug_por_numero(venda.data_reserva.month))
+    nova_acao = IndicadorAcao(
+        scope='vendas',
+        semana=semana_global,
+        descricao=acao_realizada,
+        responsavel=current_user.nome.upper(),
+        registro_id=venda.id,
+        registro_tipo='vendas',
+    )
+    db.session.add(nova_acao)
     db.session.commit()
 
     mes_slug = _mes_slug_por_numero(venda.data_reserva.month)
     _broadcast_update(mes_slug)
-    return jsonify({'sucesso': True, 'registro': venda.to_dict()})
+    return jsonify({'sucesso': True, 'acao': nova_acao.to_dict()})
 
 
 def _validar_payload_venda(dados: dict) -> tuple[dict, str | None]:
@@ -449,7 +470,6 @@ def _validar_payload_venda(dados: dict) -> tuple[dict, str | None]:
         'corretor': _normalizar_texto(dados.get('corretor')),
         'imobiliaria': _normalizar_texto(dados.get('imobiliaria')),
         'valor_presente': _parse_decimal(dados.get('valor_presente')),
-        'acao_realizada': _normalizar_texto(dados.get('acao_realizada')),
     }
     obrigatorios = ('reserva', 'data_reserva', 'situacao', 'tipo_venda', 'empreendimento', 'cliente')
     for campo in obrigatorios:
@@ -484,7 +504,32 @@ def listar_registros():
     return jsonify({
         'registros': [venda.to_dict() for venda in vendas],
         'financeiro': _calcular_financeiro(mes_slug, vendas=vendas, semana_local=semana_local),
+        'acoes': [item.to_dict() for item in consultar_acoes('vendas', _semanas_periodo_vendas(mes_slug, semana_local))],
     })
+
+
+@vendas_bp.route('/acao/<int:acao_id>', methods=['DELETE'])
+@login_required
+@requer_vendas
+def deletar_acao(acao_id):
+    acao = db.session.get(IndicadorAcao, acao_id)
+    if not acao or acao.scope != 'vendas':
+        return jsonify({'erro': 'Acao nao encontrada.'}), 404
+    bloqueio = _garantir_semana_editavel_global(acao.semana)
+    if bloqueio:
+        return bloqueio
+    if not (current_user.can_manage_admin() or acao.responsavel == current_user.nome.upper()):
+        return jsonify({'erro': 'Voce so pode excluir acoes registradas por voce.'}), 403
+
+    semana = acao.semana
+    db.session.delete(acao)
+    db.session.commit()
+
+    for slug, info in MESES_MAP.items():
+        if semana in range(info['semana_inicio'], info['semana_inicio'] + 4):
+            _broadcast_update(slug)
+            break
+    return jsonify({'sucesso': True})
 
 
 @vendas_bp.route('/ai-chat', methods=['POST'])
@@ -553,7 +598,6 @@ def cadastrar():
         imobiliaria=registro['imobiliaria'] or None,
         valor_presente=registro['valor_presente'],
         tipo_venda=registro['tipo_venda'],
-        acao_realizada=registro['acao_realizada'] or None,
         criado_por=current_user.nome.upper(),
     )
     db.session.add(venda)
@@ -599,7 +643,6 @@ def bulk_cadastrar():
             imobiliaria=registro['imobiliaria'] or None,
             valor_presente=registro['valor_presente'],
             tipo_venda=registro['tipo_venda'],
-            acao_realizada=registro['acao_realizada'] or None,
             criado_por=current_user.nome.upper(),
         )
         vendas.append(venda)
@@ -647,7 +690,6 @@ def editar_registro(reg_id):
     venda.imobiliaria = registro['imobiliaria'] or None
     venda.valor_presente = registro['valor_presente']
     venda.tipo_venda = registro['tipo_venda']
-    venda.acao_realizada = registro['acao_realizada'] or None
     db.session.commit()
 
     mes_atual = _mes_slug_por_numero(venda.data_reserva.month)

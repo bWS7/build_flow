@@ -2,6 +2,7 @@
 
 let investidoresCache = [];
 let investidoresFiltradosCache = [];
+let acoesCache = [];
 let activeSituacaoChart = '';
 let deleteState = { id: null, btnEl: null, mode: 'single' };
 const MESES_INVESTIDORES_TOPBAR = ['abril', 'maio', 'junho'];
@@ -263,8 +264,8 @@ function atualizarFinanceiro(financeiro) {
   if (totalVendidasEl) totalVendidasEl.textContent = String(financeiro.total_vendidas || 0);
   if (metaAcoesEl) metaAcoesEl.textContent = String(financeiro.meta_acoes || 0);
   if (acoesRealizadasEl) acoesRealizadasEl.textContent = String(financeiro.acoes_realizadas || 0);
-  if (resumoBarEl) resumoBarEl.style.width = `${Math.min(financeiro.percentual_atingimento || 0, 100)}%`;
-  if (resumoTxtEl) resumoTxtEl.textContent = `${fmtMoedaInteira(financeiro.valor_realizado || 0)} realizados e ${financeiro.acoes_realizadas || 0} acoes registradas no periodo.`;
+  if (resumoBarEl) resumoBarEl.style.width = `${Math.min(financeiro.percentual_planejado_realizado || 0, 100)}%`;
+  if (resumoTxtEl) resumoTxtEl.textContent = `${fmtMoedaInteira(financeiro.realizado_total || 0)} realizados de ${fmtMoedaInteira(financeiro.planejado_total || 0)} planejados no periodo.`;
   if (pctEl) pctEl.textContent = `${financeiro.percentual_atingimento || 0}%`;
   if (txtEl) txtEl.textContent = `${fmtMoedaInteira(financeiro.valor_realizado || 0)} de ${fmtMoedaInteira(financeiro.meta_valor || 0)} realizados`;
   if (barEl) barEl.style.width = `${Math.min(financeiro.percentual_atingimento || 0, 100)}%`;
@@ -344,25 +345,26 @@ function renderizarTabela(registros) {
   `).join('');
 }
 
-function renderizarTabelaAcoes(registros) {
+function renderizarTabelaAcoes(acoes) {
   const tbody = document.getElementById('tbody-acoes-investidores');
   const counter = document.getElementById('total-acoes');
   if (!tbody || !counter) return;
-  const registrosComAcao = (registros || []).filter((r) => String(r.acao_realizada || '').trim());
-  counter.textContent = `${registrosComAcao.length} acoes`;
+  acoesCache = Array.isArray(acoes) ? acoes : [];
+  counter.textContent = `${acoesCache.length} acoes`;
 
-  if (!registrosComAcao.length) {
-    tbody.innerHTML = '<tr><td colspan="5" class="td-empty">Nenhuma acao registrada neste periodo.</td></tr>';
+  if (!acoesCache.length) {
+    tbody.innerHTML = '<tr><td colspan="6" class="td-empty">Nenhuma acao registrada neste periodo.</td></tr>';
     return;
   }
 
-  tbody.innerHTML = registrosComAcao.map((r) => `
+  tbody.innerHTML = acoesCache.map((r) => `
     <tr>
       <td class="td-id">${r.id}</td>
-      <td>${r.reserva || '-'} - ${r.cliente || '-'}</td>
-      <td>${r.acao_realizada || '-'}</td>
-      <td>${r.criado_por || '-'}</td>
+      <td>${r.registro_id ? ('Registro #' + r.registro_id) : 'Acao direta'}</td>
+      <td>${r.descricao || '-'}</td>
+      <td>${r.responsavel || '-'}</td>
       <td class="td-data">${(r.data || '').trim() || '-'}</td>
+      <td>${PODE_EDITAR_SEMANA ? `<button class="btn-del" onclick="deletarAcao(${r.id}, this)" title="Excluir acao"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/></svg></button>` : ''}</td>
     </tr>
   `).join('');
 }
@@ -399,10 +401,15 @@ function calcularFinanceiroFiltrado(registros) {
     percentual_atingimento: (INITIAL_FINANCEIRO.meta_valor || 0) > 0
       ? Number(((valorRealizado / INITIAL_FINANCEIRO.meta_valor) * 100).toFixed(1))
       : 0,
-    acoes_realizadas: registros.filter((item) => String(item.acao_realizada || '').trim()).length,
+    acoes_realizadas: acoesCache.length,
     percentual_acoes: (INITIAL_FINANCEIRO.meta_acoes || 0) > 0
-      ? Number(((registros.filter((item) => String(item.acao_realizada || '').trim()).length / INITIAL_FINANCEIRO.meta_acoes) * 100).toFixed(1))
+      ? Number(((acoesCache.length / INITIAL_FINANCEIRO.meta_acoes) * 100).toFixed(1))
       : 0,
+    percentual_planejado_realizado: ((INITIAL_FINANCEIRO.meta_valor || 0) + (INITIAL_FINANCEIRO.meta_acoes || 0)) > 0
+      ? Number((((valorRealizado + acoesCache.length) / ((INITIAL_FINANCEIRO.meta_valor || 0) + (INITIAL_FINANCEIRO.meta_acoes || 0))) * 100).toFixed(1))
+      : 0,
+    planejado_total: (INITIAL_FINANCEIRO.meta_valor || 0) + (INITIAL_FINANCEIRO.meta_acoes || 0),
+    realizado_total: valorRealizado + acoesCache.length,
     total_vendidas: totalVendidas,
     total_registros: total,
     funil,
@@ -433,7 +440,7 @@ function aplicarFiltros() {
 
   investidoresFiltradosCache = filtrados;
   renderizarTabela(filtrados);
-  renderizarTabelaAcoes(filtrados);
+  renderizarTabelaAcoes(acoesCache);
   atualizarFinanceiro(calcularFinanceiroFiltrado(filtrados));
 }
 
@@ -563,6 +570,7 @@ async function recarregarDados() {
     const resp = await fetch(`/investidores/registros?${params.toString()}`);
     const json = await resp.json();
     investidoresCache = json.registros || [];
+    acoesCache = json.acoes || [];
     Object.assign(INITIAL_FINANCEIRO, json.financeiro || {});
     aplicarFiltros();
     renderizarOpcoesAcao();
@@ -735,6 +743,30 @@ async function confirmarExclusaoInvestidor() {
   }
 }
 
+async function deletarAcao(id, btnEl) {
+  if (!PODE_EDITAR_SEMANA) {
+    showToast('Esta semana esta bloqueada para edicao.', 'error');
+    return;
+  }
+  btnEl.disabled = true;
+  try {
+    const resp = await fetch(`/investidores/acao/${id}`, { method: 'DELETE', headers: csrfHeaders() });
+    const json = await resp.json();
+    if (resp.ok && json.sucesso) {
+      showToast('Acao excluida.');
+      acoesCache = acoesCache.filter((acao) => acao.id !== id);
+      renderizarTabelaAcoes(acoesCache);
+      recarregarDados();
+    } else {
+      showToast(json.erro || 'Erro ao excluir acao.', 'error');
+      btnEl.disabled = false;
+    }
+  } catch {
+    showToast('Falha de conexao.', 'error');
+    btnEl.disabled = false;
+  }
+}
+
 function conectarSocket() {
   const socket = io({ transports: ['polling'] });
   socket.on('connect', () => {
@@ -813,7 +845,8 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  renderizarTabelaAcoes(investidoresCache);
+  acoesCache = Array.isArray(INITIAL_ACOES) ? INITIAL_ACOES : [];
+  renderizarTabelaAcoes(acoesCache);
 
   if (toggleBtn && formWrapper) {
     let formVisible = false;
@@ -956,4 +989,5 @@ document.addEventListener('DOMContentLoaded', () => {
   renderizarOpcoesAcao();
   aplicarBloqueioEdicao();
   conectarSocket();
+  recarregarDados();
 });

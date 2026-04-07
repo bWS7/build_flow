@@ -5,6 +5,7 @@ from flask_login import current_user, login_required
 
 from app import db, socketio
 from app.models.financeiro import BANCOS_BRASIL, NEGOCIACAO_OPCOES, FinanceiroBanco
+from app.models.indicador_acao import IndicadorAcao, consultar_acoes, contar_acoes
 from app.models.meta_financeiro import MetaFinanceiroSemana
 from app.models.meta_configuracao import MetaConfiguracaoIndicador
 from app.utils.quarter import semana_editavel
@@ -42,9 +43,12 @@ def _calcular_indicadores_financeiro(semana: int, registros: list[FinanceiroBanc
     valor_arrecadado = sum(float(item.valor_arrecadado or 0) for item in todos)
     total_negociacoes = len(todos)
     total_bancos = len({(item.banco or '').strip() for item in todos if (item.banco or '').strip()})
-    acoes_realizadas = sum(1 for item in todos if (item.acao_realizada or '').strip())
+    acoes_realizadas = contar_acoes('financeiro', semana)
     percentual = (valor_arrecadado / valor_meta * 100) if valor_meta > 0 else 0
     percentual_acoes = (acoes_realizadas / acoes_planejadas * 100) if acoes_planejadas > 0 else 0
+    planejado_total = valor_meta + acoes_planejadas
+    realizado_total = valor_arrecadado + acoes_realizadas
+    percentual_planejado_realizado = (realizado_total / planejado_total * 100) if planejado_total > 0 else 0
     meta_base = MetaConfiguracaoIndicador.query.filter_by(scope='financeiro').first()
 
     return {
@@ -58,6 +62,9 @@ def _calcular_indicadores_financeiro(semana: int, registros: list[FinanceiroBanc
         'acoes_realizadas': acoes_realizadas,
         'pct_acoes': min(round(percentual_acoes, 1), 100),
         'pct_valor': min(round(percentual, 1), 100),
+        'pct_planejado_realizado': min(round(percentual_planejado_realizado, 1), 100),
+        'planejado_total': valor_meta + acoes_planejadas,
+        'realizado_total': valor_arrecadado + acoes_realizadas,
     }
 
 
@@ -67,8 +74,10 @@ def resumir_financeiro_bancos_trimestre() -> dict:
     valor_realizado = sum(float(item.valor_arrecadado or 0) for item in registros)
     valor_meta = sum(float(item.valor_meta or 0) for item in metas)
     acoes_planejadas = sum(int(item.acoes_planejadas or 0) for item in metas)
-    acoes_realizadas = sum(1 for item in registros if (item.acao_realizada or '').strip())
+    acoes_realizadas = contar_acoes('financeiro', range(1, 13))
     meta_base = MetaConfiguracaoIndicador.query.filter_by(scope='financeiro').first()
+    planejado_total = valor_meta + acoes_planejadas
+    realizado_total = valor_realizado + acoes_realizadas
     return {
         'valor_realizado': valor_realizado,
         'valor_meta': valor_meta,
@@ -79,6 +88,7 @@ def resumir_financeiro_bancos_trimestre() -> dict:
         'acoes_planejadas': acoes_planejadas,
         'acoes_realizadas': acoes_realizadas,
         'percentual_acoes': round((acoes_realizadas / acoes_planejadas) * 100, 1) if acoes_planejadas > 0 else 0.0,
+        'percentual_planejado_realizado': round((realizado_total / planejado_total) * 100, 1) if planejado_total > 0 else 0.0,
     }
 
 
@@ -91,6 +101,7 @@ def _broadcast_update_financeiro(semana: int):
     socketio.emit('financeiro_atualizado', {
         'indicadores': _calcular_indicadores_financeiro(semana, registros),
         'registros': [item.to_dict() for item in registros],
+        'acoes': [item.to_dict() for item in consultar_acoes('financeiro', semana)],
     })
 
 
@@ -137,6 +148,7 @@ def index():
         indicadores=_calcular_indicadores_financeiro(semana, registros),
         registros=registros,
         registros_json=[item.to_dict() for item in registros],
+        acoes_json=[item.to_dict() for item in consultar_acoes('financeiro', semana)],
         semana_atual=semana,
         permite_edicao=semana_editavel(semana, current_user.can_manage_admin()),
     )
@@ -211,24 +223,20 @@ def registrar_acao():
     reg = None
     if reg_id:
         reg = db.session.get(FinanceiroBanco, int(reg_id))
-    else:
-        query = FinanceiroBanco.query.filter_by(semana=semana)
-        if current_user.tipo != 'admin':
-            query = query.filter_by(responsavel=current_user.nome.upper())
-        reg = query.order_by(FinanceiroBanco.criado_em.desc()).first()
-
-    if not reg:
-        reg = _criar_registro_acao_direta(semana, acao_realizada)
-        db.session.commit()
-        _broadcast_update_financeiro(semana)
-        return jsonify({'sucesso': True, 'registro': reg.to_dict(), 'acao_direta': True}), 201
-    if not _pode_gerenciar_registro(reg):
+    if reg and not _pode_gerenciar_registro(reg):
         return jsonify({'erro': 'Voce so pode editar registros criados por voce.'}), 403
-
-    reg.acao_realizada = acao_realizada
+    nova_acao = IndicadorAcao(
+        scope='financeiro',
+        semana=semana,
+        descricao=acao_realizada,
+        responsavel=current_user.nome.upper(),
+        registro_id=reg.id if reg else None,
+        registro_tipo='financeiro' if reg else None,
+    )
+    db.session.add(nova_acao)
     db.session.commit()
-    _broadcast_update_financeiro(reg.semana)
-    return jsonify({'sucesso': True, 'registro': reg.to_dict()})
+    _broadcast_update_financeiro(semana)
+    return jsonify({'sucesso': True, 'acao': nova_acao.to_dict()})
 
 
 @financeiro_bp.route('/registros')
@@ -246,7 +254,27 @@ def listar_registros():
     return jsonify({
         'registros': [item.to_dict() for item in registros],
         'indicadores': _calcular_indicadores_financeiro(semana, registros),
+        'acoes': [item.to_dict() for item in consultar_acoes('financeiro', semana)],
     })
+
+
+@financeiro_bp.route('/acao/<int:acao_id>', methods=['DELETE'])
+@login_required
+@requer_financeiro_ou_admin
+def deletar_acao(acao_id):
+    acao = db.session.get(IndicadorAcao, acao_id)
+    if not acao or acao.scope != 'financeiro':
+        return jsonify({'erro': 'Acao nao encontrada.'}), 404
+    bloqueio = _garantir_semana_editavel(acao.semana)
+    if bloqueio:
+        return bloqueio
+    if not (current_user.can_manage_admin() or acao.responsavel == current_user.nome.upper()):
+        return jsonify({'erro': 'Voce so pode excluir acoes registradas por voce.'}), 403
+    semana = acao.semana
+    db.session.delete(acao)
+    db.session.commit()
+    _broadcast_update_financeiro(semana)
+    return jsonify({'sucesso': True})
 
 
 @financeiro_bp.route('/registro/<int:reg_id>', methods=['PUT'])

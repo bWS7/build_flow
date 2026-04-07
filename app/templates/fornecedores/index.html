@@ -334,6 +334,7 @@
               <th>ACAO REALIZADA</th>
               <th>RESPONSAVEL</th>
               <th>DATA</th>
+              <th></th>
             </tr>
           </thead>
           <tbody id="tbody-acoes-fornecedores"></tbody>
@@ -394,6 +395,7 @@
   window.APP_CSRF_TOKEN = '{{ csrf_token() }}';
   const SEMANA_ATUAL = {{ semana_atual|int }};
   const INITIAL_REGISTROS = {{ registros_json|tojson }};
+  const INITIAL_ACOES = {{ acoes_json|tojson }};
   const CURRENT_USER_NOME = {{ (current_user.nome or '')|upper|tojson }};
   const IS_ADMIN = {{ 'true' if current_user.tipo == 'admin' else 'false' }};
   const EMPREENDIMENTOS = {{ empreendimentos|map(attribute='nome')|list|tojson }};

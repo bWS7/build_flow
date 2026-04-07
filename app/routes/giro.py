@@ -5,6 +5,7 @@ from flask_login import current_user, login_required
 
 from app import db, socketio
 from app.models.giro import NEGOCIACAO_GIRO_OPCOES, ORIGENS_GIRO, GiroCaptacao
+from app.models.indicador_acao import IndicadorAcao, consultar_acoes, contar_acoes
 from app.models.meta_giro import MetaGiroSemana
 from app.models.meta_configuracao import MetaConfiguracaoIndicador
 from app.utils.quarter import semana_editavel
@@ -42,9 +43,11 @@ def _calcular_indicadores_giro(semana: int, registros: list[GiroCaptacao] | None
     valor_captado = sum(float(item.valor_captado or 0) for item in todos)
     total_captacoes = len(todos)
     total_origens = len({(item.origem or '').strip() for item in todos if (item.origem or '').strip()})
-    acoes_realizadas = sum(1 for item in todos if (item.acao_realizada or '').strip())
+    acoes_realizadas = contar_acoes('giro', semana)
     percentual = (valor_captado / valor_meta * 100) if valor_meta > 0 else 0
     percentual_acoes = (acoes_realizadas / acoes_planejadas * 100) if acoes_planejadas > 0 else 0
+    planejado_total = valor_meta + acoes_planejadas
+    realizado_total = valor_captado + acoes_realizadas
     meta_base = MetaConfiguracaoIndicador.query.filter_by(scope='giro').first()
 
     return {
@@ -58,6 +61,7 @@ def _calcular_indicadores_giro(semana: int, registros: list[GiroCaptacao] | None
         'acoes_realizadas': acoes_realizadas,
         'pct_acoes': min(round(percentual_acoes, 1), 100),
         'pct_valor': min(round(percentual, 1), 100),
+        'pct_planejado_realizado': min(round((realizado_total / planejado_total * 100), 1), 100) if planejado_total > 0 else 0.0,
     }
 
 
@@ -67,8 +71,10 @@ def resumir_giro_trimestre() -> dict:
     valor_realizado = sum(float(item.valor_captado or 0) for item in registros)
     valor_meta = sum(float(item.valor_meta or 0) for item in metas)
     acoes_planejadas = sum(int(item.acoes_planejadas or 0) for item in metas)
-    acoes_realizadas = sum(1 for item in registros if (item.acao_realizada or '').strip())
+    acoes_realizadas = contar_acoes('giro', range(1, 13))
     meta_base = MetaConfiguracaoIndicador.query.filter_by(scope='giro').first()
+    planejado_total = valor_meta + acoes_planejadas
+    realizado_total = valor_realizado + acoes_realizadas
     return {
         'valor_realizado': valor_realizado,
         'valor_meta': valor_meta,
@@ -79,6 +85,7 @@ def resumir_giro_trimestre() -> dict:
         'acoes_planejadas': acoes_planejadas,
         'acoes_realizadas': acoes_realizadas,
         'percentual_acoes': round((acoes_realizadas / acoes_planejadas) * 100, 1) if acoes_planejadas > 0 else 0.0,
+        'percentual_planejado_realizado': round((realizado_total / planejado_total) * 100, 1) if planejado_total > 0 else 0.0,
     }
 
 
@@ -91,6 +98,7 @@ def _broadcast_update_giro(semana: int):
     socketio.emit('giro_atualizado', {
         'indicadores': _calcular_indicadores_giro(semana, registros),
         'registros': [item.to_dict() for item in registros],
+        'acoes': [item.to_dict() for item in consultar_acoes('giro', semana)],
     })
 
 
@@ -137,6 +145,7 @@ def index():
         indicadores=_calcular_indicadores_giro(semana, registros),
         registros=registros,
         registros_json=[item.to_dict() for item in registros],
+        acoes_json=[item.to_dict() for item in consultar_acoes('giro', semana)],
         semana_atual=semana,
         permite_edicao=semana_editavel(semana, current_user.can_manage_admin()),
     )
@@ -211,24 +220,20 @@ def registrar_acao():
     reg = None
     if reg_id:
         reg = db.session.get(GiroCaptacao, int(reg_id))
-    else:
-        query = GiroCaptacao.query.filter_by(semana=semana)
-        if current_user.tipo != 'admin':
-            query = query.filter_by(responsavel=current_user.nome.upper())
-        reg = query.order_by(GiroCaptacao.criado_em.desc()).first()
-
-    if not reg:
-        reg = _criar_registro_acao_direta(semana, acao_realizada)
-        db.session.commit()
-        _broadcast_update_giro(semana)
-        return jsonify({'sucesso': True, 'registro': reg.to_dict(), 'acao_direta': True}), 201
-    if not _pode_gerenciar_registro(reg):
+    if reg and not _pode_gerenciar_registro(reg):
         return jsonify({'erro': 'Voce so pode editar registros criados por voce.'}), 403
-
-    reg.acao_realizada = acao_realizada
+    nova_acao = IndicadorAcao(
+        scope='giro',
+        semana=semana,
+        descricao=acao_realizada,
+        responsavel=current_user.nome.upper(),
+        registro_id=reg.id if reg else None,
+        registro_tipo='giro' if reg else None,
+    )
+    db.session.add(nova_acao)
     db.session.commit()
-    _broadcast_update_giro(reg.semana)
-    return jsonify({'sucesso': True, 'registro': reg.to_dict()})
+    _broadcast_update_giro(semana)
+    return jsonify({'sucesso': True, 'acao': nova_acao.to_dict()})
 
 
 @giro_bp.route('/registros')
@@ -246,7 +251,27 @@ def listar_registros():
     return jsonify({
         'registros': [item.to_dict() for item in registros],
         'indicadores': _calcular_indicadores_giro(semana, registros),
+        'acoes': [item.to_dict() for item in consultar_acoes('giro', semana)],
     })
+
+
+@giro_bp.route('/acao/<int:acao_id>', methods=['DELETE'])
+@login_required
+@requer_giro_ou_admin
+def deletar_acao(acao_id):
+    acao = db.session.get(IndicadorAcao, acao_id)
+    if not acao or acao.scope != 'giro':
+        return jsonify({'erro': 'Acao nao encontrada.'}), 404
+    bloqueio = _garantir_semana_editavel(acao.semana)
+    if bloqueio:
+        return bloqueio
+    if not (current_user.can_manage_admin() or acao.responsavel == current_user.nome.upper()):
+        return jsonify({'erro': 'Voce so pode excluir acoes registradas por voce.'}), 403
+    semana = acao.semana
+    db.session.delete(acao)
+    db.session.commit()
+    _broadcast_update_giro(semana)
+    return jsonify({'sucesso': True})
 
 
 @giro_bp.route('/registro/<int:reg_id>', methods=['PUT'])

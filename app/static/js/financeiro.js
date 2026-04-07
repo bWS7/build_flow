@@ -1,6 +1,7 @@
 'use strict';
 
 let registrosCache = [];
+let acoesCache = [];
 let deleteState = { id: null, btnEl: null };
 const MESES_FINANCEIRO = ['abril', 'maio', 'junho'];
 
@@ -65,9 +66,9 @@ function atualizarIndicadores(ind) {
   document.getElementById('bar-acoes').style.width = `${Math.min(ind.pct_acoes || 0, 100)}%`;
   document.getElementById('txt-acoes').textContent = `${ind.acoes_realizadas || 0} de ${ind.acoes_planejadas || 0} acoes realizadas`;
   const resumoBar = document.getElementById('bar-resumo');
-  if (resumoBar) resumoBar.style.width = `${Math.min(ind.pct_valor || 0, 100)}%`;
+  if (resumoBar) resumoBar.style.width = `${Math.min(ind.pct_planejado_realizado || ind.pct_valor || 0, 100)}%`;
   const resumoTexto = document.getElementById('txt-resumo');
-  if (resumoTexto) resumoTexto.textContent = `${fmtValor(valorAtual)} realizados e ${ind.acoes_realizadas || 0} acoes registradas nesta semana.`;
+  if (resumoTexto) resumoTexto.textContent = `${fmtValor(ind.realizado_total || valorAtual)} realizados de ${fmtValor(ind.planejado_total || ind.valor_meta || 0)} planejados nesta semana.`;
 }
 
 function abrirFicha(id) {
@@ -156,25 +157,26 @@ function renderizarTabela(registros) {
   }).join('');
 }
 
-function renderizarTabelaAcoes(registros) {
+function renderizarTabelaAcoes(acoes) {
   const tbody = document.getElementById('tbody-acoes-bancos');
   const counter = document.getElementById('total-acoes');
   if (!tbody || !counter) return;
-  const registrosComAcao = (registros || []).filter((r) => (r.acao_realizada || '').trim());
-  counter.textContent = `${registrosComAcao.length} acoes`;
+  acoesCache = Array.isArray(acoes) ? acoes : [];
+  counter.textContent = `${acoesCache.length} acoes`;
 
-  if (!registrosComAcao.length) {
-    tbody.innerHTML = '<tr><td colspan="5" class="td-empty">Nenhuma acao registrada nesta semana.</td></tr>';
+  if (!acoesCache.length) {
+    tbody.innerHTML = '<tr><td colspan="6" class="td-empty">Nenhuma acao registrada nesta semana.</td></tr>';
     return;
   }
 
-  tbody.innerHTML = registrosComAcao.map((r) => `
+  tbody.innerHTML = acoesCache.map((r) => `
       <tr>
         <td class="td-id">${r.id}</td>
-        <td>${r.banco || '-'} - ${r.referencia || ('#' + r.id)}</td>
-        <td>${r.acao_realizada || '-'}</td>
+        <td>${r.registro_id ? ('Registro #' + r.registro_id) : 'Acao direta'}</td>
+        <td>${r.descricao || '-'}</td>
         <td>${r.responsavel || '-'}</td>
-        <td class="td-data">${(r.criado_em || '').split(' ')[0] || '-'}</td>
+        <td class="td-data">${r.data || '-'}</td>
+        <td>${IS_ADMIN || r.responsavel === CURRENT_USER_NOME ? `<button class="btn-del" onclick="deletarAcao(${r.id}, this)" title="Excluir acao"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/></svg></button>` : ''}</td>
       </tr>`).join('');
 }
 
@@ -192,7 +194,7 @@ function conectarSocket() {
     if (payload.indicadores && payload.indicadores.semana === SEMANA_ATUAL) {
       atualizarIndicadores(payload.indicadores);
       renderizarTabela(payload.registros || []);
-      renderizarTabelaAcoes(payload.registros || []);
+      renderizarTabelaAcoes(payload.acoes || []);
       renderizarOpcoesAcao();
     }
   });
@@ -255,7 +257,7 @@ async function confirmarExclusaoRegistro() {
     if (resp.ok && json.sucesso) {
       const atualizados = registrosCache.filter((registro) => registro.id !== id);
       renderizarTabela(atualizados);
-      renderizarTabelaAcoes(atualizados);
+      renderizarTabelaAcoes(acoesCache);
       renderizarOpcoesAcao();
       showToast('Registro excluido com sucesso!', 'success');
       _buscarAtualizacao();
@@ -322,7 +324,7 @@ async function _buscarAtualizacao() {
     const json = await resp.json();
     atualizarIndicadores(json.indicadores || {});
     renderizarTabela(json.registros || []);
-    renderizarTabelaAcoes(json.registros || []);
+    renderizarTabelaAcoes(json.acoes || []);
     renderizarOpcoesAcao();
   } catch {
     // websocket cobre esse fluxo na maior parte do tempo
@@ -354,9 +356,11 @@ if (actionToggleBtn && actionFormWrapper) {
 
 document.addEventListener('DOMContentLoaded', () => {
   registrosCache = Array.isArray(INITIAL_REGISTROS) ? INITIAL_REGISTROS : [];
+  acoesCache = Array.isArray(INITIAL_ACOES) ? INITIAL_ACOES : [];
   renderizarTabela(registrosCache);
-  renderizarTabelaAcoes(registrosCache);
+  renderizarTabelaAcoes(acoesCache);
   renderizarOpcoesAcao();
+  _buscarAtualizacao();
   const formAcao = document.getElementById('form-acao');
   if (formAcao) {
     formAcao.addEventListener('submit', (event) => {
@@ -427,5 +431,28 @@ async function salvarAcaoRealizada() {
     showToast('Falha de conexao. Tente novamente.', 'error');
   } finally {
     btn.disabled = false;
+  }
+}
+
+async function deletarAcao(id, btnEl) {
+  if (!id || !btnEl) return;
+  btnEl.disabled = true;
+  try {
+    const resp = await fetch(`/financeiro/acao/${id}`, {
+      method: 'DELETE',
+      headers: csrfHeaders(),
+    });
+    const json = await resp.json();
+    if (resp.ok && json.sucesso) {
+      renderizarTabelaAcoes(acoesCache.filter((acao) => acao.id !== id));
+      showToast('Acao excluida com sucesso!', 'success');
+      _buscarAtualizacao();
+    } else {
+      showToast(json.erro || 'Erro ao excluir acao.', 'error');
+      btnEl.disabled = false;
+    }
+  } catch {
+    showToast('Falha de conexao.', 'error');
+    btnEl.disabled = false;
   }
 }

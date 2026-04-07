@@ -204,7 +204,7 @@
       </div>
       <div class="progress-block summary-banner">
         <div class="progress-block__header">
-          <span class="progress-block__label">progresso acoes e vendas realizadas x acoes e vendas planejadas</span>
+          <span class="progress-block__label">Planejado X Realizado (Metrica e Acoes) - Semana {{ semana_atual or 1 }}</span>
         </div>
         <div class="progress-track">
           <div class="progress-fill progress-fill--acoes" id="bar-resumo-geral" style="width:{{ financeiro.percentual_atingimento if financeiro.percentual_atingimento <= 100 else 100 }}%"></div>
@@ -361,6 +361,9 @@
         </h3>
         <div class="section-header__tools">
           <span class="section-header__count" id="total-registros">{{ registros|length }} reservas</span>
+          <button class="btn btn--ghost" type="button" id="btn-delete-all" title="Excluir em massa" {% if not permite_edicao %}disabled{% endif %}>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/></svg>
+          </button>
         </div>
       </div>
       <div class="sales-filters">
@@ -419,6 +422,7 @@
               <th>ACAO REALIZADA</th>
               <th>RESPONSAVEL</th>
               <th>DATA</th>
+              <th></th>
             </tr>
           </thead>
           <tbody id="tbody-acoes-vendas"></tbody>
@@ -529,6 +533,7 @@
   const IS_ADMIN_PANEL = {{ painel_admin_vendas | tojson }};
   const PODE_EDITAR_SEMANA = {{ permite_edicao | tojson }};
   const INITIAL_REGISTROS = {{ registros_json | tojson }};
+  const INITIAL_ACOES = {{ acoes_json | tojson }};
   const INITIAL_FINANCEIRO = {{ financeiro | tojson }};
   const EMPREENDIMENTOS = {{ empreendimentos | map(attribute='nome') | list | tojson }};
   const SITUACOES = {{ situacoes | tojson }};

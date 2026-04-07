@@ -382,6 +382,7 @@
               <th>ACAO REALIZADA</th>
               <th>RESPONSAVEL</th>
               <th>DATA</th>
+              <th></th>
             </tr>
           </thead>
           <tbody id="tbody-acoes-giro"></tbody>
@@ -440,6 +441,7 @@
   const CURRENT_USER_NOME = {{ (current_user.nome | upper) | tojson }};
   const IS_ADMIN = {{ 'true' if current_user.tipo == 'admin' else 'false' }};
   const INITIAL_REGISTROS = {{ registros_json | tojson }};
+  const INITIAL_ACOES = {{ acoes_json | tojson }};
   const ORIGENS = {{ origens | tojson }};
   const NEGOCIACOES = {{ negociacoes | tojson }};
   (function () {

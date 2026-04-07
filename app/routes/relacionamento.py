@@ -2,6 +2,7 @@ from flask import Blueprint, render_template, request, jsonify, abort
 from flask_login import login_required, current_user
 from functools import wraps
 from app import db, socketio
+from app.models.indicador_acao import IndicadorAcao, consultar_acoes, contar_acoes
 from app.models.relacionamento import Relacionamento, SITUACAO_OPCOES
 from app.models.empreendimento import Empreendimento
 from app.models.meta import MetaSemana
@@ -45,12 +46,15 @@ def _calcular_indicadores(semana: int, registros: list[Relacionamento] | None = 
     meta_base = MetaConfiguracaoIndicador.query.filter_by(scope='relacionamento').first()
 
     todos = registros if registros is not None else Relacionamento.query.filter_by(semana=semana).all()
-    acoes_realizadas = sum(1 for item in todos if (item.acao_realizada or '').strip())
+    acoes_realizadas = contar_acoes('relacionamento', semana)
     registros_sim = [r for r in todos if _situacao_conta_como_sim(r.situacao)]
     soma_valores = sum(float(r.valor) for r in registros_sim if r.valor > 0)
 
     pct_acoes = (acoes_realizadas / acoes_planejadas * 100) if acoes_planejadas > 0 else 0
     pct_valor = (soma_valores / valor_meta * 100) if valor_meta > 0 else 0
+    planejado_total = valor_meta + acoes_planejadas
+    realizado_total = soma_valores + acoes_realizadas
+    pct_planejado_realizado = (realizado_total / planejado_total * 100) if planejado_total > 0 else 0
 
     return {
         'semana': semana,
@@ -61,6 +65,9 @@ def _calcular_indicadores(semana: int, registros: list[Relacionamento] | None = 
         'soma_valores': soma_valores,
         'pct_acoes': min(round(pct_acoes, 1), 100),
         'pct_valor': min(round(pct_valor, 1), 100),
+        'pct_planejado_realizado': min(round(pct_planejado_realizado, 1), 100),
+        'planejado_total': planejado_total,
+        'realizado_total': realizado_total,
     }
 
 
@@ -72,6 +79,7 @@ def _broadcast_update(semana: int):
     socketio.emit('dados_atualizados', {
         'indicadores': indicadores,
         'registros': [r.to_dict() for r in registros],
+        'acoes': [item.to_dict() for item in consultar_acoes('relacionamento', semana)],
     })
 
 
@@ -88,24 +96,6 @@ def _garantir_semana_editavel(semana: int):
 def _empreendimento_padrao() -> str:
     empreendimento = Empreendimento.query.filter_by(ativo=True).order_by(Empreendimento.nome).first()
     return empreendimento.nome if empreendimento else 'NAO INFORMADO'
-
-
-def _criar_registro_acao_direta(semana: int, acao_realizada: str) -> Relacionamento:
-    registro = Relacionamento(
-        empreendimento=_empreendimento_padrao(),
-        cliente='ACAO DIRETA',
-        telefone='00000000000',
-        email_cliente='acao.direta@buildflow.local',
-        tipo_contato='WHATSAPP',
-        situacao='LIGAR EM OUTRO MOMENTO',
-        observacao='REGISTRO TECNICO GERADO PARA ACAO DIRETA',
-        acao_realizada=acao_realizada,
-        valor=0.0,
-        responsavel=current_user.nome.upper(),
-        semana=semana,
-    )
-    db.session.add(registro)
-    return registro
 
 
 def _parse_semana(valor) -> int | None:
@@ -136,6 +126,7 @@ def index():
         indicadores=indicadores,
         registros=registros,
         registros_json=[r.to_dict() for r in registros],
+        acoes_json=[item.to_dict() for item in consultar_acoes('relacionamento', semana)],
         semana_atual=semana,
         permite_edicao=semana_editavel(semana, current_user.can_manage_admin()),
     )
@@ -182,7 +173,6 @@ def cadastrar():
         tipo_contato=tipo_contato,
         situacao=situacao,
         observacao=(dados.get('observacao') or '').upper().strip() or None,
-        acao_realizada=(dados.get('acao_realizada') or '').upper().strip() or None,
         valor=valor,
         responsavel=current_user.nome.upper(),
         semana=semana,
@@ -231,7 +221,6 @@ def editar_registro(reg_id):
     reg.tipo_contato = tipo_contato
     reg.situacao = situacao
     reg.observacao = (dados.get('observacao') or '').upper().strip() or None
-    reg.acao_realizada = (dados.get('acao_realizada') or '').upper().strip() or None
     reg.valor = valor
 
     db.session.commit()
@@ -257,27 +246,20 @@ def registrar_acao():
         return jsonify({'erro': 'Informe a acao realizada.'}), 400
 
     reg = db.session.get(Relacionamento, int(reg_id)) if reg_id else None
-    if reg is None and not reg_id:
-        query = Relacionamento.query.filter_by(semana=semana)
-        if current_user.tipo != 'admin':
-            query = query.filter_by(responsavel=current_user.nome.upper())
-        reg = query.order_by(Relacionamento.criado_em.desc()).first()
-    if not reg:
-        reg = _criar_registro_acao_direta(semana, acao_realizada)
-        db.session.commit()
-        _broadcast_update(semana)
-        return jsonify({'sucesso': True, 'registro': reg.to_dict(), 'acao_direta': True}), 201
-    if not _pode_gerenciar_registro(reg):
+    if reg and not _pode_gerenciar_registro(reg):
         return jsonify({'erro': 'Voce so pode editar registros criados por voce.'}), 403
-
-    bloqueio = _garantir_semana_editavel(reg.semana)
-    if bloqueio:
-        return bloqueio
-
-    reg.acao_realizada = acao_realizada
+    nova_acao = IndicadorAcao(
+        scope='relacionamento',
+        semana=semana,
+        descricao=acao_realizada,
+        responsavel=current_user.nome.upper(),
+        registro_id=reg.id if reg else None,
+        registro_tipo='relacionamento' if reg else None,
+    )
+    db.session.add(nova_acao)
     db.session.commit()
-    _broadcast_update(reg.semana)
-    return jsonify({'sucesso': True, 'registro': reg.to_dict()})
+    _broadcast_update(semana)
+    return jsonify({'sucesso': True, 'acao': nova_acao.to_dict()})
 
 
 @relacionamento_bp.route('/registros')
@@ -293,7 +275,27 @@ def listar_registros():
     return jsonify({
         'registros': [r.to_dict() for r in registros],
         'indicadores': indicadores,
+        'acoes': [item.to_dict() for item in consultar_acoes('relacionamento', semana)],
     })
+
+
+@relacionamento_bp.route('/acao/<int:acao_id>', methods=['DELETE'])
+@login_required
+@requer_relacionamento_ou_admin
+def deletar_acao(acao_id):
+    acao = db.session.get(IndicadorAcao, acao_id)
+    if not acao or acao.scope != 'relacionamento':
+        return jsonify({'erro': 'Acao nao encontrada.'}), 404
+    bloqueio = _garantir_semana_editavel(acao.semana)
+    if bloqueio:
+        return bloqueio
+    if not (current_user.can_manage_admin() or acao.responsavel == current_user.nome.upper()):
+        return jsonify({'erro': 'Voce so pode excluir acoes registradas por voce.'}), 403
+    semana = acao.semana
+    db.session.delete(acao)
+    db.session.commit()
+    _broadcast_update(semana)
+    return jsonify({'sucesso': True})
 
 
 @relacionamento_bp.route('/registro/<int:reg_id>', methods=['DELETE'])

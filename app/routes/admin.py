@@ -9,6 +9,7 @@ from app.models.empreendimento import Empreendimento
 from app.models.investidor import Investidor
 from app.models.meta import MetaSemana
 from app.models.meta_financeiro import MetaFinanceiroSemana
+from app.models.indicador_acao import contar_acoes
 from app.models.meta_fornecedor import MetaFornecedorSemana
 from app.models.meta_giro import MetaGiroSemana
 from app.models.meta_medicao import MetaMedicaoSemana
@@ -1553,11 +1554,10 @@ def _sumario_valor_por_semanas_v2(modelo_meta, modelo_registro, campo_meta: str,
     return realizado, meta
 
 
-def _sumario_acoes_por_semanas_v2(modelo_meta, modelo_registro, semanas: list[int]) -> dict:
+def _sumario_acoes_por_semanas_v2(modelo_meta, scope: str, semanas: list[int]) -> dict:
     metas = modelo_meta.query.filter(modelo_meta.semana.in_(semanas)).all()
-    registros = modelo_registro.query.filter(modelo_registro.semana.in_(semanas)).all()
     meta = sum(int(getattr(item, 'acoes_planejadas', 0) or 0) for item in metas)
-    realizado = sum(1 for item in registros if (getattr(item, 'acao_realizada', '') or '').strip())
+    realizado = contar_acoes(scope, semanas)
     return {
         'acoes_planejadas': float(meta),
         'acoes_realizadas': float(realizado),
@@ -1639,7 +1639,7 @@ def _resumir_inadimplencia_master_v2(semanas: list[int]) -> dict:
         for item in registros
         if _situacao_conta_como_sim(item.situacao) and float(item.valor or 0) > 0
     )
-    acoes_realizadas = sum(1 for item in registros if (item.acao_realizada or '').strip())
+    acoes_realizadas = contar_acoes('relacionamento', semanas)
     return {
         'realizado': valor_realizado,
         'meta': valor_meta,
@@ -1667,10 +1667,10 @@ def _montar_master_painel_periodizado(view: str | None = None, period: str | Non
         semanas,
         filtro_valor=lambda item: (item.situacao or '').upper().strip() in {'SIM (INTEGRAL)', 'SIM (PARCIAL)'},
     )
-    resumo_bancos = _sumario_acoes_por_semanas_v2(MetaFinanceiroSemana, FinanceiroBanco, semanas)
-    resumo_giro = _sumario_acoes_por_semanas_v2(MetaGiroSemana, GiroCaptacao, semanas)
-    resumo_medicao = _sumario_acoes_por_semanas_v2(MetaMedicaoSemana, MedicaoRegistro, semanas)
-    resumo_fornecedores = _sumario_acoes_por_semanas_v2(MetaFornecedorSemana, FornecedorRegistro, semanas)
+    resumo_bancos = _sumario_acoes_por_semanas_v2(MetaFinanceiroSemana, 'financeiro', semanas)
+    resumo_giro = _sumario_acoes_por_semanas_v2(MetaGiroSemana, 'giro', semanas)
+    resumo_medicao = _sumario_acoes_por_semanas_v2(MetaMedicaoSemana, 'medicao', semanas)
+    resumo_fornecedores = _sumario_acoes_por_semanas_v2(MetaFornecedorSemana, 'fornecedores', semanas)
 
     agora = datetime.now().replace(microsecond=0)
     inicio_contagem = periodo['started_at']

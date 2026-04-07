@@ -6,6 +6,7 @@ from flask_login import current_user, login_required
 from app import db, socketio
 from app.models.empreendimento import Empreendimento
 from app.models.fornecedor import FornecedorRegistro, SITUACAO_FORNECEDOR_OPCOES
+from app.models.indicador_acao import IndicadorAcao, consultar_acoes, contar_acoes
 from app.models.meta_fornecedor import MetaFornecedorSemana
 from app.models.meta_configuracao import MetaConfiguracaoIndicador
 from app.utils.quarter import semana_editavel
@@ -52,9 +53,12 @@ def _calcular_indicadores_fornecedores(semana: int, registros: list[FornecedorRe
     total_negociacoes = sum(1 for item in todos if _situacao_conta_como_negociado(item.situacao))
     total_fornecedores = len({(item.nome_fornecedor or '').strip() for item in todos if (item.nome_fornecedor or '').strip()})
     total_empreendimentos = len({(item.empreendimento or '').strip() for item in todos if (item.empreendimento or '').strip()})
-    acoes_realizadas = sum(1 for item in todos if (item.acao_realizada or '').strip())
+    acoes_realizadas = contar_acoes('fornecedores', semana)
     percentual = (valor_negociado / valor_meta * 100) if valor_meta > 0 else 0
     percentual_acoes = (acoes_realizadas / acoes_planejadas * 100) if acoes_planejadas > 0 else 0
+    planejado_total = valor_meta + acoes_planejadas
+    realizado_total = valor_negociado + acoes_realizadas
+    percentual_planejado_realizado = (realizado_total / planejado_total * 100) if planejado_total > 0 else 0
     meta_base = MetaConfiguracaoIndicador.query.filter_by(scope='fornecedores').first()
 
     return {
@@ -69,6 +73,9 @@ def _calcular_indicadores_fornecedores(semana: int, registros: list[FornecedorRe
         'acoes_realizadas': acoes_realizadas,
         'pct_acoes': min(round(percentual_acoes, 1), 100),
         'pct_valor': min(round(percentual, 1), 100),
+        'pct_planejado_realizado': min(round(percentual_planejado_realizado, 1), 100),
+        'planejado_total': planejado_total,
+        'realizado_total': realizado_total,
     }
 
 
@@ -82,8 +89,10 @@ def resumir_fornecedores_trimestre() -> dict:
     )
     valor_meta = sum(float(item.valor_meta or 0) for item in metas)
     acoes_planejadas = sum(int(item.acoes_planejadas or 0) for item in metas)
-    acoes_realizadas = sum(1 for item in registros if (item.acao_realizada or '').strip())
+    acoes_realizadas = contar_acoes('fornecedores', range(1, 13))
     meta_base = MetaConfiguracaoIndicador.query.filter_by(scope='fornecedores').first()
+    planejado_total = valor_meta + acoes_planejadas
+    realizado_total = valor_realizado + acoes_realizadas
     return {
         'valor_realizado': valor_realizado,
         'valor_meta': valor_meta,
@@ -95,6 +104,7 @@ def resumir_fornecedores_trimestre() -> dict:
         'acoes_planejadas': acoes_planejadas,
         'acoes_realizadas': acoes_realizadas,
         'percentual_acoes': round((acoes_realizadas / acoes_planejadas) * 100, 1) if acoes_planejadas > 0 else 0.0,
+        'percentual_planejado_realizado': round((realizado_total / planejado_total) * 100, 1) if planejado_total > 0 else 0.0,
     }
 
 
@@ -107,6 +117,7 @@ def _broadcast_update_fornecedores(semana: int):
     socketio.emit('fornecedores_atualizado', {
         'indicadores': _calcular_indicadores_fornecedores(semana, registros),
         'registros': [item.to_dict() for item in registros],
+        'acoes': [item.to_dict() for item in consultar_acoes('fornecedores', semana)],
     })
 
 
@@ -123,24 +134,6 @@ def _garantir_semana_editavel(semana: int):
 def _empreendimento_padrao() -> str:
     empreendimento = Empreendimento.query.filter_by(ativo=True).order_by(Empreendimento.nome).first()
     return empreendimento.nome if empreendimento else 'NAO INFORMADO'
-
-
-def _criar_registro_acao_direta(semana: int, acao_realizada: str) -> FornecedorRegistro:
-    registro = FornecedorRegistro(
-        empreendimento=_empreendimento_padrao(),
-        nome_fornecedor='ACAO DIRETA',
-        servico_prestado='ACAO DIRETA',
-        email='acao.direta@buildflow.local',
-        telefone='00000000000',
-        situacao='NAO',
-        valor_negociado=0.0,
-        observacao='REGISTRO TECNICO GERADO PARA ACAO DIRETA',
-        acao_realizada=acao_realizada,
-        responsavel=current_user.nome.upper(),
-        semana=semana,
-    )
-    db.session.add(registro)
-    return registro
 
 
 @fornecedores_bp.route('/')
@@ -161,6 +154,7 @@ def index():
         indicadores=_calcular_indicadores_fornecedores(semana, registros),
         registros=registros,
         registros_json=[item.to_dict() for item in registros],
+        acoes_json=[item.to_dict() for item in consultar_acoes('fornecedores', semana)],
         semana_atual=semana,
         permite_edicao=semana_editavel(semana, current_user.can_manage_admin()),
     )
@@ -210,7 +204,6 @@ def cadastrar():
         situacao=situacao,
         valor_negociado=valor_negociado,
         observacao=(dados.get('observacao') or '').upper().strip() or None,
-        acao_realizada=(dados.get('acao_realizada') or '').upper().strip() or None,
         responsavel=current_user.nome.upper(),
         semana=semana,
     )
@@ -238,30 +231,21 @@ def registrar_acao():
     if not acao_realizada:
         return jsonify({'erro': 'Informe a acao realizada.'}), 400
 
-    reg = None
-    if reg_id:
-        reg = db.session.get(FornecedorRegistro, int(reg_id))
-    else:
-        query = FornecedorRegistro.query.filter_by(semana=semana)
-        if current_user.tipo != 'admin':
-            query = query.filter_by(responsavel=current_user.nome.upper())
-        reg = query.order_by(FornecedorRegistro.criado_em.desc()).first()
-
-    if not reg:
-        reg = _criar_registro_acao_direta(semana, acao_realizada)
-        db.session.commit()
-        _broadcast_update_fornecedores(semana)
-        return jsonify({'sucesso': True, 'registro': reg.to_dict(), 'acao_direta': True}), 201
-    if not _pode_gerenciar_registro(reg):
+    reg = db.session.get(FornecedorRegistro, int(reg_id)) if reg_id else None
+    if reg and not _pode_gerenciar_registro(reg):
         return jsonify({'erro': 'Voce so pode editar registros criados por voce.'}), 403
-    bloqueio = _garantir_semana_editavel(reg.semana)
-    if bloqueio:
-        return bloqueio
-
-    reg.acao_realizada = acao_realizada
+    nova_acao = IndicadorAcao(
+        scope='fornecedores',
+        semana=semana,
+        descricao=acao_realizada,
+        responsavel=current_user.nome.upper(),
+        registro_id=reg.id if reg else None,
+        registro_tipo='fornecedores' if reg else None,
+    )
+    db.session.add(nova_acao)
     db.session.commit()
-    _broadcast_update_fornecedores(reg.semana)
-    return jsonify({'sucesso': True, 'registro': reg.to_dict()})
+    _broadcast_update_fornecedores(semana)
+    return jsonify({'sucesso': True, 'acao': nova_acao.to_dict()})
 
 
 @fornecedores_bp.route('/registros')
@@ -279,7 +263,27 @@ def listar_registros():
     return jsonify({
         'registros': [item.to_dict() for item in registros],
         'indicadores': _calcular_indicadores_fornecedores(semana, registros),
+        'acoes': [item.to_dict() for item in consultar_acoes('fornecedores', semana)],
     })
+
+
+@fornecedores_bp.route('/acao/<int:acao_id>', methods=['DELETE'])
+@login_required
+@requer_fornecedores_ou_admin
+def deletar_acao(acao_id):
+    acao = db.session.get(IndicadorAcao, acao_id)
+    if not acao or acao.scope != 'fornecedores':
+        return jsonify({'erro': 'Acao nao encontrada.'}), 404
+    bloqueio = _garantir_semana_editavel(acao.semana)
+    if bloqueio:
+        return bloqueio
+    if not (current_user.can_manage_admin() or acao.responsavel == current_user.nome.upper()):
+        return jsonify({'erro': 'Voce so pode excluir acoes registradas por voce.'}), 403
+    semana = acao.semana
+    db.session.delete(acao)
+    db.session.commit()
+    _broadcast_update_fornecedores(semana)
+    return jsonify({'sucesso': True})
 
 
 @fornecedores_bp.route('/registro/<int:reg_id>', methods=['PUT'])
@@ -327,7 +331,6 @@ def editar_registro(reg_id):
     reg.situacao = situacao
     reg.valor_negociado = valor_negociado
     reg.observacao = (dados.get('observacao') or '').upper().strip() or None
-    reg.acao_realizada = (dados.get('acao_realizada') or '').upper().strip() or None
 
     db.session.commit()
     _broadcast_update_fornecedores(reg.semana)

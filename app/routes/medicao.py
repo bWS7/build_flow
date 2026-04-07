@@ -5,6 +5,7 @@ from flask_login import current_user, login_required
 
 from app import db, socketio
 from app.models.empreendimento import Empreendimento
+from app.models.indicador_acao import IndicadorAcao, consultar_acoes, contar_acoes
 from app.models.medicao import MedicaoRegistro
 from app.models.meta_medicao import MetaMedicaoSemana
 from app.models.meta_configuracao import MetaConfiguracaoIndicador
@@ -43,9 +44,12 @@ def _calcular_indicadores_medicao(semana: int, registros: list[MedicaoRegistro] 
     valor_realizado = sum(float(item.valor_medicao or 0) for item in todos)
     total_medicoes = len(todos)
     total_empreendimentos = len({(item.empreendimento or '').strip() for item in todos if (item.empreendimento or '').strip()})
-    acoes_realizadas = sum(1 for item in todos if (item.acao_realizada or '').strip())
+    acoes_realizadas = contar_acoes('medicao', semana)
     percentual = (valor_realizado / valor_meta * 100) if valor_meta > 0 else 0
     percentual_acoes = (acoes_realizadas / acoes_planejadas * 100) if acoes_planejadas > 0 else 0
+    planejado_total = valor_meta + acoes_planejadas
+    realizado_total = valor_realizado + acoes_realizadas
+    percentual_planejado_realizado = (realizado_total / planejado_total * 100) if planejado_total > 0 else 0
     meta_base = MetaConfiguracaoIndicador.query.filter_by(scope='medicao').first()
 
     return {
@@ -59,6 +63,9 @@ def _calcular_indicadores_medicao(semana: int, registros: list[MedicaoRegistro] 
         'acoes_realizadas': acoes_realizadas,
         'pct_acoes': min(round(percentual_acoes, 1), 100),
         'pct_valor': min(round(percentual, 1), 100),
+        'pct_planejado_realizado': min(round(percentual_planejado_realizado, 1), 100),
+        'planejado_total': planejado_total,
+        'realizado_total': realizado_total,
     }
 
 
@@ -68,8 +75,10 @@ def resumir_medicao_trimestre() -> dict:
     valor_realizado = sum(float(item.valor_medicao or 0) for item in registros)
     valor_meta = sum(float(item.valor_meta or 0) for item in metas)
     acoes_planejadas = sum(int(item.acoes_planejadas or 0) for item in metas)
-    acoes_realizadas = sum(1 for item in registros if (item.acao_realizada or '').strip())
+    acoes_realizadas = contar_acoes('medicao', range(1, 13))
     meta_base = MetaConfiguracaoIndicador.query.filter_by(scope='medicao').first()
+    planejado_total = valor_meta + acoes_planejadas
+    realizado_total = valor_realizado + acoes_realizadas
     return {
         'valor_realizado': valor_realizado,
         'valor_meta': valor_meta,
@@ -80,6 +89,7 @@ def resumir_medicao_trimestre() -> dict:
         'acoes_planejadas': acoes_planejadas,
         'acoes_realizadas': acoes_realizadas,
         'percentual_acoes': round((acoes_realizadas / acoes_planejadas) * 100, 1) if acoes_planejadas > 0 else 0.0,
+        'percentual_planejado_realizado': round((realizado_total / planejado_total) * 100, 1) if planejado_total > 0 else 0.0,
     }
 
 
@@ -92,6 +102,7 @@ def _broadcast_update_medicao(semana: int):
     socketio.emit('medicao_atualizada', {
         'indicadores': _calcular_indicadores_medicao(semana, registros),
         'registros': [item.to_dict() for item in registros],
+        'acoes': [item.to_dict() for item in consultar_acoes('medicao', semana)],
     })
 
 
@@ -108,19 +119,6 @@ def _garantir_semana_editavel(semana: int):
 def _empreendimento_padrao() -> str:
     empreendimento = Empreendimento.query.filter_by(ativo=True).order_by(Empreendimento.nome).first()
     return empreendimento.nome if empreendimento else 'NAO INFORMADO'
-
-
-def _criar_registro_acao_direta(semana: int, acao_realizada: str) -> MedicaoRegistro:
-    registro = MedicaoRegistro(
-        empreendimento=_empreendimento_padrao(),
-        valor_medicao=0.0,
-        observacao='REGISTRO TECNICO GERADO PARA ACAO DIRETA',
-        acao_realizada=acao_realizada,
-        responsavel=current_user.nome.upper(),
-        semana=semana,
-    )
-    db.session.add(registro)
-    return registro
 
 
 @medicao_bp.route('/')
@@ -140,6 +138,7 @@ def index():
         indicadores=_calcular_indicadores_medicao(semana, registros),
         registros=registros,
         registros_json=[item.to_dict() for item in registros],
+        acoes_json=[item.to_dict() for item in consultar_acoes('medicao', semana)],
         semana_atual=semana,
         permite_edicao=semana_editavel(semana, current_user.can_manage_admin()),
     )
@@ -177,7 +176,6 @@ def cadastrar():
         empreendimento=empreendimento,
         valor_medicao=valor_medicao,
         observacao=(dados.get('observacao') or '').upper().strip() or None,
-        acao_realizada=(dados.get('acao_realizada') or '').upper().strip() or None,
         responsavel=current_user.nome.upper(),
         semana=semana,
     )
@@ -205,30 +203,21 @@ def registrar_acao():
     if not acao_realizada:
         return jsonify({'erro': 'Informe a acao realizada.'}), 400
 
-    reg = None
-    if reg_id:
-        reg = db.session.get(MedicaoRegistro, int(reg_id))
-    else:
-        query = MedicaoRegistro.query.filter_by(semana=semana)
-        if current_user.tipo != 'admin':
-            query = query.filter_by(responsavel=current_user.nome.upper())
-        reg = query.order_by(MedicaoRegistro.criado_em.desc()).first()
-
-    if not reg:
-        reg = _criar_registro_acao_direta(semana, acao_realizada)
-        db.session.commit()
-        _broadcast_update_medicao(semana)
-        return jsonify({'sucesso': True, 'registro': reg.to_dict(), 'acao_direta': True}), 201
-    if not _pode_gerenciar_registro(reg):
+    reg = db.session.get(MedicaoRegistro, int(reg_id)) if reg_id else None
+    if reg and not _pode_gerenciar_registro(reg):
         return jsonify({'erro': 'Voce so pode editar registros criados por voce.'}), 403
-    bloqueio = _garantir_semana_editavel(reg.semana)
-    if bloqueio:
-        return bloqueio
-
-    reg.acao_realizada = acao_realizada
+    nova_acao = IndicadorAcao(
+        scope='medicao',
+        semana=semana,
+        descricao=acao_realizada,
+        responsavel=current_user.nome.upper(),
+        registro_id=reg.id if reg else None,
+        registro_tipo='medicao' if reg else None,
+    )
+    db.session.add(nova_acao)
     db.session.commit()
-    _broadcast_update_medicao(reg.semana)
-    return jsonify({'sucesso': True, 'registro': reg.to_dict()})
+    _broadcast_update_medicao(semana)
+    return jsonify({'sucesso': True, 'acao': nova_acao.to_dict()})
 
 
 @medicao_bp.route('/registros')
@@ -246,7 +235,27 @@ def listar_registros():
     return jsonify({
         'registros': [item.to_dict() for item in registros],
         'indicadores': _calcular_indicadores_medicao(semana, registros),
+        'acoes': [item.to_dict() for item in consultar_acoes('medicao', semana)],
     })
+
+
+@medicao_bp.route('/acao/<int:acao_id>', methods=['DELETE'])
+@login_required
+@requer_medicao_ou_admin
+def deletar_acao(acao_id):
+    acao = db.session.get(IndicadorAcao, acao_id)
+    if not acao or acao.scope != 'medicao':
+        return jsonify({'erro': 'Acao nao encontrada.'}), 404
+    bloqueio = _garantir_semana_editavel(acao.semana)
+    if bloqueio:
+        return bloqueio
+    if not (current_user.can_manage_admin() or acao.responsavel == current_user.nome.upper()):
+        return jsonify({'erro': 'Voce so pode excluir acoes registradas por voce.'}), 403
+    semana = acao.semana
+    db.session.delete(acao)
+    db.session.commit()
+    _broadcast_update_medicao(semana)
+    return jsonify({'sucesso': True})
 
 
 @medicao_bp.route('/registro/<int:reg_id>', methods=['PUT'])
@@ -282,7 +291,6 @@ def editar_registro(reg_id):
     reg.empreendimento = empreendimento
     reg.valor_medicao = valor_medicao
     reg.observacao = (dados.get('observacao') or '').upper().strip() or None
-    reg.acao_realizada = (dados.get('acao_realizada') or '').upper().strip() or None
 
     db.session.commit()
     _broadcast_update_medicao(reg.semana)
