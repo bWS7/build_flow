@@ -2022,7 +2022,7 @@ def medicao_painel():
 
 @admin_bp.route('/master')
 @login_required
-@requer_admin
+@requer_painel('master')
 def master_painel():
     view = request.args.get('view', 'trimestral')
     period = request.args.get('period')
@@ -2031,7 +2031,7 @@ def master_painel():
 
 @admin_bp.route('/master/data')
 @login_required
-@requer_admin
+@requer_painel('master')
 def master_painel_data():
     view = request.args.get('view', 'trimestral')
     period = request.args.get('period')
@@ -2040,7 +2040,7 @@ def master_painel_data():
 
 @admin_bp.route('/master/ai-chat', methods=['POST'])
 @login_required
-@requer_admin
+@requer_painel('master')
 def master_ai_chat():
     if not analytics_ai_enabled():
         return jsonify({
