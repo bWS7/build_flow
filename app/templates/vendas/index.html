@@ -203,8 +203,8 @@
       </div>
       <div class="kpi-card kpi-card--highlight">
         <div class="kpi-card__body">
-          <span class="kpi-card__label">Valor Total de Vendas Realizadas</span>
-          <span class="kpi-card__value" id="valor-realizado">R$ {{ financeiro.valor_realizado | brl_int }}</span>
+          <span class="kpi-card__label">Meta Realizada</span>
+          <span class="kpi-card__value" id="atingimento-meta">{{ financeiro.percentual_atingimento }}%</span>
         </div>
         <div class="kpi-card__icon kpi-card__icon--done">
           <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
@@ -212,8 +212,8 @@
       </div>
       <div class="kpi-card">
         <div class="kpi-card__body">
-          <span class="kpi-card__label">Atingimento</span>
-          <span class="kpi-card__value" id="atingimento-meta">{{ financeiro.percentual_atingimento }}%</span>
+          <span class="kpi-card__label">Unidades Vendidas</span>
+          <span class="kpi-card__value" id="total-vendidas">{{ financeiro.total_vendidas }}</span>
         </div>
         <div class="kpi-card__icon kpi-card__icon--money">
           <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
@@ -221,11 +221,20 @@
       </div>
       <div class="kpi-card">
         <div class="kpi-card__body">
-          <span class="kpi-card__label">Reservas Vendidas</span>
-          <span class="kpi-card__value" id="total-vendidas">{{ financeiro.total_vendidas }}</span>
+          <span class="kpi-card__label">Ações Planejadas</span>
+          <span class="kpi-card__value" id="meta-acoes">{{ financeiro.meta_acoes }}</span>
         </div>
         <div class="kpi-card__icon kpi-card__icon--plan">
           <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+        </div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-card__body">
+          <span class="kpi-card__label">Ações Realizadas</span>
+          <span class="kpi-card__value" id="acoes-realizadas">{{ financeiro.acoes_realizadas }}</span>
+        </div>
+        <div class="kpi-card__icon kpi-card__icon--target">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14"/><path d="M12 5v14"/><circle cx="12" cy="12" r="9"/></svg>
         </div>
       </div>
     </section>
@@ -233,31 +242,17 @@
     <section class="progress-section">
       <div class="progress-block">
         <div class="progress-block__header">
-          <span class="progress-block__label">Progresso</span>
+          <span class="progress-block__label">Progresso da Meta de Vendas</span>
           <span class="progress-block__pct" id="pct-valor">{{ financeiro.percentual_atingimento }}%</span>
         </div>
         <div class="progress-track">
           <div class="progress-fill progress-fill--acoes" id="bar-valor" style="width:{{ financeiro.percentual_atingimento if financeiro.percentual_atingimento <= 100 else 100 }}%"></div>
         </div>
         <div class="progress-block__detail" id="txt-valor">{{ financeiro.total_vendidas }} de {{ financeiro.meta_quantidade }} unidades vendidas</div>
-        <div class="progress-insights">
-          <article class="progress-insight">
-            <span class="progress-insight__label">Unidades restantes</span>
-            <strong class="progress-insight__value" id="insight-restante">{{ (financeiro.meta_quantidade - financeiro.total_vendidas) if financeiro.meta_quantidade > financeiro.total_vendidas else 0 }}</strong>
-          </article>
-          <article class="progress-insight">
-            <span class="progress-insight__label">Ritmo atual</span>
-            <strong class="progress-insight__value" id="insight-ritmo">{% if financeiro.meta_quantidade <= 0 %}Meta pendente{% elif financeiro.total_vendidas < financeiro.meta_quantidade %}Meta em andamento{% else %}Meta atingida{% endif %}</strong>
-          </article>
-          <article class="progress-insight">
-            <span class="progress-insight__label">Ticket médio vendido</span>
-            <strong class="progress-insight__value" id="insight-ticket">{% if financeiro.total_vendidas %}R$ {{ (financeiro.valor_realizado / financeiro.total_vendidas) | brl_int }}{% else %}R$ 0{% endif %}</strong>
-          </article>
-        </div>
       </div>
       <div class="progress-block progress-block--funnel">
         <div class="progress-block__header">
-          <span class="progress-block__label">Progresso das Ações</span>
+          <span class="progress-block__label">Ações Realizadas</span>
           <span class="progress-block__pct" id="pct-acoes">{{ financeiro.percentual_acoes }}%</span>
         </div>
         <div class="progress-track">
@@ -265,20 +260,6 @@
           <div class="progress-fill progress-fill--acoes" id="bar-acoes" style="width:{{ financeiro.percentual_acoes if financeiro.percentual_acoes <= 100 else 100 }}%"></div>
         </div>
         <div class="progress-block__detail" id="txt-acoes">{{ financeiro.acoes_realizadas }} de {{ financeiro.meta_acoes }} ações realizadas</div>
-        <div class="progress-insights">
-          <article class="progress-insight">
-            <span class="progress-insight__label">Meta base</span>
-            <strong class="progress-insight__value" id="insight-meta-base">{{ financeiro.meta_base_total | round(0) | int }}</strong>
-          </article>
-          <article class="progress-insight">
-            <span class="progress-insight__label">Ações restantes</span>
-            <strong class="progress-insight__value" id="insight-acoes-restantes">{{ (financeiro.meta_acoes - financeiro.acoes_realizadas) if financeiro.meta_acoes > financeiro.acoes_realizadas else 0 }}</strong>
-          </article>
-          <article class="progress-insight">
-            <span class="progress-insight__label">Esforço</span>
-            <strong class="progress-insight__value" id="insight-acoes-status">{% if financeiro.meta_acoes <= 0 %}Meta pendente{% elif financeiro.acoes_realizadas < financeiro.meta_acoes %}Em andamento{% else %}Meta atingida{% endif %}</strong>
-          </article>
-        </div>
       </div>
     </section>
 
@@ -306,13 +287,34 @@
               <div class="field"><label class="field__label">Imobiliária</label><input class="field__input" name="imobiliaria" type="text" /></div>
               <div class="field"><label class="field__label">Valor Presente</label><input class="field__input" name="valor_presente" type="number" min="0" step="0.01" /></div>
               <div class="field"><label class="field__label">Tipo de Venda *</label><select class="field__input" name="tipo_venda" required>{% for tipo in tipos_venda %}<option value="{{ tipo }}">{{ tipo }}</option>{% endfor %}</select></div>
-              <div class="field field--full"><label class="field__label">Ação realizada</label><textarea class="field__input field__textarea" name="acao_realizada" rows="2" placeholder="Descreva a ação realizada..."></textarea></div>
             </div>
             <div class="form-actions">
               <button type="reset" class="btn btn--ghost">Limpar</button>
               <button type="submit" class="btn btn--primary" id="btn-salvar-venda">Salvar Venda</button>
             </div>
           </form>
+
+          <section class="bulk-card">
+            <div class="bulk-card__header">
+              <h4>Ação Realizada</h4>
+              <p>Registre uma ação comercial em uma venda já cadastrada.</p>
+            </div>
+            <div class="field">
+              <label class="field__label">Venda *</label>
+              <select id="acao-venda-id" class="field__input">
+                <option value="">Selecione...</option>
+              </select>
+            </div>
+            <div class="field">
+              <label class="field__label">Ação realizada *</label>
+              <textarea id="acao-descricao" class="field__input field__textarea bulk-card__textarea" rows="6" placeholder="Descreva a ação realizada..."></textarea>
+            </div>
+            <div class="bulk-card__actions">
+              <button class="btn btn--ghost" type="button" id="btn-limpar-acao">Limpar</button>
+              <button class="btn btn--primary" type="button" id="btn-salvar-acao">Salvar ação</button>
+            </div>
+            <div class="bulk-card__feedback" id="acao-feedback">Selecione uma venda do período para registrar a ação.</div>
+          </section>
 
           <section class="bulk-card">
             <div class="bulk-card__header">

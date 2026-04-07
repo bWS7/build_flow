@@ -1553,6 +1553,18 @@ def _sumario_valor_por_semanas_v2(modelo_meta, modelo_registro, campo_meta: str,
     return realizado, meta
 
 
+def _sumario_acoes_por_semanas_v2(modelo_meta, modelo_registro, semanas: list[int]) -> dict:
+    metas = modelo_meta.query.filter(modelo_meta.semana.in_(semanas)).all()
+    registros = modelo_registro.query.filter(modelo_registro.semana.in_(semanas)).all()
+    meta = sum(int(getattr(item, 'acoes_planejadas', 0) or 0) for item in metas)
+    realizado = sum(1 for item in registros if (getattr(item, 'acao_realizada', '') or '').strip())
+    return {
+        'acoes_planejadas': float(meta),
+        'acoes_realizadas': float(realizado),
+        'percentual_acoes': float(_safe_pct(realizado, meta)),
+    }
+
+
 def _resumir_vendas_master_v2(periodo: dict) -> dict:
     if periodo['view'] == 'trimestral':
         financeiro = montar_contexto_template_vendas('resumo_trimestral', incluir_resumo=True)['financeiro']
@@ -1655,6 +1667,10 @@ def _montar_master_painel_periodizado(view: str | None = None, period: str | Non
         semanas,
         filtro_valor=lambda item: (item.situacao or '').upper().strip() in {'SIM (INTEGRAL)', 'SIM (PARCIAL)'},
     )
+    resumo_bancos = _sumario_acoes_por_semanas_v2(MetaFinanceiroSemana, FinanceiroBanco, semanas)
+    resumo_giro = _sumario_acoes_por_semanas_v2(MetaGiroSemana, GiroCaptacao, semanas)
+    resumo_medicao = _sumario_acoes_por_semanas_v2(MetaMedicaoSemana, MedicaoRegistro, semanas)
+    resumo_fornecedores = _sumario_acoes_por_semanas_v2(MetaFornecedorSemana, FornecedorRegistro, semanas)
 
     agora = datetime.now().replace(microsecond=0)
     inicio_contagem = periodo['started_at']
@@ -1708,7 +1724,6 @@ def _montar_master_painel_periodizado(view: str | None = None, period: str | Non
 
     return {
         'cards_master': cards_ordenados,
-        'cards_master_acoes': cards_acoes_ordenados,
         'cards_master_acoes': cards_acoes_ordenados,
         'objetivo_geral': objetivo_geral,
         'objetivo_realizado_total': total_realizado,

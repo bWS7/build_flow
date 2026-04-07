@@ -177,66 +177,49 @@ function renderizarFunil(funil) {
   `).join('');
 }
 
-function atualizarInsights(financeiro) {
-  const meta = Number(financeiro.meta_quantidade || 0);
-  const vendidas = Number(financeiro.total_vendidas || 0);
-  const valorRealizado = Number(financeiro.valor_realizado || 0);
-  const restante = Math.max(meta - vendidas, 0);
-  const ticketMedio = vendidas > 0 ? valorRealizado / vendidas : 0;
-  const ritmo = meta <= 0
-    ? 'Meta pendente'
-    : vendidas >= meta
-      ? 'Meta atingida'
-      : vendidas === 0
-        ? 'Sem vendas realizadas'
-        : 'Meta em andamento';
-
-  const restanteEl = document.getElementById('insight-restante');
-  const ritmoEl = document.getElementById('insight-ritmo');
-  const ticketEl = document.getElementById('insight-ticket');
-
-  if (restanteEl) restanteEl.textContent = String(restante);
-  if (ritmoEl) ritmoEl.textContent = ritmo;
-  if (ticketEl) ticketEl.textContent = fmtMoedaInteira(ticketMedio);
-}
-
 function atualizarFinanceiro(financeiro) {
   const metaEl = document.getElementById('meta-quantidade');
-  const valorEl = document.getElementById('valor-realizado');
   const atingimentoEl = document.getElementById('atingimento-meta');
   const totalVendidasEl = document.getElementById('total-vendidas');
+  const metaAcoesEl = document.getElementById('meta-acoes');
+  const acoesRealizadasEl = document.getElementById('acoes-realizadas');
   const pctEl = document.getElementById('pct-valor');
   const txtEl = document.getElementById('txt-valor');
   const barEl = document.getElementById('bar-valor');
   const pctAcoesEl = document.getElementById('pct-acoes');
   const txtAcoesEl = document.getElementById('txt-acoes');
   const barAcoesEl = document.getElementById('bar-acoes');
-  const metaBaseEl = document.getElementById('insight-meta-base');
-  const restanteAcoesEl = document.getElementById('insight-acoes-restantes');
-  const statusAcoesEl = document.getElementById('insight-acoes-status');
-
   if (metaEl) metaEl.textContent = String(financeiro.meta_quantidade || 0);
-  if (valorEl) valorEl.textContent = fmtMoedaInteira(financeiro.valor_realizado || 0);
   if (atingimentoEl) atingimentoEl.textContent = `${financeiro.percentual_atingimento || 0}%`;
   if (totalVendidasEl) totalVendidasEl.textContent = String(financeiro.total_vendidas || 0);
+  if (metaAcoesEl) metaAcoesEl.textContent = String(financeiro.meta_acoes || 0);
+  if (acoesRealizadasEl) acoesRealizadasEl.textContent = String(financeiro.acoes_realizadas || 0);
   if (pctEl) pctEl.textContent = `${financeiro.percentual_atingimento || 0}%`;
   if (txtEl) txtEl.textContent = `${financeiro.total_vendidas || 0} de ${financeiro.meta_quantidade || 0} unidades vendidas`;
   if (barEl) barEl.style.width = `${Math.min(financeiro.percentual_atingimento || 0, 100)}%`;
   if (pctAcoesEl) pctAcoesEl.textContent = `${financeiro.percentual_acoes || 0}%`;
   if (txtAcoesEl) txtAcoesEl.textContent = `${financeiro.acoes_realizadas || 0} de ${financeiro.meta_acoes || 0} ações realizadas`;
   if (barAcoesEl) barAcoesEl.style.width = `${Math.min(financeiro.percentual_acoes || 0, 100)}%`;
-  if (metaBaseEl) metaBaseEl.textContent = String(Math.round(financeiro.meta_base_total || 0));
-  if (restanteAcoesEl) restanteAcoesEl.textContent = String(Math.max((financeiro.meta_acoes || 0) - (financeiro.acoes_realizadas || 0), 0));
-  if (statusAcoesEl) {
-    statusAcoesEl.textContent = (financeiro.meta_acoes || 0) <= 0
-      ? 'Meta pendente'
-      : (financeiro.acoes_realizadas || 0) >= (financeiro.meta_acoes || 0)
-        ? 'Meta atingida'
-        : 'Em andamento';
-  }
-
-  atualizarInsights(financeiro);
   renderizarFunil(financeiro.funil || []);
+}
+
+function renderizarOpcoesAcao() {
+  const select = document.getElementById('acao-venda-id');
+  const feedback = document.getElementById('acao-feedback');
+  if (!select) return;
+
+  const registros = [...vendasCache]
+    .sort((a, b) => String(a.reserva || '').localeCompare(String(b.reserva || ''), 'pt-BR'));
+
+  select.innerHTML = '<option value="">Selecione...</option>' + registros.map((item) => (
+    `<option value="${item.id}">${item.reserva} - ${item.cliente}</option>`
+  )).join('');
+
+  if (feedback) {
+    feedback.textContent = registros.length
+      ? 'Selecione uma venda do período para registrar a ação.'
+      : 'Cadastre uma venda primeiro para registrar ações.';
+  }
 }
 
 function badgeClass(situacao) {
@@ -298,9 +281,15 @@ function calcularFinanceiroFiltrado(registros) {
 
   return {
     meta_quantidade: INITIAL_FINANCEIRO.meta_quantidade || 0,
+    meta_acoes: INITIAL_FINANCEIRO.meta_acoes || 0,
+    meta_base_total: INITIAL_FINANCEIRO.meta_base_total || 0,
     valor_realizado: valorRealizado,
     percentual_atingimento: (INITIAL_FINANCEIRO.meta_quantidade || 0) > 0
       ? Number(((totalVendidas / INITIAL_FINANCEIRO.meta_quantidade) * 100).toFixed(1))
+      : 0,
+    acoes_realizadas: registros.filter((item) => String(item.acao_realizada || '').trim()).length,
+    percentual_acoes: (INITIAL_FINANCEIRO.meta_acoes || 0) > 0
+      ? Number(((registros.filter((item) => String(item.acao_realizada || '').trim()).length / INITIAL_FINANCEIRO.meta_acoes) * 100).toFixed(1))
       : 0,
     total_vendidas: totalVendidas,
     total_registros: total,
@@ -500,8 +489,51 @@ async function recarregarDados() {
     vendasCache = json.registros || [];
     Object.assign(INITIAL_FINANCEIRO, json.financeiro || {});
     aplicarFiltros();
+    renderizarOpcoesAcao();
   } catch {
     showToast('Não foi possível atualizar os dados.', 'error');
+  }
+}
+
+async function salvarAcaoRealizada() {
+  const vendaIdEl = document.getElementById('acao-venda-id');
+  const descricaoEl = document.getElementById('acao-descricao');
+  const feedbackEl = document.getElementById('acao-feedback');
+  const btnSalvarEl = document.getElementById('btn-salvar-acao');
+  if (!vendaIdEl || !descricaoEl || !btnSalvarEl) return;
+
+  const vendaId = vendaIdEl.value.trim();
+  const acaoRealizada = descricaoEl.value.trim();
+  if (!vendaId) {
+    showToast('Selecione uma venda para registrar a ação.', 'error');
+    return;
+  }
+  if (!acaoRealizada) {
+    showToast('Descreva a ação realizada.', 'error');
+    return;
+  }
+
+  btnSalvarEl.disabled = true;
+  try {
+    const resp = await fetch('/vendas/acao', {
+      method: 'POST',
+      headers: csrfHeaders({ 'Content-Type': 'application/json' }),
+      body: JSON.stringify({ venda_id: vendaId, acao_realizada: acaoRealizada }),
+    });
+    const json = await resp.json();
+    if (resp.ok && json.sucesso) {
+      descricaoEl.value = '';
+      if (feedbackEl) feedbackEl.textContent = 'Ação registrada com sucesso.';
+      showToast('Ação registrada com sucesso!');
+      recarregarDados();
+    } else {
+      showToast(json.erro || 'Erro ao salvar ação.', 'error');
+      if (feedbackEl) feedbackEl.textContent = json.erro || 'Erro ao salvar ação.';
+    }
+  } catch {
+    showToast('Falha de conexão.', 'error');
+  } finally {
+    btnSalvarEl.disabled = false;
   }
 }
 
@@ -607,6 +639,8 @@ document.addEventListener('DOMContentLoaded', () => {
   const formCadastro = document.getElementById('form-cadastro-venda');
   const previewBulkEl = document.getElementById('btn-preview-bulk');
   const saveBulkEl = document.getElementById('btn-save-bulk');
+  const saveAcaoEl = document.getElementById('btn-salvar-acao');
+  const limparAcaoEl = document.getElementById('btn-limpar-acao');
   const toggleBtn = document.getElementById('toggle-form');
   const formWrapper = document.getElementById('form-wrapper');
 
@@ -634,6 +668,17 @@ document.addEventListener('DOMContentLoaded', () => {
   if (deleteAllEl) deleteAllEl.addEventListener('click', openDeleteAllModal);
   if (confirmarDeleteEl) confirmarDeleteEl.addEventListener('click', confirmarExclusaoVenda);
   if (chartEl) chartEl.addEventListener('click', handleFunilChartClick);
+  if (saveAcaoEl) saveAcaoEl.addEventListener('click', salvarAcaoRealizada);
+  if (limparAcaoEl) {
+    limparAcaoEl.addEventListener('click', () => {
+      const descricaoEl = document.getElementById('acao-descricao');
+      const vendaIdEl = document.getElementById('acao-venda-id');
+      const feedbackEl = document.getElementById('acao-feedback');
+      if (descricaoEl) descricaoEl.value = '';
+      if (vendaIdEl) vendaIdEl.value = '';
+      if (feedbackEl) feedbackEl.textContent = 'Selecione uma venda do período para registrar a ação.';
+    });
+  }
 
   if (toggleBtn && formWrapper) {
     let formVisible = false;
@@ -743,5 +788,6 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   aplicarFiltros();
+  renderizarOpcoesAcao();
   conectarSocket();
 });

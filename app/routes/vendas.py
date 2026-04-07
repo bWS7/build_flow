@@ -345,6 +345,34 @@ def _broadcast_update(mes_slug: str):
     })
 
 
+@vendas_bp.route('/acao', methods=['POST'])
+@login_required
+@requer_vendas
+def registrar_acao():
+    dados = request.get_json(silent=True) or request.form.to_dict()
+    try:
+        venda_id = int(dados.get('venda_id', 0) or 0)
+    except (TypeError, ValueError):
+        venda_id = 0
+    if venda_id <= 0:
+        return jsonify({'erro': 'Selecione uma venda para registrar a ação.'}), 400
+
+    acao_realizada = _normalizar_texto(dados.get('acao_realizada'))
+    if not acao_realizada:
+        return jsonify({'erro': 'Descreva a ação realizada.'}), 400
+
+    venda = db.session.get(Venda, venda_id)
+    if not venda:
+        return jsonify({'erro': 'Venda não encontrada.'}), 404
+
+    venda.acao_realizada = acao_realizada
+    db.session.commit()
+
+    mes_slug = _mes_slug_por_numero(venda.data_reserva.month)
+    _broadcast_update(mes_slug)
+    return jsonify({'sucesso': True, 'registro': venda.to_dict()})
+
+
 def _validar_payload_venda(dados: dict) -> tuple[dict, str | None]:
     registro = {
         'reserva': _normalizar_texto(dados.get('reserva')),
