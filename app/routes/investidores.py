@@ -318,6 +318,33 @@ def _broadcast_update(mes_slug: str):
     })
 
 
+@investidores_bp.route('/acao', methods=['POST'])
+@login_required
+@requer_investidores
+def registrar_acao():
+    dados = request.get_json(silent=True) or request.form.to_dict()
+    try:
+        investidor_id = int(dados.get('investidor_id', 0) or 0)
+    except (TypeError, ValueError):
+        investidor_id = 0
+    if investidor_id <= 0:
+        return jsonify({'erro': 'Selecione um investidor para registrar a acao.'}), 400
+
+    acao_realizada = _normalizar_texto(dados.get('acao_realizada'))
+    if not acao_realizada:
+        return jsonify({'erro': 'Descreva a acao realizada.'}), 400
+
+    investidor = db.session.get(Investidor, investidor_id)
+    if not investidor:
+        return jsonify({'erro': 'Investidor nao encontrado.'}), 404
+
+    investidor.acao_realizada = acao_realizada
+    db.session.commit()
+
+    _broadcast_update(PERIODO_INVESTIDORES[0])
+    return jsonify({'sucesso': True, 'registro': investidor.to_dict()})
+
+
 def _validar_payload_investidor(dados: dict) -> tuple[dict, str | None]:
     registro = {
         'reserva': _normalizar_texto(dados.get('reserva')),

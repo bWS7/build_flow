@@ -191,76 +191,88 @@
       {% endif %}
     </header>
 
-    <section class="indicators">
-      <div class="kpi-card">
+
+    <section class="summary-shell sales-summary-shell">
+      <div class="kpi-card summary-kpi">
         <div class="kpi-card__body">
-          <span class="kpi-card__label">{% if resumo_trimestral %}Meta do Trimestre{% else %}Meta da Semana{% endif %}</span>
-          <span class="kpi-card__value" id="meta-quantidade">{{ financeiro.meta_quantidade }}</span>
-        </div>
-        <div class="kpi-card__icon kpi-card__icon--target">
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
-        </div>
-      </div>
-      <div class="kpi-card kpi-card--highlight">
-        <div class="kpi-card__body">
-          <span class="kpi-card__label">Meta Realizada</span>
-          <span class="kpi-card__value" id="atingimento-meta">{{ financeiro.percentual_atingimento }}%</span>
-        </div>
-        <div class="kpi-card__icon kpi-card__icon--done">
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
-        </div>
-      </div>
-      <div class="kpi-card">
-        <div class="kpi-card__body">
-          <span class="kpi-card__label">Unidades Vendidas</span>
-          <span class="kpi-card__value" id="total-vendidas">{{ financeiro.total_vendidas }}</span>
-        </div>
-        <div class="kpi-card__icon kpi-card__icon--money">
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
-        </div>
-      </div>
-      <div class="kpi-card">
-        <div class="kpi-card__body">
-          <span class="kpi-card__label">Ações Planejadas</span>
-          <span class="kpi-card__value" id="meta-acoes">{{ financeiro.meta_acoes }}</span>
+          <span class="kpi-card__label">META BASE (TOTAL)</span>
+          <span class="kpi-card__value" id="meta-base-total">{{ financeiro.meta_base_total }}</span>
         </div>
         <div class="kpi-card__icon kpi-card__icon--plan">
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>
         </div>
       </div>
-      <div class="kpi-card">
-        <div class="kpi-card__body">
-          <span class="kpi-card__label">Ações Realizadas</span>
-          <span class="kpi-card__value" id="acoes-realizadas">{{ financeiro.acoes_realizadas }}</span>
+      <div class="progress-block summary-banner">
+        <div class="progress-block__header">
+          <span class="progress-block__label">progresso acoes e vendas realizadas x acoes e vendas planejadas</span>
         </div>
-        <div class="kpi-card__icon kpi-card__icon--target">
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14"/><path d="M12 5v14"/><circle cx="12" cy="12" r="9"/></svg>
+        <div class="progress-track">
+          <div class="progress-fill progress-fill--acoes" id="bar-resumo-geral" style="width:{{ financeiro.percentual_atingimento if financeiro.percentual_atingimento <= 100 else 100 }}%"></div>
+        </div>
+        <div class="progress-block__detail" id="txt-resumo-geral">{{ financeiro.total_vendidas }} vendas realizadas e {{ financeiro.acoes_realizadas }} acoes realizadas no periodo.</div>
+      </div>
+    </section>
+
+    <section class="indicators sales-kpi-grid">
+      <div class="kpi-card kpi-card--compact">
+        <div class="kpi-card__body">
+          <span class="kpi-card__label">META VENDAS (SEMANA)</span>
+          <span class="kpi-card__value" id="meta-quantidade">{{ financeiro.meta_quantidade }}</span>
+        </div>
+      </div>
+      <div class="kpi-card kpi-card--compact">
+        <div class="kpi-card__body">
+          <span class="kpi-card__label">REALIZADAS (SEMANA)</span>
+          <span class="kpi-card__value" id="total-vendidas">{{ financeiro.total_vendidas }}</span>
+        </div>
+      </div>
+      <div class="kpi-card kpi-card--compact">
+        <div class="kpi-card__body">
+          <span class="kpi-card__label">ACOES PLANEJADAS (SEMANA)</span>
+          <span class="kpi-card__value" id="meta-acoes">{{ financeiro.meta_acoes }}</span>
+        </div>
+      </div>
+      <div class="kpi-card kpi-card--compact">
+        <div class="kpi-card__body">
+          <span class="kpi-card__label">ACOES REALIZADAS (SEMANA)</span>
+          <span class="kpi-card__value" id="acoes-realizadas">{{ financeiro.acoes_realizadas }}</span>
         </div>
       </div>
     </section>
 
-    <section class="progress-section">
-      <div class="progress-block">
-        <div class="progress-block__header">
-          <span class="progress-block__label">Progresso da Meta de Vendas</span>
-          <span class="progress-block__pct" id="pct-valor">{{ financeiro.percentual_atingimento }}%</span>
+    <section class="sales-overview-grid">
+      <div class="sales-overview-grid__main">
+        <div class="progress-block">
+          <div class="progress-block__header">
+            <span class="progress-block__label">Progresso Meta (semana)</span>
+            <span class="progress-block__pct" id="pct-valor">{{ financeiro.percentual_atingimento }}%</span>
+          </div>
+          <div class="progress-track">
+            <div class="progress-fill progress-fill--acoes" id="bar-valor" style="width:{{ financeiro.percentual_atingimento if financeiro.percentual_atingimento <= 100 else 100 }}%"></div>
+          </div>
+          <div class="progress-block__detail" id="txt-valor">{{ financeiro.total_vendidas }} de {{ financeiro.meta_quantidade }} unidades vendidas</div>
         </div>
-        <div class="progress-track">
-          <div class="progress-fill progress-fill--acoes" id="bar-valor" style="width:{{ financeiro.percentual_atingimento if financeiro.percentual_atingimento <= 100 else 100 }}%"></div>
+        <div class="progress-block">
+          <div class="progress-block__header">
+            <span class="progress-block__label">Progresso acoes (semana)</span>
+            <span class="progress-block__pct" id="pct-acoes">{{ financeiro.percentual_acoes }}%</span>
+          </div>
+          <div class="progress-track">
+            <div class="progress-fill progress-fill--acoes" id="bar-acoes" style="width:{{ financeiro.percentual_acoes if financeiro.percentual_acoes <= 100 else 100 }}%"></div>
+          </div>
+          <div class="progress-block__detail" id="txt-acoes">{{ financeiro.acoes_realizadas }} de {{ financeiro.meta_acoes }} acoes realizadas</div>
         </div>
-        <div class="progress-block__detail" id="txt-valor">{{ financeiro.total_vendidas }} de {{ financeiro.meta_quantidade }} unidades vendidas</div>
       </div>
-      <div class="progress-block progress-block--funnel">
-        <div class="progress-block__header">
-          <span class="progress-block__label">Ações Realizadas</span>
-          <span class="progress-block__pct" id="pct-acoes">{{ financeiro.percentual_acoes }}%</span>
-        </div>
-        <div class="progress-track">
-          <span id="funil-total" hidden></span>
-          <div class="progress-fill progress-fill--acoes" id="bar-acoes" style="width:{{ financeiro.percentual_acoes if financeiro.percentual_acoes <= 100 else 100 }}%"></div>
-        </div>
-        <div class="progress-block__detail" id="txt-acoes">{{ financeiro.acoes_realizadas }} de {{ financeiro.meta_acoes }} ações realizadas</div>
-      </div>
+      <aside class="sales-funnel-panel">
+        <button class="sales-funnel__chart" id="funil-chart" type="button" aria-label="Filtrar por situacao">
+          <span class="sales-funnel__center">
+            <strong>0</strong>
+            <small>reservas</small>
+          </span>
+        </button>
+        <span id="funil-total" hidden></span>
+        <div class="sales-funnel__legend" id="funil-legenda"></div>
+      </aside>
     </section>
 
     {% if not resumo_trimestral and not painel_admin_vendas %}
@@ -268,9 +280,9 @@
       <div class="section-header">
         <h3 class="section-header__title">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
-          Nova Venda - {{ period_label }}
+          Novo registro vendas - {{ period_label }}
         </h3>
-        <button class="btn btn--sm btn--ghost" id="toggle-form">▼ Expandir</button>
+        <button class="btn btn--sm btn--ghost" id="toggle-form">+ Expandir</button>
       </div>
       <div id="form-wrapper" style="display:none">
         <div class="sales-entry-grid">
@@ -278,13 +290,13 @@
             <div class="form-grid">
               <div class="field"><label class="field__label">Reserva *</label><input class="field__input" name="reserva" type="text" required /></div>
               <div class="field"><label class="field__label">Data *</label><input class="field__input" name="data" type="date" required /></div>
-              <div class="field"><label class="field__label">Situação *</label><select class="field__input" name="situacao" required>{% for sit in situacoes %}<option value="{{ sit }}">{{ sit }}</option>{% endfor %}</select></div>
+              <div class="field"><label class="field__label">Situacao *</label><select class="field__input" name="situacao" required>{% for sit in situacoes %}<option value="{{ sit }}">{{ sit }}</option>{% endfor %}</select></div>
               <div class="field"><label class="field__label">Empreendimento *</label><select class="field__input" name="empreendimento" required><option value="">Selecione...</option>{% for emp in empreendimentos %}<option value="{{ emp.nome }}">{{ emp.nome }}</option>{% endfor %}</select></div>
               <div class="field"><label class="field__label">Bloco</label><input class="field__input" name="bloco" type="text" /></div>
               <div class="field"><label class="field__label">Unidade</label><input class="field__input" name="unidade" type="text" /></div>
               <div class="field"><label class="field__label">Cliente *</label><input class="field__input" name="cliente" type="text" required /></div>
               <div class="field"><label class="field__label">Corretor</label><input class="field__input" name="corretor" type="text" /></div>
-              <div class="field"><label class="field__label">Imobiliária</label><input class="field__input" name="imobiliaria" type="text" /></div>
+              <div class="field"><label class="field__label">Imobiliaria</label><input class="field__input" name="imobiliaria" type="text" /></div>
               <div class="field"><label class="field__label">Valor Presente</label><input class="field__input" name="valor_presente" type="number" min="0" step="0.01" /></div>
               <div class="field"><label class="field__label">Tipo de Venda *</label><select class="field__input" name="tipo_venda" required>{% for tipo in tipos_venda %}<option value="{{ tipo }}">{{ tipo }}</option>{% endfor %}</select></div>
             </div>
@@ -296,43 +308,51 @@
 
           <section class="bulk-card">
             <div class="bulk-card__header">
-              <h4>Ação Realizada</h4>
-              <p>Registre uma ação comercial em uma venda já cadastrada.</p>
+              <h4>Entrada em Massa</h4>
+              <p>Cole linhas do Excel/Sheets na ordem da tabela.</p>
             </div>
+            <textarea id="bulk-paste" class="field__input field__textarea bulk-card__textarea" rows="9" placeholder="Reserva[TAB]Data[TAB]Situacao[TAB]Empreendimento[TAB]Bloco[TAB]Unidade[TAB]Cliente[TAB]Corretor[TAB]Imobiliaria[TAB]Valor Presente[TAB]Tipo de Venda"></textarea>
+            <div class="bulk-card__actions">
+              <button class="btn btn--ghost" type="button" id="btn-preview-bulk">Validar linhas</button>
+              <button class="btn btn--primary" type="button" id="btn-save-bulk">Salvar em massa</button>
+            </div>
+            <div class="bulk-card__feedback" id="bulk-feedback">Cole os dados para importar multiplas reservas de uma vez.</div>
+          </section>
+        </div>
+      </div>
+    </section>
+
+    <section class="form-section">
+      <div class="section-header">
+        <h3 class="section-header__title">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
+          Novo registro de acoes - {{ period_label }}
+        </h3>
+        <button class="btn btn--sm btn--ghost" id="toggle-action-form">+ Expandir</button>
+      </div>
+      <div id="action-form-wrapper" style="display:none">
+        <form class="cadastro-form sales-action-form" novalidate>
+          <div class="form-grid sales-action-form__grid">
             <div class="field">
               <label class="field__label">Venda *</label>
               <select id="acao-venda-id" class="field__input">
                 <option value="">Selecione...</option>
               </select>
             </div>
-            <div class="field">
-              <label class="field__label">Ação realizada *</label>
-              <textarea id="acao-descricao" class="field__input field__textarea bulk-card__textarea" rows="6" placeholder="Descreva a ação realizada..."></textarea>
+            <div class="field field--full">
+              <label class="field__label">Acao realizada *</label>
+              <textarea id="acao-descricao" class="field__input field__textarea" rows="4" placeholder="Descreva a acao realizada..."></textarea>
             </div>
-            <div class="bulk-card__actions">
-              <button class="btn btn--ghost" type="button" id="btn-limpar-acao">Limpar</button>
-              <button class="btn btn--primary" type="button" id="btn-salvar-acao">Salvar ação</button>
-            </div>
-            <div class="bulk-card__feedback" id="acao-feedback">Selecione uma venda do período para registrar a ação.</div>
-          </section>
-
-          <section class="bulk-card">
-            <div class="bulk-card__header">
-              <h4>Entrada em Massa</h4>
-              <p>Cole linhas do Excel/Sheets na ordem da tabela.</p>
-            </div>
-            <textarea id="bulk-paste" class="field__input field__textarea bulk-card__textarea" rows="9" placeholder="Reserva[TAB]Data[TAB]Situação[TAB]Empreendimento[TAB]Bloco[TAB]Unidade[TAB]Cliente[TAB]Corretor[TAB]Imobiliária[TAB]Valor Presente[TAB]Tipo de Venda"></textarea>
-            <div class="bulk-card__actions">
-              <button class="btn btn--ghost" type="button" id="btn-preview-bulk">Validar linhas</button>
-              <button class="btn btn--primary" type="button" id="btn-save-bulk">Salvar em massa</button>
-            </div>
-            <div class="bulk-card__feedback" id="bulk-feedback">Cole os dados para importar múltiplas reservas de uma vez.</div>
-          </section>
-        </div>
+          </div>
+          <div class="form-actions">
+            <span class="bulk-card__feedback" id="acao-feedback">Selecione uma venda do periodo para registrar a acao.</span>
+            <button class="btn btn--ghost" type="button" id="btn-limpar-acao">Limpar</button>
+            <button class="btn btn--primary" type="button" id="btn-salvar-acao">Salvar acao</button>
+          </div>
+        </form>
       </div>
     </section>
     {% endif %}
-
     <section class="table-section">
       <div class="section-header">
         <h3 class="section-header__title">

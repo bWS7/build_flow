@@ -201,10 +201,15 @@ function atualizarInsights(financeiro) {
 }
 
 function atualizarFinanceiro(financeiro) {
+  const metaBaseResumoEl = document.getElementById('meta-base-total');
   const metaEl = document.getElementById('meta-valor');
   const valorEl = document.getElementById('valor-realizado');
   const atingimentoEl = document.getElementById('atingimento-meta');
   const totalVendidasEl = document.getElementById('total-vendidas');
+  const metaAcoesEl = document.getElementById('meta-acoes');
+  const acoesRealizadasEl = document.getElementById('acoes-realizadas');
+  const resumoBarEl = document.getElementById('bar-resumo-geral');
+  const resumoTxtEl = document.getElementById('txt-resumo-geral');
   const pctEl = document.getElementById('pct-valor');
   const txtEl = document.getElementById('txt-valor');
   const barEl = document.getElementById('bar-valor');
@@ -215,10 +220,15 @@ function atualizarFinanceiro(financeiro) {
   const restanteAcoesEl = document.getElementById('insight-acoes-restantes');
   const statusAcoesEl = document.getElementById('insight-acoes-status');
 
+  if (metaBaseResumoEl) metaBaseResumoEl.textContent = fmtMoedaInteira(financeiro.meta_base_total || 0);
   if (metaEl) metaEl.textContent = fmtMoedaInteira(financeiro.meta_valor || 0);
   if (valorEl) valorEl.textContent = fmtMoedaInteira(financeiro.valor_realizado || 0);
   if (atingimentoEl) atingimentoEl.textContent = `${financeiro.percentual_atingimento || 0}%`;
   if (totalVendidasEl) totalVendidasEl.textContent = String(financeiro.total_vendidas || 0);
+  if (metaAcoesEl) metaAcoesEl.textContent = String(financeiro.meta_acoes || 0);
+  if (acoesRealizadasEl) acoesRealizadasEl.textContent = String(financeiro.acoes_realizadas || 0);
+  if (resumoBarEl) resumoBarEl.style.width = `${Math.min(financeiro.percentual_atingimento || 0, 100)}%`;
+  if (resumoTxtEl) resumoTxtEl.textContent = `${fmtMoedaInteira(financeiro.valor_realizado || 0)} realizados e ${financeiro.acoes_realizadas || 0} acoes registradas no periodo.`;
   if (pctEl) pctEl.textContent = `${financeiro.percentual_atingimento || 0}%`;
   if (txtEl) txtEl.textContent = `${fmtMoedaInteira(financeiro.valor_realizado || 0)} de ${fmtMoedaInteira(financeiro.meta_valor || 0)} realizados`;
   if (barEl) barEl.style.width = `${Math.min(financeiro.percentual_atingimento || 0, 100)}%`;
@@ -237,6 +247,25 @@ function atualizarFinanceiro(financeiro) {
 
   atualizarInsights(financeiro);
   renderizarFunil(financeiro.funil || []);
+}
+
+function renderizarOpcoesAcao() {
+  const select = document.getElementById('acao-investidor-id');
+  const feedback = document.getElementById('acao-feedback');
+  if (!select) return;
+
+  const registros = [...investidoresCache]
+    .sort((a, b) => String(a.reserva || '').localeCompare(String(b.reserva || ''), 'pt-BR'));
+
+  select.innerHTML = '<option value="">Selecione...</option>' + registros.map((item) => (
+    `<option value="${item.id}">${item.reserva} - ${item.cliente}</option>`
+  )).join('');
+
+  if (feedback) {
+    feedback.textContent = registros.length
+      ? 'Selecione um investidor do periodo para registrar a acao.'
+      : 'Cadastre um investidor primeiro para registrar acoes.';
+  }
 }
 
 function badgeClass(situacao) {
@@ -298,9 +327,15 @@ function calcularFinanceiroFiltrado(registros) {
 
   return {
     meta_valor: INITIAL_FINANCEIRO.meta_valor || 0,
+    meta_acoes: INITIAL_FINANCEIRO.meta_acoes || 0,
+    meta_base_total: INITIAL_FINANCEIRO.meta_base_total || 0,
     valor_realizado: valorRealizado,
     percentual_atingimento: (INITIAL_FINANCEIRO.meta_valor || 0) > 0
       ? Number(((valorRealizado / INITIAL_FINANCEIRO.meta_valor) * 100).toFixed(1))
+      : 0,
+    acoes_realizadas: registros.filter((item) => String(item.acao_realizada || '').trim()).length,
+    percentual_acoes: (INITIAL_FINANCEIRO.meta_acoes || 0) > 0
+      ? Number(((registros.filter((item) => String(item.acao_realizada || '').trim()).length / INITIAL_FINANCEIRO.meta_acoes) * 100).toFixed(1))
       : 0,
     total_vendidas: totalVendidas,
     total_registros: total,
@@ -463,8 +498,51 @@ async function recarregarDados() {
     investidoresCache = json.registros || [];
     Object.assign(INITIAL_FINANCEIRO, json.financeiro || {});
     aplicarFiltros();
+    renderizarOpcoesAcao();
   } catch {
     showToast('Não foi possível atualizar os dados.', 'error');
+  }
+}
+
+async function salvarAcaoRealizada() {
+  const investidorIdEl = document.getElementById('acao-investidor-id');
+  const descricaoEl = document.getElementById('acao-descricao');
+  const feedbackEl = document.getElementById('acao-feedback');
+  const btnSalvarEl = document.getElementById('btn-salvar-acao');
+  if (!investidorIdEl || !descricaoEl || !btnSalvarEl) return;
+
+  const investidorId = investidorIdEl.value.trim();
+  const acaoRealizada = descricaoEl.value.trim();
+  if (!investidorId) {
+    showToast('Selecione um investidor para registrar a acao.', 'error');
+    return;
+  }
+  if (!acaoRealizada) {
+    showToast('Descreva a acao realizada.', 'error');
+    return;
+  }
+
+  btnSalvarEl.disabled = true;
+  try {
+    const resp = await fetch('/investidores/acao', {
+      method: 'POST',
+      headers: csrfHeaders({ 'Content-Type': 'application/json' }),
+      body: JSON.stringify({ investidor_id: investidorId, acao_realizada: acaoRealizada }),
+    });
+    const json = await resp.json();
+    if (resp.ok && json.sucesso) {
+      descricaoEl.value = '';
+      if (feedbackEl) feedbackEl.textContent = 'Acao registrada com sucesso.';
+      showToast('Acao registrada com sucesso!');
+      recarregarDados();
+    } else {
+      showToast(json.erro || 'Erro ao salvar acao.', 'error');
+      if (feedbackEl) feedbackEl.textContent = json.erro || 'Erro ao salvar acao.';
+    }
+  } catch {
+    showToast('Falha de conexao.', 'error');
+  } finally {
+    btnSalvarEl.disabled = false;
   }
 }
 
@@ -570,8 +648,12 @@ document.addEventListener('DOMContentLoaded', () => {
   const formCadastro = document.getElementById('form-cadastro-investidor');
   const previewBulkEl = document.getElementById('btn-preview-bulk');
   const saveBulkEl = document.getElementById('btn-save-bulk');
+  const saveAcaoEl = document.getElementById('btn-salvar-acao');
+  const limparAcaoEl = document.getElementById('btn-limpar-acao');
   const toggleBtn = document.getElementById('toggle-form');
+  const toggleActionBtn = document.getElementById('toggle-action-form');
   const formWrapper = document.getElementById('form-wrapper');
+  const actionFormWrapper = document.getElementById('action-form-wrapper');
 
   window.toggleMesInvestidores = function toggleMesInvestidores(mesId) {
     const body = document.getElementById(`body-${mesId}`);
@@ -597,6 +679,17 @@ document.addEventListener('DOMContentLoaded', () => {
   if (deleteAllEl) deleteAllEl.addEventListener('click', openDeleteAllModal);
   if (confirmarDeleteEl) confirmarDeleteEl.addEventListener('click', confirmarExclusaoInvestidor);
   if (chartEl) chartEl.addEventListener('click', handleFunilChartClick);
+  if (saveAcaoEl) saveAcaoEl.addEventListener('click', salvarAcaoRealizada);
+  if (limparAcaoEl) {
+    limparAcaoEl.addEventListener('click', () => {
+      const descricaoEl = document.getElementById('acao-descricao');
+      const investidorIdEl = document.getElementById('acao-investidor-id');
+      const feedbackEl = document.getElementById('acao-feedback');
+      if (descricaoEl) descricaoEl.value = '';
+      if (investidorIdEl) investidorIdEl.value = '';
+      if (feedbackEl) feedbackEl.textContent = 'Selecione um investidor do periodo para registrar a acao.';
+    });
+  }
 
   if (toggleBtn && formWrapper) {
     let formVisible = false;
@@ -606,6 +699,28 @@ document.addEventListener('DOMContentLoaded', () => {
       formVisible = !formVisible;
       formWrapper.style.display = formVisible ? '' : 'none';
       toggleBtn.textContent = formVisible ? '▲ Recolher' : '▼ Expandir';
+    });
+  }
+
+  if (toggleBtn && formWrapper) {
+    const syncMainToggleLabel = () => {
+      const aberto = formWrapper.style.display !== 'none';
+      toggleBtn.textContent = aberto ? '- Recolher' : '+ Expandir';
+    };
+    syncMainToggleLabel();
+    toggleBtn.addEventListener('click', () => {
+      requestAnimationFrame(syncMainToggleLabel);
+    });
+  }
+
+  if (toggleActionBtn && actionFormWrapper) {
+    let actionVisible = false;
+    actionFormWrapper.style.display = 'none';
+    toggleActionBtn.textContent = '+ Expandir';
+    toggleActionBtn.addEventListener('click', () => {
+      actionVisible = !actionVisible;
+      actionFormWrapper.style.display = actionVisible ? '' : 'none';
+      toggleActionBtn.textContent = actionVisible ? '- Recolher' : '+ Expandir';
     });
   }
 
@@ -706,5 +821,6 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   aplicarFiltros();
+  renderizarOpcoesAcao();
   conectarSocket();
 });

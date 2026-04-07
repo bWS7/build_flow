@@ -178,22 +178,28 @@ function renderizarFunil(funil) {
 }
 
 function atualizarFinanceiro(financeiro) {
+  const metaBaseEl = document.getElementById('meta-base-total');
   const metaEl = document.getElementById('meta-quantidade');
   const atingimentoEl = document.getElementById('atingimento-meta');
   const totalVendidasEl = document.getElementById('total-vendidas');
   const metaAcoesEl = document.getElementById('meta-acoes');
   const acoesRealizadasEl = document.getElementById('acoes-realizadas');
+  const resumoBarEl = document.getElementById('bar-resumo-geral');
+  const resumoTxtEl = document.getElementById('txt-resumo-geral');
   const pctEl = document.getElementById('pct-valor');
   const txtEl = document.getElementById('txt-valor');
   const barEl = document.getElementById('bar-valor');
   const pctAcoesEl = document.getElementById('pct-acoes');
   const txtAcoesEl = document.getElementById('txt-acoes');
   const barAcoesEl = document.getElementById('bar-acoes');
+  if (metaBaseEl) metaBaseEl.textContent = String(financeiro.meta_base_total || 0);
   if (metaEl) metaEl.textContent = String(financeiro.meta_quantidade || 0);
   if (atingimentoEl) atingimentoEl.textContent = `${financeiro.percentual_atingimento || 0}%`;
   if (totalVendidasEl) totalVendidasEl.textContent = String(financeiro.total_vendidas || 0);
   if (metaAcoesEl) metaAcoesEl.textContent = String(financeiro.meta_acoes || 0);
   if (acoesRealizadasEl) acoesRealizadasEl.textContent = String(financeiro.acoes_realizadas || 0);
+  if (resumoBarEl) resumoBarEl.style.width = `${Math.min(financeiro.percentual_atingimento || 0, 100)}%`;
+  if (resumoTxtEl) resumoTxtEl.textContent = `${financeiro.total_vendidas || 0} vendas realizadas e ${financeiro.acoes_realizadas || 0} acoes realizadas no periodo.`;
   if (pctEl) pctEl.textContent = `${financeiro.percentual_atingimento || 0}%`;
   if (txtEl) txtEl.textContent = `${financeiro.total_vendidas || 0} de ${financeiro.meta_quantidade || 0} unidades vendidas`;
   if (barEl) barEl.style.width = `${Math.min(financeiro.percentual_atingimento || 0, 100)}%`;
@@ -642,7 +648,9 @@ document.addEventListener('DOMContentLoaded', () => {
   const saveAcaoEl = document.getElementById('btn-salvar-acao');
   const limparAcaoEl = document.getElementById('btn-limpar-acao');
   const toggleBtn = document.getElementById('toggle-form');
+  const toggleActionBtn = document.getElementById('toggle-action-form');
   const formWrapper = document.getElementById('form-wrapper');
+  const actionFormWrapper = document.getElementById('action-form-wrapper');
 
   window.toggleMesVendas = function toggleMesVendas(mesId) {
     const body = document.getElementById(`body-${mesId}`);
@@ -688,6 +696,28 @@ document.addEventListener('DOMContentLoaded', () => {
       formVisible = !formVisible;
       formWrapper.style.display = formVisible ? '' : 'none';
       toggleBtn.textContent = formVisible ? '▲ Recolher' : '▼ Expandir';
+    });
+  }
+
+  if (toggleBtn && formWrapper) {
+    const syncMainToggleLabel = () => {
+      const aberto = formWrapper.style.display !== 'none';
+      toggleBtn.textContent = aberto ? '- Recolher' : '+ Expandir';
+    };
+    syncMainToggleLabel();
+    toggleBtn.addEventListener('click', () => {
+      requestAnimationFrame(syncMainToggleLabel);
+    });
+  }
+
+  if (toggleActionBtn && actionFormWrapper) {
+    let actionVisible = false;
+    actionFormWrapper.style.display = 'none';
+    toggleActionBtn.textContent = '+ Expandir';
+    toggleActionBtn.addEventListener('click', () => {
+      actionVisible = !actionVisible;
+      actionFormWrapper.style.display = actionVisible ? '' : 'none';
+      toggleActionBtn.textContent = actionVisible ? '- Recolher' : '+ Expandir';
     });
   }
 
