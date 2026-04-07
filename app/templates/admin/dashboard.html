@@ -55,6 +55,13 @@
       </button>
     </div>
     {% set active_page = 'metas_dashboard' if show_meta_cards and not show_admin_cards else 'dashboard' %}
+    {% set pode_editar_meta_rel = current_user.can_manage_admin() or 'relacionamento' in meta_scopes %}
+    {% set pode_editar_meta_vendas = current_user.can_manage_admin() or 'vendas' in meta_scopes %}
+    {% set pode_editar_meta_investidores = current_user.can_manage_admin() or 'investidores' in meta_scopes %}
+    {% set pode_editar_meta_financeiro = current_user.can_manage_admin() or 'financeiro' in meta_scopes %}
+    {% set pode_editar_meta_giro = current_user.can_manage_admin() or 'giro' in meta_scopes %}
+    {% set pode_editar_meta_fornecedores = current_user.can_manage_admin() or 'fornecedores' in meta_scopes %}
+    {% set pode_editar_meta_medicao = current_user.can_manage_admin() or 'medicao' in meta_scopes %}
     {% include "partials/app_drawer_nav.html" %}
     <div class="drawer__theme-slot">
       {% include "partials/theme_control.html" %}
@@ -169,25 +176,25 @@
                   <input class="field__input" type="number" min="0" step="1" id="meta-venda-{{ s }}"
                          value="{{ meta_venda.quantidade_meta if meta_venda else 0 }}"
                          placeholder="0"
-                         {% if is_saved_meta_venda or (not current_user.can_manage_admin() and not is_released_meta_venda) %}readonly{% endif %} />
+                         {% if is_saved_meta_venda or (not pode_editar_meta_vendas and not is_released_meta_venda) %}readonly{% endif %} />
                 </div>
                 <div class="field">
                   <label class="field__label">Ações planejadas</label>
                   <input class="field__input" type="number" min="0" step="1" id="acoes-venda-{{ s }}"
                          value="{{ meta_venda.acoes_planejadas if meta_venda else 0 }}"
                          placeholder="0"
-                         {% if is_saved_meta_venda or (not current_user.can_manage_admin() and not is_released_meta_venda) %}readonly{% endif %} />
+                         {% if is_saved_meta_venda or (not pode_editar_meta_vendas and not is_released_meta_venda) %}readonly{% endif %} />
                 </div>
                 <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px">
-                  <button class="btn btn--sm {% if is_saved_meta_venda or (not current_user.can_manage_admin() and not is_released_meta_venda) %}btn--ghost{% else %}btn--primary{% endif %}" type="button" id="btn-meta-venda-{{ s }}"
-                          onclick="{% if is_saved_meta_venda and current_user.can_manage_admin() %}editarMetaVenda('{{ s }}', this){% elif not is_saved_meta_venda and (current_user.can_manage_admin() or is_released_meta_venda) %}salvarMetaVenda('{{ s }}', this){% endif %}"
-                          {% if (is_saved_meta_venda and not current_user.can_manage_admin()) or (not is_saved_meta_venda and not current_user.can_manage_admin() and not is_released_meta_venda) %}disabled{% endif %}>
-                    {% if is_saved_meta_venda and current_user.can_manage_admin() %}
+                  <button class="btn btn--sm {% if is_saved_meta_venda or (not pode_editar_meta_vendas and not is_released_meta_venda) %}btn--ghost{% else %}btn--primary{% endif %}" type="button" id="btn-meta-venda-{{ s }}"
+                          onclick="{% if is_saved_meta_venda and pode_editar_meta_vendas %}editarMetaVenda('{{ s }}', this){% elif not is_saved_meta_venda and (pode_editar_meta_vendas or is_released_meta_venda) %}salvarMetaVenda('{{ s }}', this){% endif %}"
+                          {% if (is_saved_meta_venda and not pode_editar_meta_vendas) or (not is_saved_meta_venda and not pode_editar_meta_vendas and not is_released_meta_venda) %}disabled{% endif %}>
+                    {% if is_saved_meta_venda and pode_editar_meta_vendas %}
                     <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
                     Editar
                     {% elif is_saved_meta_venda %}
                     Preenchido
-                    {% elif not current_user.can_manage_admin() and not is_released_meta_venda %}
+                    {% elif not pode_editar_meta_vendas and not is_released_meta_venda %}
                     Aguardando liberação
                     {% else %}
                     Salvar
@@ -246,25 +253,25 @@
                   <input class="field__input" type="text" id="meta-investidor-{{ s }}"
                          value="{{ meta_investidor.valor_meta | brl if meta_investidor else '0,00' }}"
                          placeholder="0,00"
-                         {% if is_saved_meta_investidor or (not current_user.can_manage_admin() and not is_released_meta_investidor) %}readonly{% else %}oninput="formatarValorBR(this)"{% endif %} />
+                         {% if is_saved_meta_investidor or (not pode_editar_meta_investidores and not is_released_meta_investidor) %}readonly{% else %}oninput="formatarValorBR(this)"{% endif %} />
                 </div>
                 <div class="field">
                   <label class="field__label">Ações planejadas</label>
                   <input class="field__input" type="number" min="0" step="1" id="acoes-investidor-{{ s }}"
                          value="{{ meta_investidor.acoes_planejadas if meta_investidor else 0 }}"
                          placeholder="0"
-                         {% if is_saved_meta_investidor or (not current_user.can_manage_admin() and not is_released_meta_investidor) %}readonly{% endif %} />
+                         {% if is_saved_meta_investidor or (not pode_editar_meta_investidores and not is_released_meta_investidor) %}readonly{% endif %} />
                 </div>
                 <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px">
-                  <button class="btn btn--sm {% if is_saved_meta_investidor or (not current_user.can_manage_admin() and not is_released_meta_investidor) %}btn--ghost{% else %}btn--primary{% endif %}" type="button" id="btn-meta-investidor-{{ s }}"
-                          onclick="{% if is_saved_meta_investidor and current_user.can_manage_admin() %}editarMetaInvestidor('{{ s }}', this){% elif not is_saved_meta_investidor and (current_user.can_manage_admin() or is_released_meta_investidor) %}salvarMetaInvestidor('{{ s }}', this){% endif %}"
-                          {% if (is_saved_meta_investidor and not current_user.can_manage_admin()) or (not is_saved_meta_investidor and not current_user.can_manage_admin() and not is_released_meta_investidor) %}disabled{% endif %}>
-                    {% if is_saved_meta_investidor and current_user.can_manage_admin() %}
+                  <button class="btn btn--sm {% if is_saved_meta_investidor or (not pode_editar_meta_investidores and not is_released_meta_investidor) %}btn--ghost{% else %}btn--primary{% endif %}" type="button" id="btn-meta-investidor-{{ s }}"
+                          onclick="{% if is_saved_meta_investidor and pode_editar_meta_investidores %}editarMetaInvestidor('{{ s }}', this){% elif not is_saved_meta_investidor and (pode_editar_meta_investidores or is_released_meta_investidor) %}salvarMetaInvestidor('{{ s }}', this){% endif %}"
+                          {% if (is_saved_meta_investidor and not pode_editar_meta_investidores) or (not is_saved_meta_investidor and not pode_editar_meta_investidores and not is_released_meta_investidor) %}disabled{% endif %}>
+                    {% if is_saved_meta_investidor and pode_editar_meta_investidores %}
                     <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
                     Editar
                     {% elif is_saved_meta_investidor %}
                     Preenchido
-                    {% elif not current_user.can_manage_admin() and not is_released_meta_investidor %}
+                    {% elif not pode_editar_meta_investidores and not is_released_meta_investidor %}
                     Aguardando liberação
                     {% else %}
                     Salvar
@@ -323,26 +330,26 @@
                   <input class="field__input" type="text" id="meta-financeiro-s{{ s }}"
                          value="{{ meta_fin.valor_meta | brl if meta_fin else '0,00' }}"
                          placeholder="0,00"
-                         {% if is_saved_fin or (not current_user.can_manage_admin() and not is_released_fin) %}readonly{% else %}oninput="formatarValorBR(this)"{% endif %} />
+                         {% if is_saved_fin or (not pode_editar_meta_financeiro and not is_released_fin) %}readonly{% else %}oninput="formatarValorBR(this)"{% endif %} />
                 </div>
                 <div class="field">
                   <label class="field__label">Ações planejadas</label>
                   <input class="field__input" type="number" min="0" step="1" id="acoes-financeiro-s{{ s }}"
                          value="{{ meta_fin.acoes_planejadas if meta_fin else 0 }}"
                          placeholder="0"
-                         {% if is_saved_fin or (not current_user.can_manage_admin() and not is_released_fin) %}readonly{% endif %} />
+                         {% if is_saved_fin or (not pode_editar_meta_financeiro and not is_released_fin) %}readonly{% endif %} />
                 </div>
                 <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px">
-                  <button class="btn btn--sm {% if is_saved_fin or (not current_user.can_manage_admin() and not is_released_fin) %}btn--ghost{% else %}btn--primary{% endif %}"
+                  <button class="btn btn--sm {% if is_saved_fin or (not pode_editar_meta_financeiro and not is_released_fin) %}btn--ghost{% else %}btn--primary{% endif %}"
                           id="btn-meta-financeiro-s{{ s }}"
-                          onclick="{% if is_saved_fin and current_user.can_manage_admin() %}editarMetaFinanceiro({{ s }}, this){% elif not is_saved_fin and (current_user.can_manage_admin() or is_released_fin) %}salvarMetaFinanceiro({{ s }}, this){% endif %}"
-                          {% if (is_saved_fin and not current_user.can_manage_admin()) or (not is_saved_fin and not current_user.can_manage_admin() and not is_released_fin) %}disabled{% endif %}>
-                    {% if is_saved_fin and current_user.can_manage_admin() %}
+                          onclick="{% if is_saved_fin and pode_editar_meta_financeiro %}editarMetaFinanceiro({{ s }}, this){% elif not is_saved_fin and (pode_editar_meta_financeiro or is_released_fin) %}salvarMetaFinanceiro({{ s }}, this){% endif %}"
+                          {% if (is_saved_fin and not pode_editar_meta_financeiro) or (not is_saved_fin and not pode_editar_meta_financeiro and not is_released_fin) %}disabled{% endif %}>
+                    {% if is_saved_fin and pode_editar_meta_financeiro %}
                     <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
                     Editar
                     {% elif is_saved_fin %}
                     Preenchido
-                    {% elif not current_user.can_manage_admin() and not is_released_fin %}
+                    {% elif not pode_editar_meta_financeiro and not is_released_fin %}
                     Aguardando liberação
                     {% else %}
                     Salvar
@@ -401,26 +408,26 @@
                       <input class="field__input" type="text" id="meta-giro-s{{ s }}"
                              value="{{ meta_giro.valor_meta | brl if meta_giro else '0,00' }}"
                              placeholder="0,00"
-                             {% if is_saved_giro or (not current_user.can_manage_admin() and not is_released_giro) %}readonly{% else %}oninput="formatarValorBR(this)"{% endif %} />
+                             {% if is_saved_giro or (not pode_editar_meta_giro and not is_released_giro) %}readonly{% else %}oninput="formatarValorBR(this)"{% endif %} />
                     </div>
                     <div class="field">
                       <label class="field__label">Ações planejadas</label>
                       <input class="field__input" type="number" min="0" step="1" id="acoes-giro-s{{ s }}"
                              value="{{ meta_giro.acoes_planejadas if meta_giro else 0 }}"
                              placeholder="0"
-                             {% if is_saved_giro or (not current_user.can_manage_admin() and not is_released_giro) %}readonly{% endif %} />
+                             {% if is_saved_giro or (not pode_editar_meta_giro and not is_released_giro) %}readonly{% endif %} />
                     </div>
                     <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px">
-                    <button class="btn btn--sm {% if is_saved_giro or (not current_user.can_manage_admin() and not is_released_giro) %}btn--ghost{% else %}btn--primary{% endif %}"
+                    <button class="btn btn--sm {% if is_saved_giro or (not pode_editar_meta_giro and not is_released_giro) %}btn--ghost{% else %}btn--primary{% endif %}"
                             id="btn-meta-giro-s{{ s }}"
-                            onclick="{% if is_saved_giro and current_user.can_manage_admin() %}editarMetaGiro({{ s }}, this){% elif not is_saved_giro and (current_user.can_manage_admin() or is_released_giro) %}salvarMetaGiro({{ s }}, this){% endif %}"
-                            {% if (is_saved_giro and not current_user.can_manage_admin()) or (not is_saved_giro and not current_user.can_manage_admin() and not is_released_giro) %}disabled{% endif %}>
-                      {% if is_saved_giro and current_user.can_manage_admin() %}
+                            onclick="{% if is_saved_giro and pode_editar_meta_giro %}editarMetaGiro({{ s }}, this){% elif not is_saved_giro and (pode_editar_meta_giro or is_released_giro) %}salvarMetaGiro({{ s }}, this){% endif %}"
+                            {% if (is_saved_giro and not pode_editar_meta_giro) or (not is_saved_giro and not pode_editar_meta_giro and not is_released_giro) %}disabled{% endif %}>
+                      {% if is_saved_giro and pode_editar_meta_giro %}
                       <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
                       Editar
                       {% elif is_saved_giro %}
                       Preenchido
-                      {% elif not current_user.can_manage_admin() and not is_released_giro %}
+                      {% elif not pode_editar_meta_giro and not is_released_giro %}
                       Aguardando liberação
                       {% else %}
                       Salvar
@@ -479,21 +486,21 @@
                     <input class="field__input" type="text" id="meta-fornecedor-s{{ s }}"
                            value="{{ meta_fornecedor.valor_meta | brl if meta_fornecedor else '0,00' }}"
                            placeholder="0,00"
-                           {% if is_saved_fornecedor or (not current_user.can_manage_admin() and not is_released_fornecedor) %}readonly{% else %}oninput="formatarValorBR(this)"{% endif %} />
+                           {% if is_saved_fornecedor or (not pode_editar_meta_fornecedores and not is_released_fornecedor) %}readonly{% else %}oninput="formatarValorBR(this)"{% endif %} />
                   </div>
                   <div class="field">
                     <label class="field__label">Ações planejadas</label>
                     <input class="field__input" type="number" min="0" step="1" id="acoes-fornecedor-s{{ s }}"
                            value="{{ meta_fornecedor.acoes_planejadas if meta_fornecedor else 0 }}"
                            placeholder="0"
-                           {% if is_saved_fornecedor or (not current_user.can_manage_admin() and not is_released_fornecedor) %}readonly{% endif %} />
+                           {% if is_saved_fornecedor or (not pode_editar_meta_fornecedores and not is_released_fornecedor) %}readonly{% endif %} />
                   </div>
                   <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px">
-                    <button class="btn btn--sm {% if is_saved_fornecedor or (not current_user.can_manage_admin() and not is_released_fornecedor) %}btn--ghost{% else %}btn--primary{% endif %}"
+                    <button class="btn btn--sm {% if is_saved_fornecedor or (not pode_editar_meta_fornecedores and not is_released_fornecedor) %}btn--ghost{% else %}btn--primary{% endif %}"
                             id="btn-meta-fornecedor-s{{ s }}"
-                            onclick="{% if is_saved_fornecedor and current_user.can_manage_admin() %}editarMetaFornecedor({{ s }}, this){% elif not is_saved_fornecedor and (current_user.can_manage_admin() or is_released_fornecedor) %}salvarMetaFornecedor({{ s }}, this){% endif %}"
-                            {% if (is_saved_fornecedor and not current_user.can_manage_admin()) or (not is_saved_fornecedor and not current_user.can_manage_admin() and not is_released_fornecedor) %}disabled{% endif %}>
-                      {% if is_saved_fornecedor and current_user.can_manage_admin() %}Editar{% elif is_saved_fornecedor %}Preenchido{% elif not current_user.can_manage_admin() and not is_released_fornecedor %}Aguardando liberação{% else %}Salvar{% endif %}
+                            onclick="{% if is_saved_fornecedor and pode_editar_meta_fornecedores %}editarMetaFornecedor({{ s }}, this){% elif not is_saved_fornecedor and (pode_editar_meta_fornecedores or is_released_fornecedor) %}salvarMetaFornecedor({{ s }}, this){% endif %}"
+                            {% if (is_saved_fornecedor and not pode_editar_meta_fornecedores) or (not is_saved_fornecedor and not pode_editar_meta_fornecedores and not is_released_fornecedor) %}disabled{% endif %}>
+                      {% if is_saved_fornecedor and pode_editar_meta_fornecedores %}Editar{% elif is_saved_fornecedor %}Preenchido{% elif not pode_editar_meta_fornecedores and not is_released_fornecedor %}Aguardando liberação{% else %}Salvar{% endif %}
                     </button>
                     {% if current_user.can_manage_admin() %}
                     <button class="btn btn--xs {% if is_released_fornecedor or is_saved_fornecedor %}btn--ghost{% else %}btn--primary{% endif %}" type="button"
@@ -548,26 +555,26 @@
                     <input class="field__input" type="text" id="meta-medicao-s{{ s }}"
                            value="{{ meta_medicao.valor_meta | brl if meta_medicao else '0,00' }}"
                            placeholder="0,00"
-                           {% if is_saved_medicao or (not current_user.can_manage_admin() and not is_released_medicao) %}readonly{% else %}oninput="formatarValorBR(this)"{% endif %} />
+                           {% if is_saved_medicao or (not pode_editar_meta_medicao and not is_released_medicao) %}readonly{% else %}oninput="formatarValorBR(this)"{% endif %} />
                   </div>
                   <div class="field">
                     <label class="field__label">Ações planejadas</label>
                     <input class="field__input" type="number" min="0" step="1" id="acoes-medicao-s{{ s }}"
                            value="{{ meta_medicao.acoes_planejadas if meta_medicao else 0 }}"
                            placeholder="0"
-                           {% if is_saved_medicao or (not current_user.can_manage_admin() and not is_released_medicao) %}readonly{% endif %} />
+                           {% if is_saved_medicao or (not pode_editar_meta_medicao and not is_released_medicao) %}readonly{% endif %} />
                   </div>
                   <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px">
-                    <button class="btn btn--sm {% if is_saved_medicao or (not current_user.can_manage_admin() and not is_released_medicao) %}btn--ghost{% else %}btn--primary{% endif %}"
+                    <button class="btn btn--sm {% if is_saved_medicao or (not pode_editar_meta_medicao and not is_released_medicao) %}btn--ghost{% else %}btn--primary{% endif %}"
                             id="btn-meta-medicao-s{{ s }}"
-                            onclick="{% if is_saved_medicao and current_user.can_manage_admin() %}editarMetaMedicao({{ s }}, this){% elif not is_saved_medicao and (current_user.can_manage_admin() or is_released_medicao) %}salvarMetaMedicao({{ s }}, this){% endif %}"
-                            {% if (is_saved_medicao and not current_user.can_manage_admin()) or (not is_saved_medicao and not current_user.can_manage_admin() and not is_released_medicao) %}disabled{% endif %}>
-                      {% if is_saved_medicao and current_user.can_manage_admin() %}
+                            onclick="{% if is_saved_medicao and pode_editar_meta_medicao %}editarMetaMedicao({{ s }}, this){% elif not is_saved_medicao and (pode_editar_meta_medicao or is_released_medicao) %}salvarMetaMedicao({{ s }}, this){% endif %}"
+                            {% if (is_saved_medicao and not pode_editar_meta_medicao) or (not is_saved_medicao and not pode_editar_meta_medicao and not is_released_medicao) %}disabled{% endif %}>
+                      {% if is_saved_medicao and pode_editar_meta_medicao %}
                       <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
                       Editar
                       {% elif is_saved_medicao %}
                       Preenchido
-                      {% elif not current_user.can_manage_admin() and not is_released_medicao %}
+                      {% elif not pode_editar_meta_medicao and not is_released_medicao %}
                       Aguardando liberação
                       {% else %}
                       Salvar
@@ -627,26 +634,26 @@
                   <label class="field__label">Ações planejadas</label>
                   <input class="field__input" type="number" id="acoes-s{{ s }}"
                          value="{{ meta.acoes_planejadas if meta else 0 }}" min="0"
-                         {% if is_saved or (not current_user.can_manage_admin() and not is_released_rel) %}readonly{% endif %} />
+                         {% if is_saved or (not pode_editar_meta_rel and not is_released_rel) %}readonly{% endif %} />
                 </div>
                 <div class="field">
                   <label class="field__label">Valor meta (R$)</label>
                   <input class="field__input" type="text" id="valor-s{{ s }}"
                          value="{{ meta.valor_meta | brl if meta else '0,00' }}"
                          placeholder="0,00"
-                         {% if is_saved or (not current_user.can_manage_admin() and not is_released_rel) %}readonly{% else %}oninput="formatarValorBR(this)"{% endif %} />
+                         {% if is_saved or (not pode_editar_meta_rel and not is_released_rel) %}readonly{% else %}oninput="formatarValorBR(this)"{% endif %} />
                 </div>
                 <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px">
-                  <button class="btn btn--sm {% if is_saved or (not current_user.can_manage_admin() and not is_released_rel) %}btn--ghost{% else %}btn--primary{% endif %}"
+                  <button class="btn btn--sm {% if is_saved or (not pode_editar_meta_rel and not is_released_rel) %}btn--ghost{% else %}btn--primary{% endif %}"
                           id="btn-s{{ s }}"
-                          onclick="{% if is_saved and current_user.can_manage_admin() %}editarMeta({{ s }}, this){% elif not is_saved and (current_user.can_manage_admin() or is_released_rel) %}salvarMeta({{ s }}, this){% endif %}"
-                          {% if (is_saved and not current_user.can_manage_admin()) or (not is_saved and not current_user.can_manage_admin() and not is_released_rel) %}disabled{% endif %}>
-                    {% if is_saved and current_user.can_manage_admin() %}
+                          onclick="{% if is_saved and pode_editar_meta_rel %}editarMeta({{ s }}, this){% elif not is_saved and (pode_editar_meta_rel or is_released_rel) %}salvarMeta({{ s }}, this){% endif %}"
+                          {% if (is_saved and not pode_editar_meta_rel) or (not is_saved and not pode_editar_meta_rel and not is_released_rel) %}disabled{% endif %}>
+                    {% if is_saved and pode_editar_meta_rel %}
                     <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
                     Editar
                     {% elif is_saved %}
                     Preenchido
-                    {% elif not current_user.can_manage_admin() and not is_released_rel %}
+                    {% elif not pode_editar_meta_rel and not is_released_rel %}
                     Aguardando liberação
                     {% else %}
                     Salvar

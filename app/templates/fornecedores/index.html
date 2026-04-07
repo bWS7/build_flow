@@ -397,7 +397,7 @@
   const INITIAL_REGISTROS = {{ registros_json|tojson }};
   const INITIAL_ACOES = {{ acoes_json|tojson }};
   const CURRENT_USER_NOME = {{ (current_user.nome or '')|upper|tojson }};
-  const IS_ADMIN = {{ 'true' if current_user.tipo == 'admin' else 'false' }};
+  const IS_ADMIN = {{ 'true' if current_user.can_manage_admin() else 'false' }};
   const EMPREENDIMENTOS = {{ empreendimentos|map(attribute='nome')|list|tojson }};
   const SITUACOES = {{ situacoes|list|tojson }};
 </script>

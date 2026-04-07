@@ -37,17 +37,18 @@ def _format_user_type(value):
     normalized = TIPOS_LEGADOS_MAP.get(str(value or '').strip().lower(), str(value or '').strip().lower())
     labels = {
         'admin': 'ADMIN',
-        'gestor_financeiro': 'GESTOR FINANCEIRO',
-        'gestor_engenharia': 'GESTOR ENGENHARIA',
-        'gestor_comercial': 'GESTOR COMERCIAL',
-        'gestor_marketing': 'GESTOR MARKETING',
-        'gestor_suprimentos': 'GESTOR SUPRIMENTOS',
-        'gestor_credito': 'GESTOR CREDITO',
-        'usuario_financeiro': 'USUARIO FINANCEIRO',
-        'usuario_engenharia': 'USUARIO ENGENHARIA',
-        'usuario_comercial': 'USUARIO COMERCIAL',
-        'usuario_suprimentos': 'USUARIO SUPRIMENTOS',
-        'usuario_credito': 'USUARIO CREDITO',
+        'admin_financeiro': 'ADMIN FINANCEIRO',
+        'admin_engenharia': 'ADMIN ENGENHARIA',
+        'admin_comercial': 'ADMIN COMERCIAL',
+        'admin_marketing': 'ADMIN MARKETING',
+        'admin_suprimentos': 'ADMIN SUPRIMENTOS',
+        'admin_credito': 'ADMIN CREDITO',
+        'financeiro': 'FINANCEIRO',
+        'engenharia': 'ENGENHARIA',
+        'comercial': 'COMERCIAL',
+        'marketing': 'MARKETING',
+        'suprimentos': 'SUPRIMENTOS',
+        'credito': 'CREDITO',
     }
     return labels.get(normalized, str(value or '').upper())
 

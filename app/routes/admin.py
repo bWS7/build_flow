@@ -1653,6 +1653,7 @@ def _resumir_inadimplencia_master_v2(semanas: list[int]) -> dict:
 def _montar_master_painel_periodizado(view: str | None = None, period: str | None = None) -> dict:
     periodo = _resolver_master_periodo_v2(view, period)
     semanas = periodo['semanas']
+    meta_base_por_scope = _mapa_meta_base_total()
     resumo_vendas = _resumir_vendas_master_v2(periodo)
     resumo_investidores = _resumir_investidores_master_v2(periodo)
     resumo_inadimplencia = _resumir_inadimplencia_master_v2(semanas)
@@ -1681,13 +1682,13 @@ def _montar_master_painel_periodizado(view: str | None = None, period: str | Non
     tempo_pct = round((tempo_decorrido / duracao_total) * 100, 1)
 
     cards = [
-        {'slug': 'venda_varejo', 'nome': 'Venda Varejo', 'realizado': float(resumo_vendas['realizado']), 'meta': float(resumo_vendas['meta']), 'percentual': float(resumo_vendas['percentual']), 'descricao': f"Total vendido no período selecionado: {periodo['label']}.", 'comparativo_label': 'vendas realizadas x vendas planejadas', 'ficticio': False, 'monetario': False},
-        {'slug': 'giro', 'nome': 'Capital de giro', 'realizado': giro_realizado, 'meta': giro_meta, 'percentual': _safe_pct(giro_realizado, giro_meta), 'descricao': f"Valor captado frente à meta do período {periodo['label']}.", 'comparativo_label': 'valor captado x meta de capital de giro', 'ficticio': False, 'monetario': True},
-        {'slug': 'inadimplencia', 'nome': 'Inadimplencia', 'realizado': float(resumo_inadimplencia['realizado']), 'meta': float(resumo_inadimplencia['meta']), 'percentual': float(resumo_inadimplencia['percentual']), 'descricao': f"Valor realizado frente ao planejado no período {periodo['label']}.", 'comparativo_label': 'valor realizado x valor planejado', 'ficticio': False, 'monetario': True},
-        {'slug': 'medicao', 'nome': 'Medição de obras', 'realizado': medicao_realizado, 'meta': medicao_meta, 'percentual': _safe_pct(medicao_realizado, medicao_meta), 'descricao': f"Valor de medição acumulado no período {periodo['label']}.", 'comparativo_label': 'valor de medição x meta de medição de obras', 'ficticio': False, 'monetario': True},
-        {'slug': 'investidor', 'nome': 'Investidor', 'realizado': float(resumo_investidores['realizado']), 'meta': float(resumo_investidores['meta']), 'percentual': float(resumo_investidores['percentual']), 'descricao': f"Valor realizado de investidores no período {periodo['label']}.", 'comparativo_label': 'valor realizado x meta de investidores', 'ficticio': False, 'monetario': True},
-        {'slug': 'fornecedores', 'nome': 'Renegociação Fornecedores', 'realizado': fornecedores_realizado, 'meta': fornecedores_meta, 'percentual': _safe_pct(fornecedores_realizado, fornecedores_meta), 'descricao': f"Valor negociado com fornecedores no período {periodo['label']}.", 'comparativo_label': 'valor negociado x meta de renegociação de fornecedores', 'ficticio': False, 'monetario': True},
-        {'slug': 'bancos', 'nome': 'Renegociação Bancária', 'realizado': bancos_realizado, 'meta': bancos_meta, 'percentual': _safe_pct(bancos_realizado, bancos_meta), 'descricao': f"Valor arrecadado com bancos no período {periodo['label']}.", 'comparativo_label': 'valor arrecadado x meta de renegociação bancária', 'ficticio': False, 'monetario': True},
+        {'slug': 'venda_varejo', 'scope': 'vendas', 'nome': 'Venda Varejo', 'realizado': float(resumo_vendas['realizado']), 'meta': float(resumo_vendas['meta']), 'percentual': float(resumo_vendas['percentual']), 'descricao': f"Total vendido no período selecionado: {periodo['label']}.", 'comparativo_label': 'vendas realizadas x vendas planejadas', 'ficticio': False, 'monetario': False},
+        {'slug': 'giro', 'scope': 'giro', 'nome': 'Capital de giro', 'realizado': giro_realizado, 'meta': giro_meta, 'percentual': _safe_pct(giro_realizado, giro_meta), 'descricao': f"Valor captado frente à meta do período {periodo['label']}.", 'comparativo_label': 'valor captado x meta de capital de giro', 'ficticio': False, 'monetario': True},
+        {'slug': 'inadimplencia', 'scope': 'relacionamento', 'nome': 'Inadimplencia', 'realizado': float(resumo_inadimplencia['realizado']), 'meta': float(resumo_inadimplencia['meta']), 'percentual': float(resumo_inadimplencia['percentual']), 'descricao': f"Valor realizado frente ao planejado no período {periodo['label']}.", 'comparativo_label': 'valor realizado x valor planejado', 'ficticio': False, 'monetario': True},
+        {'slug': 'medicao', 'scope': 'medicao', 'nome': 'Medição de obras', 'realizado': medicao_realizado, 'meta': medicao_meta, 'percentual': _safe_pct(medicao_realizado, medicao_meta), 'descricao': f"Valor de medição acumulado no período {periodo['label']}.", 'comparativo_label': 'valor de medição x meta de medição de obras', 'ficticio': False, 'monetario': True},
+        {'slug': 'investidor', 'scope': 'investidores', 'nome': 'Investidor', 'realizado': float(resumo_investidores['realizado']), 'meta': float(resumo_investidores['meta']), 'percentual': float(resumo_investidores['percentual']), 'descricao': f"Valor realizado de investidores no período {periodo['label']}.", 'comparativo_label': 'valor realizado x meta de investidores', 'ficticio': False, 'monetario': True},
+        {'slug': 'fornecedores', 'scope': 'fornecedores', 'nome': 'Renegociação Fornecedores', 'realizado': fornecedores_realizado, 'meta': fornecedores_meta, 'percentual': _safe_pct(fornecedores_realizado, fornecedores_meta), 'descricao': f"Valor negociado com fornecedores no período {periodo['label']}.", 'comparativo_label': 'valor negociado x meta de renegociação de fornecedores', 'ficticio': False, 'monetario': True},
+        {'slug': 'bancos', 'scope': 'financeiro', 'nome': 'Renegociação Bancária', 'realizado': bancos_realizado, 'meta': bancos_meta, 'percentual': _safe_pct(bancos_realizado, bancos_meta), 'descricao': f"Valor arrecadado com bancos no período {periodo['label']}.", 'comparativo_label': 'valor arrecadado x meta de renegociação bancária', 'ficticio': False, 'monetario': True},
     ]
     cards_acoes = [
         {'slug': 'venda_varejo', 'nome': 'Acoes Venda Varejo', 'realizado': float(resumo_vendas['acoes_realizadas']), 'meta': float(resumo_vendas['meta_acoes']), 'percentual': float(resumo_vendas['percentual_acoes']), 'descricao': f"Acoes de venda varejo no periodo {periodo['label']}.", 'comparativo_label': 'acoes realizadas x meta de acoes', 'ficticio': False, 'monetario': False},
@@ -1700,6 +1701,11 @@ def _montar_master_painel_periodizado(view: str | None = None, period: str | Non
     ]
     ordem = ['venda_varejo', 'giro', 'inadimplencia', 'medicao', 'investidor', 'fornecedores', 'bancos']
     cards_ordenados = sorted(cards, key=lambda item: ordem.index(item['slug']))
+    if periodo['view'] == 'trimestral':
+        for card in cards_ordenados:
+            meta_base_total = float(meta_base_por_scope.get(card['scope'], 0) or 0)
+            card['meta'] = meta_base_total
+            card['percentual'] = _safe_pct(float(card['realizado']), meta_base_total)
     for card in cards_ordenados:
         if card['percentual'] > tempo_pct + 0.1:
             card['desempenho_status'] = 'positivo'
@@ -1848,13 +1854,13 @@ def _meta_esta_liberada(scope: str, semana: int) -> bool:
 
 
 def _garantir_meta_liberada(scope: str, semana: int) -> bool:
-    if current_user.can_manage_admin():
+    if current_user.can_access_meta_scope(scope):
         return True
     return _meta_esta_liberada(scope, semana)
 
 
 def _pode_editar_meta_existente(scope: str) -> bool:
-    return current_user.can_manage_admin() and current_user.can_access_meta_scope(scope)
+    return current_user.can_access_meta_scope(scope)
 
 
 def _meta_relacionamento_preenchida(meta: MetaSemana | None) -> bool:
@@ -2372,7 +2378,8 @@ def salvar_meta():
         db.session.add(meta)
         _registrar_auditoria_meta('relacionamento', 'acoes_planejadas', 0, acoes, f's{semana}')
         _registrar_auditoria_meta('relacionamento', 'valor_meta', 0, valor, f's{semana}')
-    _salvar_meta_base_total('relacionamento', meta_base_total)
+    if current_user.can_manage_admin():
+        _salvar_meta_base_total('relacionamento', meta_base_total)
     db.session.commit()
     return jsonify({'sucesso': True})
 
@@ -2405,7 +2412,8 @@ def salvar_meta_investidor():
         db.session.add(meta)
         _registrar_auditoria_meta('investidores', 'valor_meta', 0, max(valor, 0), f's{semana}')
         _registrar_auditoria_meta('investidores', 'acoes_planejadas', 0, max(acoes, 0), f's{semana}')
-    _salvar_meta_base_total('investidores', meta_base_total)
+    if current_user.can_manage_admin():
+        _salvar_meta_base_total('investidores', meta_base_total)
     db.session.commit()
     return jsonify({'sucesso': True})
 
@@ -2438,7 +2446,8 @@ def salvar_meta_financeiro():
         db.session.add(meta)
         _registrar_auditoria_meta('financeiro', 'valor_meta', 0, max(valor, 0), f's{semana}')
         _registrar_auditoria_meta('financeiro', 'acoes_planejadas', 0, max(acoes, 0), f's{semana}')
-    _salvar_meta_base_total('financeiro', meta_base_total)
+    if current_user.can_manage_admin():
+        _salvar_meta_base_total('financeiro', meta_base_total)
     db.session.commit()
     return jsonify({'sucesso': True})
 
@@ -2471,7 +2480,8 @@ def salvar_meta_giro():
         db.session.add(meta)
         _registrar_auditoria_meta('giro', 'valor_meta', 0, max(valor, 0), f's{semana}')
         _registrar_auditoria_meta('giro', 'acoes_planejadas', 0, max(acoes, 0), f's{semana}')
-    _salvar_meta_base_total('giro', meta_base_total)
+    if current_user.can_manage_admin():
+        _salvar_meta_base_total('giro', meta_base_total)
     db.session.commit()
     return jsonify({'sucesso': True})
 
@@ -2504,7 +2514,8 @@ def salvar_meta_fornecedor():
         db.session.add(meta)
         _registrar_auditoria_meta('fornecedores', 'valor_meta', 0, max(valor, 0), f's{semana}')
         _registrar_auditoria_meta('fornecedores', 'acoes_planejadas', 0, max(acoes, 0), f's{semana}')
-    _salvar_meta_base_total('fornecedores', meta_base_total)
+    if current_user.can_manage_admin():
+        _salvar_meta_base_total('fornecedores', meta_base_total)
     db.session.commit()
     return jsonify({'sucesso': True})
 
@@ -2537,7 +2548,8 @@ def salvar_meta_medicao():
         db.session.add(meta)
         _registrar_auditoria_meta('medicao', 'valor_meta', 0, max(valor, 0), f's{semana}')
         _registrar_auditoria_meta('medicao', 'acoes_planejadas', 0, max(acoes, 0), f's{semana}')
-    _salvar_meta_base_total('medicao', meta_base_total)
+    if current_user.can_manage_admin():
+        _salvar_meta_base_total('medicao', meta_base_total)
     db.session.commit()
     return jsonify({'sucesso': True})
 
@@ -2570,7 +2582,8 @@ def salvar_meta_venda():
         db.session.add(meta)
         _registrar_auditoria_meta('vendas', 'quantidade_meta', 0, max(quantidade, 0), f's{semana}')
         _registrar_auditoria_meta('vendas', 'acoes_planejadas', 0, max(acoes, 0), f's{semana}')
-    _salvar_meta_base_total('vendas', meta_base_total)
+    if current_user.can_manage_admin():
+        _salvar_meta_base_total('vendas', meta_base_total)
     db.session.commit()
     return jsonify({'sucesso': True})
 

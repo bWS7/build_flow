@@ -58,8 +58,18 @@ def requer_vendas(f):
             abort(401)
         if not current_user.can_access_page('vendas'):
             abort(403)
+        if request.method != 'GET' and not current_user.can_edit_page('vendas'):
+            abort(403)
         return f(*args, **kwargs)
     return decorated
+
+
+def _usuario_admin_total() -> bool:
+    return bool(getattr(current_user, 'is_authenticated', False) and current_user.can_manage_admin())
+
+
+def _usuario_pode_editar_vendas() -> bool:
+    return bool(getattr(current_user, 'is_authenticated', False) and current_user.can_edit_page('vendas'))
 
 
 def _mes_slug_atual() -> str:
@@ -109,7 +119,10 @@ def montar_contexto_template_vendas(mes_slug: str, incluir_resumo: bool = False,
     semana_global = None
     if mes_slug != RESUMO_TRIMESTRAL[0] and semana_local_normalizada is not None:
         semana_global = MESES_MAP[mes_slug]['semana_inicio'] + semana_local_normalizada - 1
-    permite_edicao = True if mes_slug == RESUMO_TRIMESTRAL[0] else semana_editavel(semana_global, current_user.can_manage_admin())
+    if mes_slug == RESUMO_TRIMESTRAL[0]:
+        permite_edicao = _usuario_pode_editar_vendas()
+    else:
+        permite_edicao = _usuario_pode_editar_vendas() and semana_editavel(semana_global, _usuario_admin_total())
     return {
         'meses': meses,
         'mes_atual': mes_slug,
@@ -190,18 +203,22 @@ def _mes_slug_por_numero(mes_numero: int) -> str:
 
 
 def _garantir_semana_editavel_por_data(data_referencia):
+    if not _usuario_pode_editar_vendas():
+        return jsonify({'erro': 'Seu perfil possui apenas visualizacao nesta area.'}), 403
     semana_global = _semana_global_por_data(data_referencia)
     if semana_global is None:
         return jsonify({'erro': 'Nao foi possivel identificar a semana do registro.'}), 400
-    if not semana_editavel(semana_global, current_user.can_manage_admin()):
+    if not semana_editavel(semana_global, _usuario_admin_total()):
         return jsonify({'erro': 'Esta semana esta bloqueada para edicao. Apenas o admin pode alterar semanas anteriores.'}), 403
     return None
 
 
 def _garantir_semana_editavel_global(semana_global: int | None):
+    if not _usuario_pode_editar_vendas():
+        return jsonify({'erro': 'Seu perfil possui apenas visualizacao nesta area.'}), 403
     if semana_global is None:
         return jsonify({'erro': 'Nao foi possivel identificar a semana do registro.'}), 400
-    if not semana_editavel(semana_global, current_user.can_manage_admin()):
+    if not semana_editavel(semana_global, _usuario_admin_total()):
         return jsonify({'erro': 'Esta semana esta bloqueada para edicao. Apenas o admin pode alterar semanas anteriores.'}), 403
     return None
 
@@ -536,7 +553,7 @@ def deletar_acao(acao_id):
 @login_required
 @requer_vendas
 def vendas_ai_chat():
-    if current_user.tipo != 'admin':
+    if not current_user.can_manage_admin():
         abort(403)
     if not analytics_ai_enabled():
         return jsonify({'erro': 'A assistente analitica nao esta configurada.'}), 503

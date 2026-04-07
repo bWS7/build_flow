@@ -24,6 +24,8 @@ def requer_fornecedores_ou_admin(f):
             abort(401)
         if not current_user.can_access_page('fornecedores'):
             abort(403)
+        if request.method != 'GET' and not current_user.can_edit_page('fornecedores'):
+            abort(403)
         return f(*args, **kwargs)
     return decorated
 
@@ -126,6 +128,8 @@ def _pode_gerenciar_registro(registro: FornecedorRegistro) -> bool:
 
 
 def _garantir_semana_editavel(semana: int):
+    if not current_user.can_edit_page('fornecedores'):
+        return jsonify({'erro': 'Seu perfil possui apenas visualizacao nesta area.'}), 403
     if not semana_editavel(semana, current_user.can_manage_admin()):
         return jsonify({'erro': 'Esta semana esta bloqueada para edicao. Apenas o admin pode alterar semanas anteriores.'}), 403
     return None
@@ -156,7 +160,7 @@ def index():
         registros_json=[item.to_dict() for item in registros],
         acoes_json=[item.to_dict() for item in consultar_acoes('fornecedores', semana)],
         semana_atual=semana,
-        permite_edicao=semana_editavel(semana, current_user.can_manage_admin()),
+        permite_edicao=current_user.can_edit_page('fornecedores') and semana_editavel(semana, current_user.can_manage_admin()),
     )
 
 

@@ -1,4 +1,5 @@
 from sqlalchemy import or_
+from collections.abc import Iterable
 
 from app import db
 from app.models.relacionamento import agora_brasilia, para_brasilia
@@ -33,7 +34,7 @@ class IndicadorAcao(db.Model):
 
 def consultar_acoes(scope: str, semanas) -> list[IndicadorAcao]:
     query = IndicadorAcao.query.filter_by(scope=scope)
-    if isinstance(semanas, (list, tuple, set)):
+    if isinstance(semanas, Iterable) and not isinstance(semanas, (str, bytes)):
         semanas_lista = [int(item) for item in semanas if item is not None]
         if not semanas_lista:
             return []
@@ -47,7 +48,7 @@ def consultar_acoes(scope: str, semanas) -> list[IndicadorAcao]:
 
 def contar_acoes(scope: str, semanas) -> int:
     query = db.session.query(db.func.count(IndicadorAcao.id)).filter_by(scope=scope)
-    if isinstance(semanas, (list, tuple, set)):
+    if isinstance(semanas, Iterable) and not isinstance(semanas, (str, bytes)):
         semanas_lista = [int(item) for item in semanas if item is not None]
         if not semanas_lista:
             return 0

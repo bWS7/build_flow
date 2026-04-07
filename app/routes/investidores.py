@@ -55,8 +55,18 @@ def requer_investidores(f):
             abort(401)
         if not current_user.can_access_page('investidores'):
             abort(403)
+        if request.method != 'GET' and not current_user.can_edit_page('investidores'):
+            abort(403)
         return f(*args, **kwargs)
     return decorated
+
+
+def _usuario_admin_total() -> bool:
+    return bool(getattr(current_user, 'is_authenticated', False) and current_user.can_manage_admin())
+
+
+def _usuario_pode_editar_investidores() -> bool:
+    return bool(getattr(current_user, 'is_authenticated', False) and current_user.can_edit_page('investidores'))
 
 
 def _mes_slug_atual() -> str:
@@ -92,18 +102,22 @@ def _data_referencia_da_semana(mes_slug: str, semana_local: int) -> date:
 
 
 def _garantir_semana_editavel_por_data(data_referencia):
+    if not _usuario_pode_editar_investidores():
+        return jsonify({'erro': 'Seu perfil possui apenas visualizacao nesta area.'}), 403
     semana_global = _semana_global_por_data(data_referencia)
     if semana_global is None:
         return jsonify({'erro': 'Nao foi possivel identificar a semana do registro.'}), 400
-    if not semana_editavel(semana_global, current_user.can_manage_admin()):
+    if not semana_editavel(semana_global, _usuario_admin_total()):
         return jsonify({'erro': 'Esta semana esta bloqueada para edicao. Apenas o admin pode alterar semanas anteriores.'}), 403
     return None
 
 
 def _garantir_semana_editavel_global(semana_global: int | None):
+    if not _usuario_pode_editar_investidores():
+        return jsonify({'erro': 'Seu perfil possui apenas visualizacao nesta area.'}), 403
     if semana_global is None:
         return jsonify({'erro': 'Nao foi possivel identificar a semana do registro.'}), 400
-    if not semana_editavel(semana_global, current_user.can_manage_admin()):
+    if not semana_editavel(semana_global, _usuario_admin_total()):
         return jsonify({'erro': 'Esta semana esta bloqueada para edicao. Apenas o admin pode alterar semanas anteriores.'}), 403
     return None
 
@@ -119,7 +133,10 @@ def montar_contexto_template_investidores(mes_slug: str, incluir_resumo: bool = 
     if mes_slug != PERIODO_INVESTIDORES[0] and semana_local_normalizada is not None:
         semana_inicio = next(semana_inicio for slug, _, _, semana_inicio in MESES_INVESTIDORES if slug == mes_slug)
         semana_global = semana_inicio + semana_local_normalizada - 1
-    permite_edicao = True if mes_slug == PERIODO_INVESTIDORES[0] else semana_editavel(semana_global, current_user.can_manage_admin())
+    if mes_slug == PERIODO_INVESTIDORES[0]:
+        permite_edicao = _usuario_pode_editar_investidores()
+    else:
+        permite_edicao = _usuario_pode_editar_investidores() and semana_editavel(semana_global, _usuario_admin_total())
     return {
         'meses': [(slug, nome, numero) for slug, nome, numero, _ in MESES_INVESTIDORES] + ([PERIODO_INVESTIDORES] if incluir_resumo else []),
         'mes_atual': mes_slug,
@@ -500,7 +517,7 @@ def deletar_acao(acao_id):
 @login_required
 @requer_investidores
 def investidores_ai_chat():
-    if current_user.tipo != 'admin':
+    if not current_user.can_manage_admin():
         abort(403)
     if not analytics_ai_enabled():
         return jsonify({'erro': 'A assistente analitica nao esta configurada.'}), 503

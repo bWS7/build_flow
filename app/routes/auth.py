@@ -15,16 +15,18 @@ LOGIN_LOCK_SECONDS = 15 * 60
 
 REDIRECT_MAP = {
     'admin': 'admin.dashboard',
-    'gestor_financeiro': 'financeiro.index',
-    'gestor_engenharia': 'medicao.index',
-    'gestor_comercial': 'vendas.index',
-    'gestor_suprimentos': 'fornecedores.index',
-    'gestor_credito': 'relacionamento.index',
-    'usuario_financeiro': 'financeiro.index',
-    'usuario_engenharia': 'medicao.index',
-    'usuario_comercial': 'vendas.index',
-    'usuario_suprimentos': 'fornecedores.index',
-    'usuario_credito': 'relacionamento.index',
+    'admin_financeiro': 'admin.master_painel',
+    'admin_engenharia': 'admin.master_painel',
+    'admin_comercial': 'admin.master_painel',
+    'admin_marketing': 'admin.master_painel',
+    'admin_suprimentos': 'admin.master_painel',
+    'admin_credito': 'admin.master_painel',
+    'financeiro': 'financeiro.index',
+    'engenharia': 'medicao.index',
+    'comercial': 'vendas.index',
+    'marketing': 'investidores.index',
+    'suprimentos': 'fornecedores.index',
+    'credito': 'relacionamento.index',
 }
 
 
