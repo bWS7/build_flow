@@ -628,6 +628,13 @@
   gap: 14px;
 }
 
+[id^="body-metas-"] {
+  padding: 18px 20px 24px;
+  background:
+    radial-gradient(circle at top left, rgba(195, 79, 103, 0.08), transparent 26%),
+    linear-gradient(180deg, rgba(250, 245, 242, 0.9) 0%, rgba(255, 255, 255, 1) 100%);
+}
+
 .sales-admin-grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
@@ -639,12 +646,18 @@
   display: flex;
   flex-direction: column;
   gap: 10px;
-  padding: 16px;
-  border: 1.5px solid var(--gray-200);
-  border-radius: var(--radius);
-  transition: border-color var(--transition);
+  padding: 18px;
+  border: 1px solid rgba(154, 48, 72, 0.14);
+  border-radius: 20px;
+  background: linear-gradient(180deg, rgba(255,255,255,0.96) 0%, rgba(252,247,244,0.96) 100%);
+  box-shadow: 0 16px 30px rgba(107, 26, 42, 0.06);
+  transition: border-color var(--transition), transform var(--transition), box-shadow var(--transition);
 }
-.meta-item:hover { border-color: var(--wine); }
+.meta-item:hover {
+  border-color: rgba(154, 48, 72, 0.35);
+  transform: translateY(-1px);
+  box-shadow: 0 18px 34px rgba(107, 26, 42, 0.1);
+}
 
 .meta-item__label {
   font-size: 12px;
@@ -654,6 +667,67 @@
   text-transform: uppercase;
   padding-bottom: 8px;
   border-bottom: 1px solid var(--gray-100);
+}
+
+[id^="body-metas-"] > .field {
+  margin-bottom: 18px;
+  padding: 18px;
+  border-radius: 22px;
+  border: 1px solid rgba(154, 48, 72, 0.14);
+  background:
+    radial-gradient(circle at top left, rgba(195, 79, 103, 0.08), transparent 32%),
+    linear-gradient(135deg, rgba(255,248,246,0.96) 0%, rgba(255,255,255,1) 100%);
+  box-shadow: 0 16px 30px rgba(107, 26, 42, 0.06);
+}
+
+[id^="body-metas-"] .field__label {
+  margin-bottom: 10px;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: .09em;
+  text-transform: uppercase;
+  color: #7e5660;
+}
+
+.meta-field-wrap {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.meta-field-prefix {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 108px;
+  height: 44px;
+  padding: 0 14px;
+  border-radius: 14px;
+  background: linear-gradient(135deg, rgba(154, 48, 72, 0.12), rgba(195, 79, 103, 0.16));
+  border: 1px solid rgba(154, 48, 72, 0.18);
+  color: var(--wine);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: .04em;
+  white-space: nowrap;
+}
+
+.meta-field-prefix--qty {
+  min-width: 64px;
+}
+
+.meta-field-wrap .field__input {
+  flex: 1;
+  min-width: 0;
+  min-height: 44px;
+  border-radius: 14px;
+}
+
+.meta-item--saved {
+  border-color: rgba(154, 48, 72, 0.22);
+  background:
+    radial-gradient(circle at top right, rgba(195, 79, 103, 0.08), transparent 28%),
+    linear-gradient(180deg, rgba(255,255,255,0.98) 0%, rgba(250,244,241,0.96) 100%);
 }
 
 /* -- META LOCK -------------------------------------------------------------- */
@@ -1057,17 +1131,36 @@ html[data-theme='dark'] .analytics-chart-xlabels span {
 html[data-theme='dark'] .mes-group + .mes-group { border-top-color: rgba(255, 255, 255, 0.06); }
 html[data-theme='dark'] .mes-label { color: #edc0c8; }
 html[data-theme='dark'] .mes-label::after { background: rgba(255, 255, 255, 0.08); }
+html[data-theme='dark'] [id^="body-metas-"] {
+  background:
+    radial-gradient(circle at top left, rgba(195, 79, 103, 0.08), transparent 24%),
+    linear-gradient(180deg, rgba(18, 19, 25, 0.88) 0%, rgba(16, 17, 23, 0.94) 100%);
+}
 html[data-theme='dark'] .meta-item {
-  border-color: rgba(255, 255, 255, 0.06);
-  background: rgba(255, 255, 255, 0.02);
+  border-color: rgba(255, 255, 255, 0.08);
+  background: linear-gradient(180deg, rgba(28, 30, 38, 0.96) 0%, rgba(24, 25, 32, 0.98) 100%);
 }
 html[data-theme='dark'] .meta-item:hover {
-  border-color: rgba(183, 85, 104, 0.3);
-  background: rgba(255, 255, 255, 0.03);
+  border-color: rgba(195, 79, 103, 0.5);
+  background: linear-gradient(180deg, rgba(30, 32, 40, 0.98) 0%, rgba(25, 27, 35, 0.98) 100%);
 }
 html[data-theme='dark'] .meta-item__label {
   color: #efc5cd;
   border-bottom-color: rgba(255, 255, 255, 0.06);
+}
+html[data-theme='dark'] [id^="body-metas-"] > .field {
+  border-color: rgba(255, 255, 255, 0.08);
+  background:
+    radial-gradient(circle at top left, rgba(195, 79, 103, 0.12), transparent 26%),
+    linear-gradient(180deg, rgba(28, 30, 38, 0.96) 0%, rgba(22, 24, 32, 0.98) 100%);
+}
+html[data-theme='dark'] [id^="body-metas-"] .field__label {
+  color: #d2b9b1;
+}
+html[data-theme='dark'] .meta-field-prefix {
+  background: linear-gradient(135deg, rgba(195, 79, 103, 0.18), rgba(154, 48, 72, 0.24));
+  border-color: rgba(195, 79, 103, 0.25);
+  color: #f3d6dc;
 }
 html[data-theme='dark'] .field__input[readonly] { background: rgba(255,255,255,.03); color: var(--text-muted); }
 html[data-theme='dark'] .analytics-ai__toggle { border-color: rgba(255, 255, 255, 0.12); }

@@ -229,6 +229,41 @@ function parsearInteiroSeguro(valor) {
   return Math.max(parseInt(valor || '0', 10) || 0, 0);
 }
 
+function prefixoMetaPorLabel(texto) {
+  const label = String(texto || '').toLowerCase();
+  if (label.includes('(r$)') || label.includes('valor meta') || label.includes('meta bancos') || label.includes('meta giro') || label.includes('meta fornecedores') || label.includes('meta medicao')) {
+    return 'Valores (R$)';
+  }
+  if (label.includes('unidades') || label.includes('acoes planejadas')) {
+    return 'Qtd';
+  }
+  return '';
+}
+
+function aprimorarCamposMetas() {
+  document.querySelectorAll('[id^="body-metas-"] .field').forEach((field) => {
+    if (field.dataset.metaEnhanced === 'true') return;
+    const labelEl = field.querySelector('.field__label');
+    const inputEl = field.querySelector('.field__input');
+    if (!labelEl || !inputEl) return;
+
+    const prefixo = prefixoMetaPorLabel(labelEl.textContent);
+    if (!prefixo) return;
+
+    const wrap = document.createElement('div');
+    wrap.className = 'meta-field-wrap';
+
+    const badge = document.createElement('span');
+    badge.className = `meta-field-prefix${prefixo === 'Qtd' ? ' meta-field-prefix--qty' : ''}`;
+    badge.textContent = prefixo;
+
+    inputEl.parentNode.insertBefore(wrap, inputEl);
+    wrap.appendChild(badge);
+    wrap.appendChild(inputEl);
+    field.dataset.metaEnhanced = 'true';
+  });
+}
+
 function obterMetaBase(scope, monetario = true) {
   const input = document.getElementById(`meta-base-${scope}`);
   if (!input) return 0;
@@ -858,3 +893,5 @@ async function salvarMetaMedicao(semana, btn) {
 function editarMetaMedicao(semana, btn) {
   renderizarMetaMedicaoEditavel(semana);
 }
+
+aprimorarCamposMetas();

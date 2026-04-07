@@ -9,6 +9,7 @@ from app.models.fornecedor import FornecedorRegistro, SITUACAO_FORNECEDOR_OPCOES
 from app.models.indicador_acao import IndicadorAcao, consultar_acoes, contar_acoes
 from app.models.meta_fornecedor import MetaFornecedorSemana
 from app.models.meta_configuracao import MetaConfiguracaoIndicador
+from app.utils.progress import calcular_percentual_planejado_realizado
 from app.utils.quarter import semana_editavel
 
 
@@ -58,9 +59,12 @@ def _calcular_indicadores_fornecedores(semana: int, registros: list[FornecedorRe
     acoes_realizadas = contar_acoes('fornecedores', semana)
     percentual = (valor_negociado / valor_meta * 100) if valor_meta > 0 else 0
     percentual_acoes = (acoes_realizadas / acoes_planejadas * 100) if acoes_planejadas > 0 else 0
-    planejado_total = valor_meta + acoes_planejadas
-    realizado_total = valor_negociado + acoes_realizadas
-    percentual_planejado_realizado = (realizado_total / planejado_total * 100) if planejado_total > 0 else 0
+    percentual_planejado_realizado = calcular_percentual_planejado_realizado(
+        valor_negociado,
+        valor_meta,
+        acoes_realizadas,
+        acoes_planejadas,
+    )
     meta_base = MetaConfiguracaoIndicador.query.filter_by(scope='fornecedores').first()
 
     return {
@@ -75,9 +79,7 @@ def _calcular_indicadores_fornecedores(semana: int, registros: list[FornecedorRe
         'acoes_realizadas': acoes_realizadas,
         'pct_acoes': min(round(percentual_acoes, 1), 100),
         'pct_valor': min(round(percentual, 1), 100),
-        'pct_planejado_realizado': min(round(percentual_planejado_realizado, 1), 100),
-        'planejado_total': planejado_total,
-        'realizado_total': realizado_total,
+        'pct_planejado_realizado': percentual_planejado_realizado,
     }
 
 
@@ -93,8 +95,12 @@ def resumir_fornecedores_trimestre() -> dict:
     acoes_planejadas = sum(int(item.acoes_planejadas or 0) for item in metas)
     acoes_realizadas = contar_acoes('fornecedores', range(1, 13))
     meta_base = MetaConfiguracaoIndicador.query.filter_by(scope='fornecedores').first()
-    planejado_total = valor_meta + acoes_planejadas
-    realizado_total = valor_realizado + acoes_realizadas
+    percentual_planejado_realizado = calcular_percentual_planejado_realizado(
+        valor_realizado,
+        valor_meta,
+        acoes_realizadas,
+        acoes_planejadas,
+    )
     return {
         'valor_realizado': valor_realizado,
         'valor_meta': valor_meta,
@@ -106,7 +112,7 @@ def resumir_fornecedores_trimestre() -> dict:
         'acoes_planejadas': acoes_planejadas,
         'acoes_realizadas': acoes_realizadas,
         'percentual_acoes': round((acoes_realizadas / acoes_planejadas) * 100, 1) if acoes_planejadas > 0 else 0.0,
-        'percentual_planejado_realizado': round((realizado_total / planejado_total) * 100, 1) if planejado_total > 0 else 0.0,
+        'percentual_planejado_realizado': percentual_planejado_realizado,
     }
 
 

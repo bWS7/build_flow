@@ -32,6 +32,18 @@ function fmtMoedaInteira(valor) {
   return 'R$ ' + Math.round(Number(valor || 0)).toLocaleString('pt-BR');
 }
 
+function calcularPctPlanejadoRealizado(realizadoMetrica, metaMetrica, realizadoAcoes, metaAcoes) {
+  const componentes = [];
+  if (Number(metaMetrica || 0) > 0) componentes.push(Number(realizadoMetrica || 0) / Number(metaMetrica || 0));
+  if (Number(metaAcoes || 0) > 0) componentes.push(Number(realizadoAcoes || 0) / Number(metaAcoes || 0));
+  if (!componentes.length) return 0;
+  return Number((Math.min((componentes.reduce((acc, item) => acc + item, 0) / componentes.length) * 100, 100)).toFixed(1));
+}
+
+function resumoPlanejadoRealizado(financeiro) {
+  return `${fmtMoedaInteira(financeiro.valor_realizado || 0)} de ${fmtMoedaInteira(financeiro.meta_valor || 0)} na metrica • ${financeiro.acoes_realizadas || 0} de ${financeiro.meta_acoes || 0} acoes`;
+}
+
 function formatarCampoMoeda(valor) {
   const digitos = String(valor || '').replace(/\D/g, '');
   if (!digitos) return '';
@@ -265,7 +277,7 @@ function atualizarFinanceiro(financeiro) {
   if (metaAcoesEl) metaAcoesEl.textContent = String(financeiro.meta_acoes || 0);
   if (acoesRealizadasEl) acoesRealizadasEl.textContent = String(financeiro.acoes_realizadas || 0);
   if (resumoBarEl) resumoBarEl.style.width = `${Math.min(financeiro.percentual_planejado_realizado || 0, 100)}%`;
-  if (resumoTxtEl) resumoTxtEl.textContent = `${fmtMoedaInteira(financeiro.realizado_total || 0)} realizados de ${fmtMoedaInteira(financeiro.planejado_total || 0)} planejados no periodo.`;
+  if (resumoTxtEl) resumoTxtEl.textContent = resumoPlanejadoRealizado(financeiro);
   if (pctEl) pctEl.textContent = `${financeiro.percentual_atingimento || 0}%`;
   if (txtEl) txtEl.textContent = `${fmtMoedaInteira(financeiro.valor_realizado || 0)} de ${fmtMoedaInteira(financeiro.meta_valor || 0)} realizados`;
   if (barEl) barEl.style.width = `${Math.min(financeiro.percentual_atingimento || 0, 100)}%`;
@@ -405,11 +417,12 @@ function calcularFinanceiroFiltrado(registros) {
     percentual_acoes: (INITIAL_FINANCEIRO.meta_acoes || 0) > 0
       ? Number(((acoesCache.length / INITIAL_FINANCEIRO.meta_acoes) * 100).toFixed(1))
       : 0,
-    percentual_planejado_realizado: ((INITIAL_FINANCEIRO.meta_valor || 0) + (INITIAL_FINANCEIRO.meta_acoes || 0)) > 0
-      ? Number((((valorRealizado + acoesCache.length) / ((INITIAL_FINANCEIRO.meta_valor || 0) + (INITIAL_FINANCEIRO.meta_acoes || 0))) * 100).toFixed(1))
-      : 0,
-    planejado_total: (INITIAL_FINANCEIRO.meta_valor || 0) + (INITIAL_FINANCEIRO.meta_acoes || 0),
-    realizado_total: valorRealizado + acoesCache.length,
+    percentual_planejado_realizado: calcularPctPlanejadoRealizado(
+      valorRealizado,
+      INITIAL_FINANCEIRO.meta_valor || 0,
+      acoesCache.length,
+      INITIAL_FINANCEIRO.meta_acoes || 0,
+    ),
     total_vendidas: totalVendidas,
     total_registros: total,
     funil,

@@ -13,6 +13,7 @@ from app.models.meta_configuracao import MetaConfiguracaoIndicador
 from app.models.investidor import Investidor, SITUACAO_INVESTIDOR_OPCOES, TIPO_VENDA_OPCOES
 from app.models.meta_investidor_semana import MetaInvestidorSemana
 from app.services.analytics_ai import analytics_ai_available, analytics_ai_enabled, ask_analytics_assistant, build_global_ai_context, fallback_analytics_answer
+from app.utils.progress import calcular_percentual_planejado_realizado
 from app.utils.quarter import semana_editavel
 
 
@@ -324,9 +325,12 @@ def _calcular_financeiro(mes_slug: str, investidores: list[Investidor] | None = 
     acoes_realizadas = contar_acoes('investidores', _semanas_periodo_investidores(mes_slug, semana_local))
     percentual = round((valor_realizado / meta_valor) * 100, 1) if meta_valor > 0 else 0.0
     percentual_acoes = round((acoes_realizadas / meta_acoes) * 100, 1) if meta_acoes > 0 else 0.0
-    planejado_total = meta_valor + meta_acoes
-    realizado_total = valor_realizado + acoes_realizadas
-    percentual_planejado_realizado = round((realizado_total / planejado_total) * 100, 1) if planejado_total > 0 else 0.0
+    percentual_planejado_realizado = calcular_percentual_planejado_realizado(
+        valor_realizado,
+        meta_valor,
+        acoes_realizadas,
+        meta_acoes,
+    )
     meta_base = MetaConfiguracaoIndicador.query.filter_by(scope='investidores').first()
     return {
         'mes': mes_slug,
@@ -340,8 +344,6 @@ def _calcular_financeiro(mes_slug: str, investidores: list[Investidor] | None = 
         'acoes_realizadas': acoes_realizadas,
         'percentual_acoes': percentual_acoes,
         'percentual_planejado_realizado': percentual_planejado_realizado,
-        'planejado_total': planejado_total,
-        'realizado_total': realizado_total,
         'funil': _montar_funil(investidores),
     }
 

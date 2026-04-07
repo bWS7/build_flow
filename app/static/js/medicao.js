@@ -42,6 +42,10 @@ function fmtValor(v) {
   return 'R$ ' + Number(v || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 });
 }
 
+function resumoPlanejadoRealizado(valorAtual, valorMeta, acoesRealizadas, acoesPlanejadas) {
+  return `${fmtValor(valorAtual)} de ${fmtValor(valorMeta)} na metrica • ${acoesRealizadas || 0} de ${acoesPlanejadas || 0} acoes`;
+}
+
 function atualizarIndicadores(ind) {
   const metaBase = document.getElementById('meta-base-total');
   if (metaBase) metaBase.textContent = 'R$ ' + Math.round(ind.meta_base_total || 0).toLocaleString('pt-BR');
@@ -63,7 +67,7 @@ function atualizarIndicadores(ind) {
   const resumoBar = document.getElementById('bar-resumo');
   if (resumoBar) resumoBar.style.width = `${Math.min(ind.pct_planejado_realizado || ind.pct_valor || 0, 100)}%`;
   const resumoTexto = document.getElementById('txt-resumo');
-  if (resumoTexto) resumoTexto.textContent = `${fmtValor(ind.realizado_total || valorAtual)} realizados de ${fmtValor(ind.planejado_total || ind.valor_meta || 0)} planejados nesta semana.`;
+  if (resumoTexto) resumoTexto.textContent = resumoPlanejadoRealizado(valorAtual, ind.valor_meta || 0, ind.acoes_realizadas || 0, ind.acoes_planejadas || 0);
 }
 
 function abrirFicha(id) {

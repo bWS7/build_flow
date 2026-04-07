@@ -13,6 +13,7 @@ from app.models.meta_configuracao import MetaConfiguracaoIndicador
 from app.models.meta_venda_semana import MetaVendaSemana
 from app.models.venda import SITUACAO_VENDA_OPCOES, TIPO_VENDA_OPCOES, Venda
 from app.services.analytics_ai import analytics_ai_available, analytics_ai_enabled, ask_analytics_assistant, build_global_ai_context, fallback_analytics_answer
+from app.utils.progress import calcular_percentual_planejado_realizado
 from app.utils.quarter import semana_editavel
 
 
@@ -345,9 +346,12 @@ def _calcular_financeiro(mes_slug: str, vendas: list[Venda] | None = None, seman
     acoes_realizadas = contar_acoes('vendas', _semanas_periodo_vendas(mes_slug, semana_local))
     percentual = round((total_vendidas / meta_quantidade) * 100, 1) if meta_quantidade > 0 else 0.0
     percentual_acoes = round((acoes_realizadas / meta_acoes) * 100, 1) if meta_acoes > 0 else 0.0
-    planejado_total = meta_quantidade + meta_acoes
-    realizado_total = total_vendidas + acoes_realizadas
-    percentual_planejado_realizado = round((realizado_total / planejado_total) * 100, 1) if planejado_total > 0 else 0.0
+    percentual_planejado_realizado = calcular_percentual_planejado_realizado(
+        total_vendidas,
+        meta_quantidade,
+        acoes_realizadas,
+        meta_acoes,
+    )
     meta_base = MetaConfiguracaoIndicador.query.filter_by(scope='vendas').first()
     return {
         'mes': mes_slug,
@@ -362,8 +366,6 @@ def _calcular_financeiro(mes_slug: str, vendas: list[Venda] | None = None, seman
         'acoes_realizadas': acoes_realizadas,
         'percentual_acoes': percentual_acoes,
         'percentual_planejado_realizado': percentual_planejado_realizado,
-        'planejado_total': planejado_total,
-        'realizado_total': realizado_total,
         'funil': _montar_funil(vendas),
     }
 

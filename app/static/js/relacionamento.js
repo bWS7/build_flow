@@ -79,7 +79,7 @@ function atualizarIndicadores(ind) {
   const resumoBar = document.getElementById('bar-resumo');
   if (resumoBar) resumoBar.style.width = `${Math.min(ind.pct_planejado_realizado || ind.pct_valor || 0, 100)}%`;
   const resumoTexto = document.getElementById('txt-resumo');
-  if (resumoTexto) resumoTexto.textContent = `${fmtValor(ind.realizado_total || ind.soma_valores || 0)} realizados de ${fmtValor(ind.planejado_total || ind.valor_meta || 0)} planejados nesta semana.`;
+  if (resumoTexto) resumoTexto.textContent = `${fmtValor(ind.soma_valores || 0)} de ${fmtValor(ind.valor_meta || 0)} na metrica • ${ind.acoes_realizadas || 0} de ${ind.acoes_planejadas || 0} acoes`;
 }
 
 function statusIcon(situacao) {

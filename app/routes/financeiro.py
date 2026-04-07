@@ -8,6 +8,7 @@ from app.models.financeiro import BANCOS_BRASIL, NEGOCIACAO_OPCOES, FinanceiroBa
 from app.models.indicador_acao import IndicadorAcao, consultar_acoes, contar_acoes
 from app.models.meta_financeiro import MetaFinanceiroSemana
 from app.models.meta_configuracao import MetaConfiguracaoIndicador
+from app.utils.progress import calcular_percentual_planejado_realizado
 from app.utils.quarter import semana_editavel
 
 
@@ -48,9 +49,12 @@ def _calcular_indicadores_financeiro(semana: int, registros: list[FinanceiroBanc
     acoes_realizadas = contar_acoes('financeiro', semana)
     percentual = (valor_arrecadado / valor_meta * 100) if valor_meta > 0 else 0
     percentual_acoes = (acoes_realizadas / acoes_planejadas * 100) if acoes_planejadas > 0 else 0
-    planejado_total = valor_meta + acoes_planejadas
-    realizado_total = valor_arrecadado + acoes_realizadas
-    percentual_planejado_realizado = (realizado_total / planejado_total * 100) if planejado_total > 0 else 0
+    percentual_planejado_realizado = calcular_percentual_planejado_realizado(
+        valor_arrecadado,
+        valor_meta,
+        acoes_realizadas,
+        acoes_planejadas,
+    )
     meta_base = MetaConfiguracaoIndicador.query.filter_by(scope='financeiro').first()
 
     return {
@@ -64,9 +68,7 @@ def _calcular_indicadores_financeiro(semana: int, registros: list[FinanceiroBanc
         'acoes_realizadas': acoes_realizadas,
         'pct_acoes': min(round(percentual_acoes, 1), 100),
         'pct_valor': min(round(percentual, 1), 100),
-        'pct_planejado_realizado': min(round(percentual_planejado_realizado, 1), 100),
-        'planejado_total': valor_meta + acoes_planejadas,
-        'realizado_total': valor_arrecadado + acoes_realizadas,
+        'pct_planejado_realizado': percentual_planejado_realizado,
     }
 
 
@@ -78,8 +80,12 @@ def resumir_financeiro_bancos_trimestre() -> dict:
     acoes_planejadas = sum(int(item.acoes_planejadas or 0) for item in metas)
     acoes_realizadas = contar_acoes('financeiro', range(1, 13))
     meta_base = MetaConfiguracaoIndicador.query.filter_by(scope='financeiro').first()
-    planejado_total = valor_meta + acoes_planejadas
-    realizado_total = valor_realizado + acoes_realizadas
+    percentual_planejado_realizado = calcular_percentual_planejado_realizado(
+        valor_realizado,
+        valor_meta,
+        acoes_realizadas,
+        acoes_planejadas,
+    )
     return {
         'valor_realizado': valor_realizado,
         'valor_meta': valor_meta,
@@ -90,7 +96,7 @@ def resumir_financeiro_bancos_trimestre() -> dict:
         'acoes_planejadas': acoes_planejadas,
         'acoes_realizadas': acoes_realizadas,
         'percentual_acoes': round((acoes_realizadas / acoes_planejadas) * 100, 1) if acoes_planejadas > 0 else 0.0,
-        'percentual_planejado_realizado': round((realizado_total / planejado_total) * 100, 1) if planejado_total > 0 else 0.0,
+        'percentual_planejado_realizado': percentual_planejado_realizado,
     }
 
 
