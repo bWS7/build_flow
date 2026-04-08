@@ -15,6 +15,8 @@ relacionamento_bp = Blueprint('relacionamento', __name__)
 
 TIPOS_CONTATO = ['LIGAÇÃO', 'VISITA', 'WHATSAPP', 'E-MAIL', 'REUNIÃO']
 SEMANAS_VALIDAS = set(range(1, 13))
+TIPO_CONTATO_PADRAO = 'WHATSAPP'
+TELEFONE_PADRAO = 'NAO INFORMADO'
 
 
 def _situacao_conta_como_sim(situacao: str | None) -> bool:
@@ -144,13 +146,13 @@ def index():
 def cadastrar():
     dados = request.get_json(silent=True) or request.form.to_dict()
 
-    campos_obrigatorios = ['empreendimento', 'cliente', 'telefone', 'tipo_contato', 'situacao']
+    campos_obrigatorios = ['empreendimento', 'cliente', 'situacao']
     for campo in campos_obrigatorios:
         if not dados.get(campo):
             return jsonify({'erro': f'Campo obrigatório ausente: {campo}'}), 400
 
     situacao = _normalizar_situacao(dados.get('situacao'))
-    tipo_contato = dados['tipo_contato'].upper().strip()
+    tipo_contato = (dados.get('tipo_contato') or TIPO_CONTATO_PADRAO).upper().strip()
     if situacao not in SITUACAO_OPCOES:
         return jsonify({'erro': 'Situação inválida.'}), 400
     if tipo_contato not in TIPOS_CONTATO:
@@ -174,7 +176,7 @@ def cadastrar():
     novo = Relacionamento(
         empreendimento=dados['empreendimento'].upper().strip(),
         cliente=dados['cliente'].upper().strip(),
-        telefone=dados['telefone'].upper().strip(),
+        telefone=(dados.get('telefone') or TELEFONE_PADRAO).upper().strip(),
         email_cliente=(dados.get('email_cliente') or '').upper().strip() or None,
         tipo_contato=tipo_contato,
         situacao=situacao,
@@ -188,6 +190,69 @@ def cadastrar():
 
     _broadcast_update(semana)
     return jsonify({'sucesso': True, 'id': novo.id}), 201
+
+
+@relacionamento_bp.route('/bulk-cadastrar', methods=['POST'])
+@login_required
+@requer_relacionamento_ou_admin
+def bulk_cadastrar():
+    dados = request.get_json(silent=True) or {}
+    linhas = dados.get('linhas') or []
+    if not isinstance(linhas, list) or not linhas:
+        return jsonify({'erro': 'Nenhuma linha valida foi informada para importacao.'}), 400
+
+    registros_criados = []
+    semanas_processadas = set()
+
+    for indice, linha in enumerate(linhas, start=1):
+        if not isinstance(linha, dict):
+            return jsonify({'erro': f'Linha {indice} invalida.'}), 400
+
+        empreendimento = (linha.get('empreendimento') or '').upper().strip()
+        cliente = (linha.get('cliente') or '').upper().strip()
+        situacao = _normalizar_situacao(linha.get('situacao'))
+        semana = _parse_semana(linha.get('semana', 1))
+
+        if not empreendimento or not cliente or not situacao:
+            return jsonify({'erro': f'Linha {indice}: preencha empreendimento, cliente e situacao.'}), 400
+        if situacao not in SITUACAO_OPCOES:
+            return jsonify({'erro': f'Linha {indice}: situacao invalida.'}), 400
+        if semana is None:
+            return jsonify({'erro': f'Linha {indice}: semana invalida.'}), 400
+
+        bloqueio = _garantir_semana_editavel(semana)
+        if bloqueio:
+            return bloqueio
+
+        try:
+            valor = float(linha.get('valor', 0) or 0)
+        except (TypeError, ValueError):
+            return jsonify({'erro': f'Linha {indice}: valor invalido.'}), 400
+        if valor < 0:
+            valor = 0.0
+
+        novo = Relacionamento(
+            empreendimento=empreendimento,
+            cliente=cliente,
+            telefone=TELEFONE_PADRAO,
+            email_cliente=None,
+            tipo_contato=TIPO_CONTATO_PADRAO,
+            situacao=situacao,
+            observacao=None,
+            valor=valor,
+            responsavel=current_user.nome.upper(),
+            semana=semana,
+        )
+        db.session.add(novo)
+        registros_criados.append(novo)
+        semanas_processadas.add(semana)
+
+    db.session.commit()
+
+    for semana in semanas_processadas:
+        _broadcast_update(semana)
+
+    return jsonify({'sucesso': True, 'total': len(registros_criados)}), 201
 
 
 @relacionamento_bp.route('/registro/<int:reg_id>', methods=['PUT'])

@@ -16,6 +16,8 @@ from app.utils.quarter import semana_editavel
 fornecedores_bp = Blueprint('fornecedores', __name__)
 
 SEMANAS_VALIDAS = set(range(1, 13))
+EMAIL_PADRAO = 'nao-informado@sistema.local'
+TELEFONE_PADRAO = 'NAO INFORMADO'
 
 
 def requer_fornecedores_ou_admin(f):
@@ -177,7 +179,7 @@ def cadastrar():
     dados = request.get_json(silent=True) or request.form.to_dict()
     campos_obrigatorios = [
         'empreendimento', 'nome_fornecedor', 'servico_prestado',
-        'email', 'telefone', 'situacao', 'valor_negociado',
+        'situacao', 'valor_negociado',
     ]
     for campo in campos_obrigatorios:
         if not str(dados.get(campo) or '').strip():
@@ -209,8 +211,8 @@ def cadastrar():
         empreendimento=empreendimento,
         nome_fornecedor=(dados.get('nome_fornecedor') or '').upper().strip(),
         servico_prestado=(dados.get('servico_prestado') or '').upper().strip(),
-        email=(dados.get('email') or '').strip(),
-        telefone=(dados.get('telefone') or '').strip(),
+        email=(dados.get('email') or EMAIL_PADRAO).strip(),
+        telefone=(dados.get('telefone') or TELEFONE_PADRAO).strip(),
         situacao=situacao,
         valor_negociado=valor_negociado,
         observacao=(dados.get('observacao') or '').upper().strip() or None,
@@ -222,6 +224,72 @@ def cadastrar():
 
     _broadcast_update_fornecedores(semana)
     return jsonify({'sucesso': True, 'id': novo.id}), 201
+
+
+@fornecedores_bp.route('/bulk-cadastrar', methods=['POST'])
+@login_required
+@requer_fornecedores_ou_admin
+def bulk_cadastrar():
+    dados = request.get_json(silent=True) or {}
+    linhas = dados.get('linhas') or []
+    if not isinstance(linhas, list) or not linhas:
+        return jsonify({'erro': 'Nenhuma linha valida foi informada para importacao.'}), 400
+
+    registros_criados = []
+    semanas_processadas = set()
+
+    for indice, linha in enumerate(linhas, start=1):
+        if not isinstance(linha, dict):
+            return jsonify({'erro': f'Linha {indice} invalida.'}), 400
+
+        empreendimento = (linha.get('empreendimento') or '').upper().strip()
+        nome_fornecedor = (linha.get('nome_fornecedor') or '').upper().strip()
+        servico_prestado = (linha.get('servico_prestado') or '').upper().strip()
+        situacao = (linha.get('situacao') or '').upper().strip()
+        semana = _parse_semana(linha.get('semana', 1))
+
+        if not empreendimento or not nome_fornecedor or not servico_prestado or not situacao:
+            return jsonify({'erro': f'Linha {indice}: preencha empreendimento, fornecedor, numero do processo e situacao.'}), 400
+        if not Empreendimento.query.filter_by(nome=empreendimento, ativo=True).first():
+            return jsonify({'erro': f'Linha {indice}: empreendimento invalido.'}), 400
+        if situacao not in SITUACAO_FORNECEDOR_OPCOES:
+            return jsonify({'erro': f'Linha {indice}: situacao invalida.'}), 400
+        if semana is None:
+            return jsonify({'erro': f'Linha {indice}: semana invalida.'}), 400
+
+        bloqueio = _garantir_semana_editavel(semana)
+        if bloqueio:
+            return bloqueio
+
+        try:
+            valor_negociado = float(linha.get('valor_negociado', 0) or 0)
+        except (TypeError, ValueError):
+            return jsonify({'erro': f'Linha {indice}: valor negociado invalido.'}), 400
+        if valor_negociado < 0:
+            valor_negociado = 0.0
+
+        novo = FornecedorRegistro(
+            empreendimento=empreendimento,
+            nome_fornecedor=nome_fornecedor,
+            servico_prestado=servico_prestado,
+            email=EMAIL_PADRAO,
+            telefone=TELEFONE_PADRAO,
+            situacao=situacao,
+            valor_negociado=valor_negociado,
+            observacao=None,
+            responsavel=current_user.nome.upper(),
+            semana=semana,
+        )
+        db.session.add(novo)
+        registros_criados.append(novo)
+        semanas_processadas.add(semana)
+
+    db.session.commit()
+
+    for semana in semanas_processadas:
+        _broadcast_update_fornecedores(semana)
+
+    return jsonify({'sucesso': True, 'total': len(registros_criados)}), 201
 
 
 @fornecedores_bp.route('/acao', methods=['POST'])

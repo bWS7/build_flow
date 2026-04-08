@@ -256,23 +256,6 @@
               <input class="field__input" type="text" name="cliente" placeholder="Nome completo" required />
             </div>
             <div class="field">
-              <label class="field__label">Telefone *</label>
-              <input class="field__input" type="text" name="telefone" placeholder="(11) 99999-9999" required />
-            </div>
-            <div class="field">
-              <label class="field__label">E-mail do cliente</label>
-              <input class="field__input" type="email" name="email_cliente" placeholder="cliente@email.com" />
-            </div>
-            <div class="field">
-              <label class="field__label">Tipo de contato *</label>
-              <select class="field__input" name="tipo_contato" required>
-                <option value="">Selecione...</option>
-                {% for tc in tipos_contato %}
-                <option value="{{ tc }}">{{ tc }}</option>
-                {% endfor %}
-              </select>
-            </div>
-            <div class="field">
               <label class="field__label">Situação / Negociação Aceita? *</label>
               <select class="field__input" name="situacao" required>
                 {% for sit in situacoes %}
@@ -301,6 +284,18 @@
             </button>
           </div>
         </form>
+        <aside class="bulk-card">
+          <div class="bulk-card__header">
+            <h4>Preenchimento em Massa</h4>
+            <p>Cole linhas do Excel/Sheets na ordem: empreendimento, cliente, situacao, valor e responsavel.</p>
+          </div>
+          <textarea id="bulk-paste" class="field__input field__textarea bulk-card__textarea" placeholder="EMPREENDIMENTO[TAB]CLIENTE[TAB]SITUACAO[TAB]VALOR[TAB]RESPONSAVEL"></textarea>
+          <div class="bulk-card__actions">
+            <button type="button" class="btn btn--ghost" id="btn-preview-bulk">Validar linhas</button>
+            <button type="button" class="btn btn--primary" id="btn-save-bulk">Salvar em massa</button>
+          </div>
+          <div class="bulk-card__feedback" id="bulk-feedback">Nenhuma linha validada ainda.</div>
+        </aside>
       </div>
     </section>
 

@@ -17,6 +17,53 @@ function csrfHeaders(extra = {}) {
   return { 'X-CSRFToken': window.APP_CSRF_TOKEN || '', ...extra };
 }
 
+function parseBulkValorBr(valor) {
+  const limpo = String(valor || '')
+    .replace(/R\$\s*/gi, '')
+    .replace(/\./g, '')
+    .replace(',', '.')
+    .trim();
+  if (!limpo) return 0;
+  const numero = Number.parseFloat(limpo);
+  return Number.isFinite(numero) ? numero : NaN;
+}
+
+function parseBulkFornecedores() {
+  const textarea = document.getElementById('bulk-paste');
+  const texto = textarea ? textarea.value.trim() : '';
+  if (!texto) return [];
+
+  return texto
+    .split(/\r?\n/)
+    .map((linha) => linha.trim())
+    .filter(Boolean)
+    .map((linha) => {
+      const partes = linha.split('\t').map((item) => item.trim());
+      return {
+        empreendimento: partes[0] || '',
+        nome_fornecedor: partes[1] || '',
+        servico_prestado: partes[2] || '',
+        situacao: partes[3] || '',
+        valor_negociado: parseBulkValorBr(partes[4] || ''),
+        responsavel: partes[5] || '',
+        semana: SEMANA_ATUAL,
+      };
+    });
+}
+
+function atualizarFeedbackBulkFornecedores(linhas) {
+  const feedback = document.getElementById('bulk-feedback');
+  if (!feedback) return;
+  if (!linhas.length) {
+    feedback.textContent = 'Nenhuma linha validada ainda.';
+    return;
+  }
+  const invalidas = linhas.filter((linha) => !linha.empreendimento || !linha.nome_fornecedor || !linha.servico_prestado || !linha.situacao || Number.isNaN(linha.valor_negociado));
+  feedback.textContent = invalidas.length
+    ? `${linhas.length} linhas lidas, ${invalidas.length} com problema.`
+    : `${linhas.length} linhas prontas para importacao.`;
+}
+
 function podeGerenciarRegistro(registro) {
   return IS_ADMIN || registro.responsavel === CURRENT_USER_NOME;
 }
@@ -204,7 +251,7 @@ document.getElementById('form-cadastro').addEventListener('submit', async (e) =>
   const dados = {};
   new FormData(form).forEach((v, k) => { dados[k] = String(v).trim(); });
 
-  if (!dados.empreendimento || !dados.nome_fornecedor || !dados.servico_prestado || !dados.email || !dados.telefone || !dados.situacao || !dados.valor_negociado) {
+  if (!dados.empreendimento || !dados.nome_fornecedor || !dados.servico_prestado || !dados.situacao || !dados.valor_negociado) {
     showToast('Preencha todos os campos obrigatorios.', 'error');
     return;
   }
@@ -232,6 +279,46 @@ document.getElementById('form-cadastro').addEventListener('submit', async (e) =>
     btn.textContent = 'Salvar Registro';
   }
 });
+
+async function salvarBulkFornecedores() {
+  const btn = document.getElementById('btn-save-bulk');
+  const textarea = document.getElementById('bulk-paste');
+  const linhas = parseBulkFornecedores();
+  atualizarFeedbackBulkFornecedores(linhas);
+  if (!linhas.length) {
+    showToast('Cole ao menos uma linha para importar.', 'error');
+    return;
+  }
+  const invalidas = linhas.filter((linha) => !linha.empreendimento || !linha.nome_fornecedor || !linha.servico_prestado || !linha.situacao || Number.isNaN(linha.valor_negociado));
+  if (invalidas.length) {
+    showToast('Revise as linhas invalidas antes de salvar.', 'error');
+    return;
+  }
+
+  btn.disabled = true;
+  btn.textContent = 'Salvando...';
+  try {
+    const resp = await fetch('/fornecedores/bulk-cadastrar', {
+      method: 'POST',
+      headers: csrfHeaders({ 'Content-Type': 'application/json' }),
+      body: JSON.stringify({ linhas }),
+    });
+    const json = await resp.json();
+    if (resp.ok && json.sucesso) {
+      showToast(`${json.total || linhas.length} registros importados com sucesso!`, 'success');
+      if (textarea) textarea.value = '';
+      atualizarFeedbackBulkFornecedores([]);
+      _buscarAtualizacao();
+    } else {
+      showToast(json.erro || 'Erro ao importar em massa.', 'error');
+    }
+  } catch {
+    showToast('Falha de conexao. Tente novamente.', 'error');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Salvar em massa';
+  }
+}
 
 async function deletarRegistro(id, btnEl) { openDeleteModal(id, btnEl); }
 
@@ -362,6 +449,24 @@ document.addEventListener('DOMContentLoaded', () => {
         ? 'A acao sera registrada normalmente nesta semana.'
         : 'Voce pode registrar uma acao diretamente, mesmo sem registro anterior.';
     });
+  }
+  const bulkTextarea = document.getElementById('bulk-paste');
+  const bulkPreview = document.getElementById('btn-preview-bulk');
+  const bulkSave = document.getElementById('btn-save-bulk');
+  if (bulkTextarea) {
+    bulkTextarea.addEventListener('input', () => {
+      atualizarFeedbackBulkFornecedores(parseBulkFornecedores());
+    });
+  }
+  if (bulkPreview) {
+    bulkPreview.addEventListener('click', () => {
+      const linhas = parseBulkFornecedores();
+      atualizarFeedbackBulkFornecedores(linhas);
+      showToast(linhas.length ? 'Linhas validadas.' : 'Cole dados para validar.', linhas.length ? 'success' : 'error');
+    });
+  }
+  if (bulkSave) {
+    bulkSave.addEventListener('click', salvarBulkFornecedores);
   }
   const confirmDeleteBtn = document.getElementById('confirm-delete-btn');
   if (confirmDeleteBtn) confirmDeleteBtn.addEventListener('click', confirmarExclusaoRegistro);

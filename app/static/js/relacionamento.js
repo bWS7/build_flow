@@ -17,6 +17,52 @@ function csrfHeaders(extra = {}) {
   return { 'X-CSRFToken': window.APP_CSRF_TOKEN || '', ...extra };
 }
 
+function parseBulkValorBr(valor) {
+  const limpo = String(valor || '')
+    .replace(/R\$\s*/gi, '')
+    .replace(/\./g, '')
+    .replace(',', '.')
+    .trim();
+  if (!limpo) return 0;
+  const numero = Number.parseFloat(limpo);
+  return Number.isFinite(numero) ? numero : NaN;
+}
+
+function parseBulkRelacionamento() {
+  const textarea = document.getElementById('bulk-paste');
+  const texto = textarea ? textarea.value.trim() : '';
+  if (!texto) return [];
+
+  return texto
+    .split(/\r?\n/)
+    .map((linha) => linha.trim())
+    .filter(Boolean)
+    .map((linha) => {
+      const partes = linha.split('\t').map((item) => item.trim());
+      return {
+        empreendimento: partes[0] || '',
+        cliente: partes[1] || '',
+        situacao: partes[2] || '',
+        valor: parseBulkValorBr(partes[3] || ''),
+        responsavel: partes[4] || '',
+        semana: SEMANA_ATUAL,
+      };
+    });
+}
+
+function atualizarFeedbackBulkRelacionamento(linhas) {
+  const feedback = document.getElementById('bulk-feedback');
+  if (!feedback) return;
+  if (!linhas.length) {
+    feedback.textContent = 'Nenhuma linha validada ainda.';
+    return;
+  }
+  const invalidas = linhas.filter((linha) => !linha.empreendimento || !linha.cliente || !linha.situacao || Number.isNaN(linha.valor));
+  feedback.textContent = invalidas.length
+    ? `${linhas.length} linhas lidas, ${invalidas.length} com problema.`
+    : `${linhas.length} linhas prontas para importacao.`;
+}
+
 function podeExcluirRegistro(registro) {
   return IS_ADMIN || registro.responsavel === CURRENT_USER_NOME;
 }
@@ -241,7 +287,7 @@ document.getElementById('form-cadastro').addEventListener('submit', async (e) =>
   const dados = {};
   new FormData(form).forEach((v, k) => { dados[k] = v.trim(); });
 
-  if (!dados.empreendimento || !dados.cliente || !dados.telefone || !dados.tipo_contato || !dados.situacao) {
+  if (!dados.empreendimento || !dados.cliente || !dados.situacao) {
     showToast('Preencha todos os campos obrigatórios.', 'error');
     return;
   }
@@ -270,6 +316,46 @@ document.getElementById('form-cadastro').addEventListener('submit', async (e) =>
     btn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg> Salvar Registro';
   }
 });
+
+async function salvarBulkRelacionamento() {
+  const btn = document.getElementById('btn-save-bulk');
+  const textarea = document.getElementById('bulk-paste');
+  const linhas = parseBulkRelacionamento();
+  atualizarFeedbackBulkRelacionamento(linhas);
+  if (!linhas.length) {
+    showToast('Cole ao menos uma linha para importar.', 'error');
+    return;
+  }
+  const invalidas = linhas.filter((linha) => !linha.empreendimento || !linha.cliente || !linha.situacao || Number.isNaN(linha.valor));
+  if (invalidas.length) {
+    showToast('Revise as linhas invalidas antes de salvar.', 'error');
+    return;
+  }
+
+  btn.disabled = true;
+  btn.textContent = 'Salvando...';
+  try {
+    const resp = await fetch('/relacionamento/bulk-cadastrar', {
+      method: 'POST',
+      headers: csrfHeaders({ 'Content-Type': 'application/json' }),
+      body: JSON.stringify({ linhas }),
+    });
+    const json = await resp.json();
+    if (resp.ok && json.sucesso) {
+      showToast(`${json.total || linhas.length} registros importados com sucesso!`, 'success');
+      if (textarea) textarea.value = '';
+      atualizarFeedbackBulkRelacionamento([]);
+      _buscarAtualizacao();
+    } else {
+      showToast(json.erro || 'Erro ao importar em massa.', 'error');
+    }
+  } catch {
+    showToast('Falha de conexao. Tente novamente.', 'error');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Salvar em massa';
+  }
+}
 
 async function deletarRegistro(id, btnEl) {
   openDeleteModal(id, btnEl);
@@ -415,6 +501,24 @@ document.addEventListener('DOMContentLoaded', () => {
         ? 'A acao sera registrada normalmente nesta semana.'
         : 'Voce pode registrar uma acao diretamente, mesmo sem registro anterior.';
     });
+  }
+  const bulkTextarea = document.getElementById('bulk-paste');
+  const bulkPreview = document.getElementById('btn-preview-bulk');
+  const bulkSave = document.getElementById('btn-save-bulk');
+  if (bulkTextarea) {
+    bulkTextarea.addEventListener('input', () => {
+      atualizarFeedbackBulkRelacionamento(parseBulkRelacionamento());
+    });
+  }
+  if (bulkPreview) {
+    bulkPreview.addEventListener('click', () => {
+      const linhas = parseBulkRelacionamento();
+      atualizarFeedbackBulkRelacionamento(linhas);
+      showToast(linhas.length ? 'Linhas validadas.' : 'Cole dados para validar.', linhas.length ? 'success' : 'error');
+    });
+  }
+  if (bulkSave) {
+    bulkSave.addEventListener('click', salvarBulkRelacionamento);
   }
   const confirmDeleteBtn = document.getElementById('confirm-delete-btn');
   if (confirmDeleteBtn) {

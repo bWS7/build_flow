@@ -1033,6 +1033,29 @@ html[data-theme='light'] .drawer__theme-slot {
   transition: background var(--transition), border-color var(--transition), color var(--transition), box-shadow var(--transition), transform var(--transition), opacity var(--transition);
 }
 
+.bulk-card__header h4 {
+  font-family: var(--font-display);
+  font-size: 18px;
+  color: var(--text-primary);
+}
+
+.bulk-card__header p,
+.bulk-card__feedback {
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.bulk-card__textarea {
+  min-height: 220px;
+  resize: vertical;
+}
+
+.bulk-card__actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
 @keyframes riseIn {
   from { opacity: 0; transform: translateY(14px); }
   to { opacity: 1; transform: translateY(0); }

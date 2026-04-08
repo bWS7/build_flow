@@ -221,16 +221,8 @@
               <input class="field__input" type="text" name="nome_fornecedor" required />
             </div>
             <div class="field">
-              <label class="field__label">Servico prestado *</label>
+              <label class="field__label">N&ordm; do Processo *</label>
               <input class="field__input" type="text" name="servico_prestado" required />
-            </div>
-            <div class="field">
-              <label class="field__label">E-mail *</label>
-              <input class="field__input" type="email" name="email" required />
-            </div>
-            <div class="field">
-              <label class="field__label">Telefone *</label>
-              <input class="field__input" type="text" name="telefone" required />
             </div>
             <div class="field">
               <label class="field__label">Situacao / Negociado *</label>
@@ -249,15 +241,23 @@
               <label class="field__label">Responsavel</label>
               <input class="field__input" type="text" value="{{ current_user.nome | upper }}" readonly />
             </div>
-            <div class="field field--full">
-              <label class="field__label">Observacoes</label>
-              <textarea class="field__input field__input--textarea" name="observacao" rows="3"></textarea>
-            </div>
           </div>
           <div class="form-actions">
             <button type="submit" class="btn btn--primary" id="btn-salvar">Salvar Registro</button>
           </div>
         </form>
+        <aside class="bulk-card">
+          <div class="bulk-card__header">
+            <h4>Preenchimento em Massa</h4>
+            <p>Cole linhas do Excel/Sheets na ordem: empreendimento, fornecedor, numero do processo, situacao, valor negociado e responsavel.</p>
+          </div>
+          <textarea id="bulk-paste" class="field__input field__textarea bulk-card__textarea" placeholder="EMPREENDIMENTO[TAB]FORNECEDOR[TAB]N PROCESSO[TAB]SITUACAO[TAB]VALOR NEGOCIADO[TAB]RESPONSAVEL"></textarea>
+          <div class="bulk-card__actions">
+            <button type="button" class="btn btn--ghost" id="btn-preview-bulk">Validar linhas</button>
+            <button type="button" class="btn btn--primary" id="btn-save-bulk">Salvar em massa</button>
+          </div>
+          <div class="bulk-card__feedback" id="bulk-feedback">Nenhuma linha validada ainda.</div>
+        </aside>
       </div>
     </section>
 
@@ -300,7 +300,7 @@
               <th>ID</th>
               <th>Empreendimento</th>
               <th>Fornecedor</th>
-              <th>Servico</th>
+              <th>N&ordm; do Processo</th>
               <th>Situacao</th>
               <th>Valor</th>
               <th>Responsavel</th>
