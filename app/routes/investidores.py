@@ -8,6 +8,7 @@ from sqlalchemy import extract, func
 
 from app import db, socketio
 from app.models.empreendimento import Empreendimento
+from app.models.exclusao_auditoria import registrar_exclusao_auditoria
 from app.models.indicador_acao import IndicadorAcao, consultar_acoes, contar_acoes, sincronizar_acao_registro
 from app.models.meta_configuracao import MetaConfiguracaoIndicador
 from app.models.investidor import Investidor, SITUACAO_INVESTIDOR_OPCOES, TIPO_VENDA_OPCOES
@@ -534,6 +535,7 @@ def deletar_acao(acao_id):
     if not (current_user.can_manage_admin() or acao.responsavel == current_user.nome.upper()):
         return jsonify({'erro': 'Voce so pode excluir acoes registradas por voce.'}), 403
 
+    registrar_exclusao_auditoria(scope='investidores', instance=acao, usuario_id=current_user.id, registro_tipo='investidores_acao')
     db.session.delete(acao)
     db.session.commit()
     _broadcast_update(PERIODO_INVESTIDORES[0])
@@ -745,6 +747,7 @@ def deletar_registro(reg_id):
     if bloqueio:
         return bloqueio
 
+    registrar_exclusao_auditoria(scope='investidores', instance=investidor, usuario_id=current_user.id, registro_tipo='investidores_registro')
     db.session.delete(investidor)
     db.session.commit()
     _broadcast_update(PERIODO_INVESTIDORES[0])
@@ -764,6 +767,7 @@ def deletar_todos_registros():
             return bloqueio
 
     for investidor in investidores:
+        registrar_exclusao_auditoria(scope='investidores', instance=investidor, usuario_id=current_user.id, registro_tipo='investidores_registro')
         db.session.delete(investidor)
     db.session.commit()
     _broadcast_update(PERIODO_INVESTIDORES[0])

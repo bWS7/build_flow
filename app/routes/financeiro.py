@@ -4,6 +4,7 @@ from flask import Blueprint, abort, jsonify, render_template, request
 from flask_login import current_user, login_required
 
 from app import db, socketio
+from app.models.exclusao_auditoria import registrar_exclusao_auditoria
 from app.models.financeiro import BANCOS_BRASIL, NEGOCIACAO_OPCOES, FinanceiroBanco
 from app.models.indicador_acao import IndicadorAcao, consultar_acoes, contar_acoes, sincronizar_acao_registro
 from app.models.meta_financeiro import MetaFinanceiroSemana
@@ -303,6 +304,7 @@ def deletar_acao(acao_id):
     if not (current_user.can_manage_admin() or acao.responsavel == current_user.nome.upper()):
         return jsonify({'erro': 'Voce so pode excluir acoes registradas por voce.'}), 403
     semana = acao.semana
+    registrar_exclusao_auditoria(scope='financeiro', instance=acao, usuario_id=current_user.id, registro_tipo='financeiro_acao')
     db.session.delete(acao)
     db.session.commit()
     _broadcast_update_financeiro(semana)
@@ -377,6 +379,7 @@ def deletar_registro(reg_id):
         return bloqueio
 
     semana = reg.semana
+    registrar_exclusao_auditoria(scope='financeiro', instance=reg, usuario_id=current_user.id, registro_tipo='financeiro_registro')
     db.session.delete(reg)
     db.session.commit()
     _broadcast_update_financeiro(semana)

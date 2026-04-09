@@ -8,6 +8,7 @@ from sqlalchemy import extract, func
 
 from app import db, socketio
 from app.models.empreendimento import Empreendimento
+from app.models.exclusao_auditoria import registrar_exclusao_auditoria
 from app.models.indicador_acao import IndicadorAcao, consultar_acoes, contar_acoes, sincronizar_acao_registro
 from app.models.meta_configuracao import MetaConfiguracaoIndicador
 from app.models.meta_venda_semana import MetaVendaSemana
@@ -566,6 +567,7 @@ def deletar_acao(acao_id):
         return jsonify({'erro': 'Voce so pode excluir acoes registradas por voce.'}), 403
 
     semana = acao.semana
+    registrar_exclusao_auditoria(scope='vendas', instance=acao, usuario_id=current_user.id, registro_tipo='vendas_acao')
     db.session.delete(acao)
     db.session.commit()
 
@@ -782,6 +784,7 @@ def deletar_registro(reg_id):
         return bloqueio
 
     mes_slug = _mes_slug_por_numero(venda.data_reserva.month)
+    registrar_exclusao_auditoria(scope='vendas', instance=venda, usuario_id=current_user.id, registro_tipo='vendas_registro')
     db.session.delete(venda)
     db.session.commit()
     _broadcast_update(mes_slug)
@@ -808,6 +811,7 @@ def deletar_todos_registros():
     }
 
     for venda in vendas:
+        registrar_exclusao_auditoria(scope='vendas', instance=venda, usuario_id=current_user.id, registro_tipo='vendas_registro')
         db.session.delete(venda)
     db.session.commit()
 
