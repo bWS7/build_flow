@@ -321,6 +321,7 @@
 
       <div id="action-form-wrapper" style="display:none">
         <form id="form-acao" class="cadastro-form" novalidate>
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
         <input type="hidden" name="semana" value="{{ semana_atual }}" />
         <div class="action-form-grid">
           <div class="field field--full">

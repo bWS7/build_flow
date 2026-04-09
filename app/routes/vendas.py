@@ -510,7 +510,12 @@ def _validar_payload_venda(dados: dict) -> tuple[dict, str | None]:
 @login_required
 @requer_vendas
 def index():
-    return render_template('vendas/index.html', **montar_contexto_template_vendas(_mes_slug_atual(), incluir_resumo=False, semana_local=_semana_do_mes_atual()))
+    mes_slug = _mes_slug_atual()
+    semana_local = None if mes_slug == RESUMO_TRIMESTRAL[0] else _semana_do_mes_atual()
+    return render_template(
+        'vendas/index.html',
+        **montar_contexto_template_vendas(mes_slug, incluir_resumo=False, semana_local=semana_local),
+    )
 
 
 @vendas_bp.route('/registros')
@@ -518,7 +523,7 @@ def index():
 @requer_vendas
 def listar_registros():
     mes_slug = _mes_slug_atual()
-    semana_local = _semana_do_mes_atual()
+    semana_local = None if mes_slug == RESUMO_TRIMESTRAL[0] else _semana_do_mes_atual()
     vendas = _consultar_vendas_periodo(mes_slug, semana_local=semana_local)
     return jsonify({
         'registros': [venda.to_dict() for venda in vendas],

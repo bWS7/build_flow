@@ -408,18 +408,26 @@ conectarSocket();
 
 
 async function salvarAcaoRealizada() {
+  const formAcao = document.getElementById('form-acao');
   const textarea = document.getElementById('acao-descricao');
   const feedback = document.getElementById('acao-feedback');
   const btn = document.getElementById('btn-salvar-acao');
   const acao = textarea ? textarea.value.trim() : '';
+  const semanaForm = formAcao?.querySelector('input[name="semana"]')?.value || SEMANA_ATUAL;
+  const csrfForm = formAcao?.querySelector('input[name="csrf_token"]')?.value || window.APP_CSRF_TOKEN || '';
   if (!acao) {
     showToast('Descreva a acao realizada.', 'error');
     return;
   }
+  if (!btn) return;
   btn.disabled = true;
   if (feedback) feedback.textContent = 'Salvando acao...';
   try {
-    const resp = await fetch('/financeiro/acao', { method: 'POST', headers: csrfHeaders({ 'Content-Type': 'application/json' }), body: JSON.stringify({ semana: SEMANA_ATUAL, acao_realizada: acao }) });
+    const resp = await fetch('/financeiro/acao', {
+      method: 'POST',
+      headers: { ...csrfHeaders({ 'Content-Type': 'application/json' }), 'X-CSRFToken': csrfForm },
+      body: JSON.stringify({ semana: semanaForm, acao_realizada: acao }),
+    });
     const json = await resp.json();
     if (resp.ok && json.sucesso) {
       showToast('Acao registrada com sucesso!', 'success');

@@ -479,7 +479,12 @@ def _validar_payload_investidor(dados: dict) -> tuple[dict, str | None]:
 @login_required
 @requer_investidores
 def index():
-    return render_template('investidores/index.html', **montar_contexto_template_investidores(_mes_slug_atual(), incluir_resumo=False, semana_local=_semana_do_mes_atual()))
+    mes_slug = _mes_slug_atual()
+    semana_local = None if mes_slug == PERIODO_INVESTIDORES[0] else _semana_do_mes_atual()
+    return render_template(
+        'investidores/index.html',
+        **montar_contexto_template_investidores(mes_slug, incluir_resumo=False, semana_local=semana_local),
+    )
 
 
 @investidores_bp.route('/registros')
@@ -487,7 +492,7 @@ def index():
 @requer_investidores
 def listar_registros():
     mes_slug = _mes_slug_atual()
-    semana_local = _semana_do_mes_atual()
+    semana_local = None if mes_slug == PERIODO_INVESTIDORES[0] else _semana_do_mes_atual()
     investidores = _consultar_investidores_periodo(mes_slug, semana_local=semana_local)
     return jsonify({
         'registros': [investidor.to_dict() for investidor in investidores],
