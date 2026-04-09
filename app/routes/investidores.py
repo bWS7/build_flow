@@ -8,7 +8,7 @@ from sqlalchemy import extract, func
 
 from app import db, socketio
 from app.models.empreendimento import Empreendimento
-from app.models.indicador_acao import IndicadorAcao, consultar_acoes, contar_acoes
+from app.models.indicador_acao import IndicadorAcao, consultar_acoes, contar_acoes, sincronizar_acao_registro
 from app.models.meta_configuracao import MetaConfiguracaoIndicador
 from app.models.investidor import Investidor, SITUACAO_INVESTIDOR_OPCOES, TIPO_VENDA_OPCOES
 from app.models.meta_investidor_semana import MetaInvestidorSemana
@@ -582,9 +582,19 @@ def cadastrar():
         corretor=registro['corretor'] or None,
         imobiliaria=registro['imobiliaria'] or None,
         valor_presente=registro['valor_presente'],
+        acao_realizada=_normalizar_texto(dados.get('acao_realizada')) or None,
         criado_por=current_user.nome.upper(),
     )
     db.session.add(investidor)
+    db.session.flush()
+    sincronizar_acao_registro(
+        'investidores',
+        _semana_global_por_data(investidor.data_reserva),
+        investidor.acao_realizada,
+        current_user.nome.upper(),
+        investidor.id,
+        'investidores_registro',
+    )
     db.session.commit()
 
     _broadcast_update(PERIODO_INVESTIDORES[0])
@@ -673,6 +683,15 @@ def editar_registro(reg_id):
     investidor.corretor = registro['corretor'] or None
     investidor.imobiliaria = registro['imobiliaria'] or None
     investidor.valor_presente = registro['valor_presente']
+    investidor.acao_realizada = _normalizar_texto(dados.get('acao_realizada')) or None
+    sincronizar_acao_registro(
+        'investidores',
+        _semana_global_por_data(investidor.data_reserva),
+        investidor.acao_realizada,
+        current_user.nome.upper(),
+        investidor.id,
+        'investidores_registro',
+    )
     db.session.commit()
 
     mes_atual = PERIODO_INVESTIDORES[0]

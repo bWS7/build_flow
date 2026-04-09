@@ -5,7 +5,7 @@ from flask_login import current_user, login_required
 
 from app import db, socketio
 from app.models.financeiro import BANCOS_BRASIL, NEGOCIACAO_OPCOES, FinanceiroBanco
-from app.models.indicador_acao import IndicadorAcao, consultar_acoes, contar_acoes
+from app.models.indicador_acao import IndicadorAcao, consultar_acoes, contar_acoes, sincronizar_acao_registro
 from app.models.meta_financeiro import MetaFinanceiroSemana
 from app.models.meta_configuracao import MetaConfiguracaoIndicador
 from app.utils.progress import calcular_percentual_planejado_realizado
@@ -207,6 +207,15 @@ def cadastrar():
         semana=semana,
     )
     db.session.add(novo)
+    db.session.flush()
+    sincronizar_acao_registro(
+        'financeiro',
+        semana,
+        novo.acao_realizada,
+        current_user.nome.upper(),
+        novo.id,
+        'financeiro_registro',
+    )
     db.session.commit()
 
     _broadcast_update_financeiro(semana)
@@ -327,6 +336,14 @@ def editar_registro(reg_id):
     reg.observacao = (dados.get('observacao') or '').upper().strip() or None
     reg.acao_realizada = (dados.get('acao_realizada') or '').upper().strip() or None
     reg.referencia = (dados.get('referencia') or '').upper().strip() or None
+    sincronizar_acao_registro(
+        'financeiro',
+        reg.semana,
+        reg.acao_realizada,
+        current_user.nome.upper(),
+        reg.id,
+        'financeiro_registro',
+    )
 
     db.session.commit()
     _broadcast_update_financeiro(reg.semana)

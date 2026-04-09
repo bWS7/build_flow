@@ -58,3 +58,44 @@ def contar_acoes(scope: str, semanas) -> int:
             return 0
         query = query.filter_by(semana=int(semanas))
     return int(query.scalar() or 0)
+
+
+def sincronizar_acao_registro(
+    scope: str,
+    semana: int,
+    descricao: str | None,
+    responsavel: str,
+    registro_id: int | None,
+    registro_tipo: str,
+) -> IndicadorAcao | None:
+    if not registro_id:
+        return None
+
+    descricao_normalizada = (descricao or '').strip()
+    acao = IndicadorAcao.query.filter_by(
+        scope=scope,
+        registro_id=registro_id,
+        registro_tipo=registro_tipo,
+    ).first()
+
+    if not descricao_normalizada:
+        if acao:
+            db.session.delete(acao)
+        return None
+
+    if acao is None:
+        acao = IndicadorAcao(
+            scope=scope,
+            semana=int(semana),
+            descricao=descricao_normalizada,
+            responsavel=responsavel,
+            registro_id=registro_id,
+            registro_tipo=registro_tipo,
+        )
+        db.session.add(acao)
+        return acao
+
+    acao.semana = int(semana)
+    acao.descricao = descricao_normalizada
+    acao.responsavel = responsavel
+    return acao

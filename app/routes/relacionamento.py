@@ -2,7 +2,7 @@ from flask import Blueprint, render_template, request, jsonify, abort
 from flask_login import login_required, current_user
 from functools import wraps
 from app import db, socketio
-from app.models.indicador_acao import IndicadorAcao, consultar_acoes, contar_acoes
+from app.models.indicador_acao import IndicadorAcao, consultar_acoes, contar_acoes, sincronizar_acao_registro
 from app.models.relacionamento import Relacionamento, SITUACAO_OPCOES
 from app.models.empreendimento import Empreendimento
 from app.models.meta import MetaSemana
@@ -186,6 +186,15 @@ def cadastrar():
         semana=semana,
     )
     db.session.add(novo)
+    db.session.flush()
+    sincronizar_acao_registro(
+        'relacionamento',
+        semana,
+        (dados.get('acao_realizada') or '').upper().strip(),
+        current_user.nome.upper(),
+        novo.id,
+        'relacionamento_registro',
+    )
     db.session.commit()
 
     _broadcast_update(semana)
@@ -293,6 +302,15 @@ def editar_registro(reg_id):
     reg.situacao = situacao
     reg.observacao = (dados.get('observacao') or '').upper().strip() or None
     reg.valor = valor
+    reg.acao_realizada = (dados.get('acao_realizada') or '').upper().strip() or None
+    sincronizar_acao_registro(
+        'relacionamento',
+        reg.semana,
+        reg.acao_realizada,
+        current_user.nome.upper(),
+        reg.id,
+        'relacionamento_registro',
+    )
 
     db.session.commit()
     _broadcast_update(reg.semana)

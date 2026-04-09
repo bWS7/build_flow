@@ -6,7 +6,7 @@ from flask_login import current_user, login_required
 from app import db, socketio
 from app.models.empreendimento import Empreendimento
 from app.models.fornecedor import FornecedorRegistro, SITUACAO_FORNECEDOR_OPCOES
-from app.models.indicador_acao import IndicadorAcao, consultar_acoes, contar_acoes
+from app.models.indicador_acao import IndicadorAcao, consultar_acoes, contar_acoes, sincronizar_acao_registro
 from app.models.meta_fornecedor import MetaFornecedorSemana
 from app.models.meta_configuracao import MetaConfiguracaoIndicador
 from app.utils.progress import calcular_percentual_planejado_realizado
@@ -216,10 +216,20 @@ def cadastrar():
         situacao=situacao,
         valor_negociado=valor_negociado,
         observacao=(dados.get('observacao') or '').upper().strip() or None,
+        acao_realizada=(dados.get('acao_realizada') or '').upper().strip() or None,
         responsavel=current_user.nome.upper(),
         semana=semana,
     )
     db.session.add(novo)
+    db.session.flush()
+    sincronizar_acao_registro(
+        'fornecedores',
+        semana,
+        novo.acao_realizada,
+        current_user.nome.upper(),
+        novo.id,
+        'fornecedores_registro',
+    )
     db.session.commit()
 
     _broadcast_update_fornecedores(semana)
@@ -409,6 +419,15 @@ def editar_registro(reg_id):
     reg.situacao = situacao
     reg.valor_negociado = valor_negociado
     reg.observacao = (dados.get('observacao') or '').upper().strip() or None
+    reg.acao_realizada = (dados.get('acao_realizada') or '').upper().strip() or None
+    sincronizar_acao_registro(
+        'fornecedores',
+        reg.semana,
+        reg.acao_realizada,
+        current_user.nome.upper(),
+        reg.id,
+        'fornecedores_registro',
+    )
 
     db.session.commit()
     _broadcast_update_fornecedores(reg.semana)

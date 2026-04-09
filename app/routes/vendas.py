@@ -8,7 +8,7 @@ from sqlalchemy import extract, func
 
 from app import db, socketio
 from app.models.empreendimento import Empreendimento
-from app.models.indicador_acao import IndicadorAcao, consultar_acoes, contar_acoes
+from app.models.indicador_acao import IndicadorAcao, consultar_acoes, contar_acoes, sincronizar_acao_registro
 from app.models.meta_configuracao import MetaConfiguracaoIndicador
 from app.models.meta_venda_semana import MetaVendaSemana
 from app.models.venda import SITUACAO_VENDA_OPCOES, TIPO_VENDA_OPCOES, Venda
@@ -617,9 +617,19 @@ def cadastrar():
         imobiliaria=registro['imobiliaria'] or None,
         valor_presente=registro['valor_presente'],
         tipo_venda=registro['tipo_venda'],
+        acao_realizada=_normalizar_texto(dados.get('acao_realizada')) or None,
         criado_por=current_user.nome.upper(),
     )
     db.session.add(venda)
+    db.session.flush()
+    sincronizar_acao_registro(
+        'vendas',
+        _semana_global_por_data(venda.data_reserva, _mes_slug_por_numero(venda.data_reserva.month)),
+        venda.acao_realizada,
+        current_user.nome.upper(),
+        venda.id,
+        'vendas_registro',
+    )
     db.session.commit()
 
     mes_slug = _mes_slug_por_numero(venda.data_reserva.month)
@@ -709,6 +719,15 @@ def editar_registro(reg_id):
     venda.imobiliaria = registro['imobiliaria'] or None
     venda.valor_presente = registro['valor_presente']
     venda.tipo_venda = registro['tipo_venda']
+    venda.acao_realizada = _normalizar_texto(dados.get('acao_realizada')) or None
+    sincronizar_acao_registro(
+        'vendas',
+        _semana_global_por_data(venda.data_reserva, _mes_slug_por_numero(venda.data_reserva.month)),
+        venda.acao_realizada,
+        current_user.nome.upper(),
+        venda.id,
+        'vendas_registro',
+    )
     db.session.commit()
 
     mes_atual = _mes_slug_por_numero(venda.data_reserva.month)

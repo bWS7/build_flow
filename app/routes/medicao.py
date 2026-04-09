@@ -5,7 +5,7 @@ from flask_login import current_user, login_required
 
 from app import db, socketio
 from app.models.empreendimento import Empreendimento
-from app.models.indicador_acao import IndicadorAcao, consultar_acoes, contar_acoes
+from app.models.indicador_acao import IndicadorAcao, consultar_acoes, contar_acoes, sincronizar_acao_registro
 from app.models.medicao import MedicaoRegistro
 from app.models.meta_medicao import MetaMedicaoSemana
 from app.models.meta_configuracao import MetaConfiguracaoIndicador
@@ -186,10 +186,20 @@ def cadastrar():
         empreendimento=empreendimento,
         valor_medicao=valor_medicao,
         observacao=(dados.get('observacao') or '').upper().strip() or None,
+        acao_realizada=(dados.get('acao_realizada') or '').upper().strip() or None,
         responsavel=current_user.nome.upper(),
         semana=semana,
     )
     db.session.add(novo)
+    db.session.flush()
+    sincronizar_acao_registro(
+        'medicao',
+        semana,
+        novo.acao_realizada,
+        current_user.nome.upper(),
+        novo.id,
+        'medicao_registro',
+    )
     db.session.commit()
 
     _broadcast_update_medicao(semana)
@@ -301,6 +311,15 @@ def editar_registro(reg_id):
     reg.empreendimento = empreendimento
     reg.valor_medicao = valor_medicao
     reg.observacao = (dados.get('observacao') or '').upper().strip() or None
+    reg.acao_realizada = (dados.get('acao_realizada') or '').upper().strip() or None
+    sincronizar_acao_registro(
+        'medicao',
+        reg.semana,
+        reg.acao_realizada,
+        current_user.nome.upper(),
+        reg.id,
+        'medicao_registro',
+    )
 
     db.session.commit()
     _broadcast_update_medicao(reg.semana)
