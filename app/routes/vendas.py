@@ -66,7 +66,7 @@ def requer_vendas(f):
 
 
 def _usuario_admin_total() -> bool:
-    return bool(getattr(current_user, 'is_authenticated', False) and current_user.can_manage_admin())
+    return bool(getattr(current_user, 'is_authenticated', False) and current_user.can_override_week_lock())
 
 
 def _usuario_pode_editar_vendas() -> bool:

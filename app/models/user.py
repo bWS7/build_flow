@@ -154,6 +154,9 @@ class User(UserMixin, db.Model):
     def can_manage_admin(self) -> bool:
         return self.is_admin()
 
+    def can_override_week_lock(self) -> bool:
+        return self.is_admin() or self.is_segmented_admin()
+
     def can_access_meta_scope(self, scope: str) -> bool:
         return self.tipo_normalizado() in PERMISSOES_METAS.get(scope, set())
 

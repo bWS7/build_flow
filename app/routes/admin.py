@@ -167,7 +167,7 @@ def _coletar_semana(semana: int, filtros: dict | None = None) -> dict:
     valor_planejado = float(meta.valor_meta) if meta else 0.0
     acoes_planejadas = int(meta.acoes_planejadas) if meta else 0
     valor_realizado = sum(float(r.valor) for r in registros if _situacao_conta_como_sim(r.situacao) and float(r.valor) > 0)
-    acoes_realizadas = len(registros)
+    acoes_realizadas = contar_acoes('relacionamento', semana)
     return {
         'semana': semana,
         'valor_planejado': valor_planejado,
