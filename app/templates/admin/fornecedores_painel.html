@@ -77,15 +77,15 @@
       <section class="analytics-summary-grid">
         <article class="analytics-card"><span class="analytics-card__label">Valor Meta {{ mes_atual.nome }}</span><strong class="analytics-card__value">R$ {{ resumo_mensal.valor_planejado | brl }}</strong></article>
         <article class="analytics-card"><span class="analytics-card__label">Valor Negociado {{ mes_atual.nome }}</span><strong class="analytics-card__value">R$ {{ resumo_mensal.valor_realizado | brl }}</strong></article>
-        <article class="analytics-card"><span class="analytics-card__label">Negociacoes {{ mes_atual.nome }}</span><strong class="analytics-card__value">{{ resumo_mensal.negociacoes_realizadas }}</strong></article>
-        <article class="analytics-card"><span class="analytics-card__label">Empreendimentos Acionados {{ mes_atual.nome }}</span><strong class="analytics-card__value">{{ resumo_mensal.empreendimentos_acionados }}</strong></article>
+        <article class="analytics-card"><span class="analytics-card__label">Acoes Planejadas {{ mes_atual.nome }}</span><strong class="analytics-card__value">{{ resumo_mensal.acoes_planejadas }}</strong></article>
+        <article class="analytics-card"><span class="analytics-card__label">Acoes Realizadas {{ mes_atual.nome }}</span><strong class="analytics-card__value">{{ resumo_mensal.acoes_realizadas }}</strong></article>
       </section>
 
       {% if mes_atual.slug == 'resumo_trimestral' %}
       <section class="analytics-highlights">
-        <article class="analytics-highlight analytics-highlight--strong"><span class="analytics-highlight__label">Execucao Atual</span><strong class="analytics-highlight__value">{{ resumo_mensal.pct_valor }}%</strong><p>{{ resumo_mensal.pct_empreendimentos }}% de cobertura da base de empreendimentos no periodo.</p></article>
-        <article class="analytics-highlight"><span class="analytics-highlight__label">Melhor Semana</span><strong class="analytics-highlight__value">{% if destaques.melhor_semana %}{{ destaques.melhor_semana.mes_nome }} S{{ destaques.melhor_semana.semana_label }}{% else %}Sem dados{% endif %}</strong><p>{% if destaques.melhor_semana %}Valor {{ destaques.melhor_semana.pct_valor }}% | Empreendimentos {{ destaques.melhor_semana.pct_empreendimentos }}%{% else %}Ainda nao ha registros lancados.{% endif %}</p></article>
-        <article class="analytics-highlight analytics-highlight--alert"><span class="analytics-highlight__label">Ponto de Atencao</span><strong class="analytics-highlight__value">{% if destaques.pior_semana %}{{ destaques.pior_semana.mes_nome }} S{{ destaques.pior_semana.semana_label }}{% else %}Sem dados{% endif %}</strong><p>Gap de R$ {{ destaques.gap_valor | brl }} e {{ destaques.gap_empreendimentos }} empreendimentos frente ao potencial da base.</p></article>
+        <article class="analytics-highlight analytics-highlight--strong"><span class="analytics-highlight__label">Execucao Atual</span><strong class="analytics-highlight__value">{{ resumo_mensal.pct_planejado_realizado }}%</strong><p>{{ resumo_mensal.pct_valor }}% do valor negociado e {{ resumo_mensal.pct_acoes }}% das acoes no periodo.</p></article>
+        <article class="analytics-highlight"><span class="analytics-highlight__label">Melhor Semana</span><strong class="analytics-highlight__value">{% if destaques.melhor_semana %}{{ destaques.melhor_semana.mes_nome }} S{{ destaques.melhor_semana.semana_label }}{% else %}Sem dados{% endif %}</strong><p>{% if destaques.melhor_semana %}Valor {{ destaques.melhor_semana.pct_valor }}% | Acoes {{ destaques.melhor_semana.pct_acoes }}%{% else %}Ainda nao ha registros lancados.{% endif %}</p></article>
+        <article class="analytics-highlight analytics-highlight--alert"><span class="analytics-highlight__label">Ponto de Atencao</span><strong class="analytics-highlight__value">{% if destaques.pior_semana %}{{ destaques.pior_semana.mes_nome }} S{{ destaques.pior_semana.semana_label }}{% else %}Sem dados{% endif %}</strong><p>Gap de R$ {{ destaques.gap_valor | brl }} e {{ destaques.gap_acoes }} acoes frente ao planejado.</p></article>
       </section>
       {% endif %}
 
@@ -93,8 +93,8 @@
         <div class="analytics-panel__header"><h2>{% if mes_atual.slug == 'resumo_trimestral' %}Resumo Trimestral{% else %}Resumo Mensal{% endif %}</h2><span>{{ mes_atual.nome }}</span></div>
         <div class="analytics-metric"><div><strong>Execucao de Valor</strong><p>R$ {{ resumo_mensal.valor_realizado | brl }} de R$ {{ resumo_mensal.valor_planejado | brl }}</p></div><span>{{ resumo_mensal.pct_valor }}%</span></div>
         <div class="analytics-progress"><span style="width: {{ resumo_mensal.pct_valor if resumo_mensal.pct_valor <= 100 else 100 }}%"></span></div>
-        <div class="analytics-metric"><div><strong>Cobertura de Empreendimentos</strong><p>{{ resumo_mensal.empreendimentos_acionados }} empreendimentos acionados em {{ total_empreendimentos_base }} empreendimentos monitorados</p></div><span>{{ resumo_mensal.pct_empreendimentos }}%</span></div>
-        <div class="analytics-progress analytics-progress--dark"><span style="width: {{ resumo_mensal.pct_empreendimentos if resumo_mensal.pct_empreendimentos <= 100 else 100 }}%"></span></div>
+        <div class="analytics-metric"><div><strong>Execucao de Acoes</strong><p>{{ resumo_mensal.acoes_realizadas }} de {{ resumo_mensal.acoes_planejadas }} acoes planejadas</p></div><span>{{ resumo_mensal.pct_acoes }}%</span></div>
+        <div class="analytics-progress analytics-progress--dark"><span style="width: {{ resumo_mensal.pct_acoes if resumo_mensal.pct_acoes <= 100 else 100 }}%"></span></div>
       </section>
 
       {% if mes_atual.slug != 'resumo_trimestral' %}
@@ -103,13 +103,13 @@
         <article class="analytics-panel analytics-panel--week">
           <div class="analytics-panel__header"><h2>Semana {{ semana.semana_label }}</h2><span>Semana global {{ semana.semana }}</span></div>
           <div class="analytics-week-grid">
-            <div><strong>Meta</strong><p>Valor: R$ {{ semana.valor_planejado | brl }}</p><p>Empreendimentos base: {{ total_empreendimentos_base }}</p></div>
-            <div><strong>Realizado</strong><p>Valor: R$ {{ semana.valor_realizado | brl }}</p><p>Negociacoes: {{ semana.negociacoes_realizadas }}</p><p>Empreendimentos: {{ semana.empreendimentos_acionados }}</p></div>
+            <div><strong>Meta</strong><p>Valor: R$ {{ semana.valor_planejado | brl }}</p><p>Acoes planejadas: {{ semana.acoes_planejadas }}</p></div>
+            <div><strong>Realizado</strong><p>Valor: R$ {{ semana.valor_realizado | brl }}</p><p>Negociacoes: {{ semana.negociacoes_realizadas }}</p><p>Acoes: {{ semana.acoes_realizadas }}</p></div>
           </div>
           <div class="analytics-metric"><div><strong>Progresso de Valor</strong></div><span>{{ semana.pct_valor }}%</span></div>
           <div class="analytics-progress"><span style="width: {{ semana.pct_valor if semana.pct_valor <= 100 else 100 }}%"></span></div>
-          <div class="analytics-metric"><div><strong>Cobertura de Empreendimentos</strong></div><span>{{ semana.pct_empreendimentos }}%</span></div>
-          <div class="analytics-progress analytics-progress--dark"><span style="width: {{ semana.pct_empreendimentos if semana.pct_empreendimentos <= 100 else 100 }}%"></span></div>
+          <div class="analytics-metric"><div><strong>Progresso de Acoes</strong></div><span>{{ semana.pct_acoes }}%</span></div>
+          <div class="analytics-progress analytics-progress--dark"><span style="width: {{ semana.pct_acoes if semana.pct_acoes <= 100 else 100 }}%"></span></div>
         </article>
         {% endfor %}
       </section>
@@ -120,10 +120,10 @@
         <div class="analytics-panel__header"><h2>Evolucao Geral</h2><span>Semanas 1 a 12</span></div>
         <div class="analytics-table-wrap">
           <table class="data-table analytics-table">
-            <thead><tr><th>Mes</th><th>Semana</th><th>Valor Meta</th><th>Valor Negociado</th><th>% Valor</th><th>Negociacoes</th><th>Empreendimentos</th><th>% Empreend.</th><th>Acum. Valor</th><th>Acum. Empreend.</th></tr></thead>
+            <thead><tr><th>Mes</th><th>Semana</th><th>Valor Meta</th><th>Valor Negociado</th><th>% Valor</th><th>Acoes Planejadas</th><th>Acoes Realizadas</th><th>% Acoes</th><th>Acum. Valor</th><th>Acum. Acoes</th></tr></thead>
             <tbody>
               {% for linha in evolucao %}
-              <tr><td>{{ linha.mes_nome }}</td><td>S{{ linha.semana_label }}</td><td>R$ {{ linha.valor_planejado | brl }}</td><td>R$ {{ linha.valor_realizado | brl }}</td><td>{{ linha.pct_valor }}%</td><td>{{ linha.negociacoes_realizadas }}</td><td>{{ linha.empreendimentos_acionados }}</td><td>{{ linha.pct_empreendimentos }}%</td><td>{{ linha.pct_valor_acumulado }}%</td><td>{{ linha.pct_empreendimentos_acumulado }}%</td></tr>
+              <tr><td>{{ linha.mes_nome }}</td><td>S{{ linha.semana_label }}</td><td>R$ {{ linha.valor_planejado | brl }}</td><td>R$ {{ linha.valor_realizado | brl }}</td><td>{{ linha.pct_valor }}%</td><td>{{ linha.acoes_planejadas }}</td><td>{{ linha.acoes_realizadas }}</td><td>{{ linha.pct_acoes }}%</td><td>{{ linha.pct_valor_acumulado }}%</td><td>{{ linha.pct_acoes_acumulado }}%</td></tr>
               {% endfor %}
             </tbody>
           </table>

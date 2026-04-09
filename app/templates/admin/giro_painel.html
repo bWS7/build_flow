@@ -199,12 +199,12 @@
           <strong class="analytics-card__value">R$ {{ resumo_mensal.valor_realizado | brl }}</strong>
         </article>
         <article class="analytics-card">
-          <span class="analytics-card__label">Captacoes {{ mes_atual.nome }}</span>
-          <strong class="analytics-card__value">{{ resumo_mensal.captacoes_realizadas }}</strong>
+          <span class="analytics-card__label">Acoes Planejadas {{ mes_atual.nome }}</span>
+          <strong class="analytics-card__value">{{ resumo_mensal.acoes_planejadas }}</strong>
         </article>
         <article class="analytics-card">
-          <span class="analytics-card__label">Origens Acionadas {{ mes_atual.nome }}</span>
-          <strong class="analytics-card__value">{{ resumo_mensal.origens_acionadas }}</strong>
+          <span class="analytics-card__label">Acoes Realizadas {{ mes_atual.nome }}</span>
+          <strong class="analytics-card__value">{{ resumo_mensal.acoes_realizadas }}</strong>
         </article>
       </section>
 
@@ -212,8 +212,8 @@
       <section class="analytics-highlights">
         <article class="analytics-highlight analytics-highlight--strong">
           <span class="analytics-highlight__label">Execucao Atual</span>
-          <strong class="analytics-highlight__value">{{ resumo_mensal.pct_valor }}%</strong>
-          <p>{{ resumo_mensal.pct_origens }}% de cobertura da base de origens no periodo.</p>
+          <strong class="analytics-highlight__value">{{ resumo_mensal.pct_planejado_realizado }}%</strong>
+          <p>{{ resumo_mensal.pct_valor }}% da meta de capital e {{ resumo_mensal.pct_acoes }}% das acoes no periodo.</p>
         </article>
         <article class="analytics-highlight">
           <span class="analytics-highlight__label">Melhor Semana</span>
@@ -222,7 +222,7 @@
           </strong>
           <p>
             {% if destaques.melhor_semana %}
-            Valor {{ destaques.melhor_semana.pct_valor }}% | Origens {{ destaques.melhor_semana.pct_origens }}%
+            Valor {{ destaques.melhor_semana.pct_valor }}% | Acoes {{ destaques.melhor_semana.pct_acoes }}%
             {% else %}
             Ainda nao ha registros lancados.
             {% endif %}
@@ -233,7 +233,7 @@
           <strong class="analytics-highlight__value">
             {% if destaques.pior_semana %}{{ destaques.pior_semana.mes_nome }} S{{ destaques.pior_semana.semana_label }}{% else %}Sem dados{% endif %}
           </strong>
-          <p>Gap de R$ {{ destaques.gap_valor | brl }} e {{ destaques.gap_origens }} origens frente ao potencial da base.</p>
+          <p>Gap de R$ {{ destaques.gap_valor | brl }} e {{ destaques.gap_acoes }} acoes frente ao planejado.</p>
         </article>
       </section>
       {% endif %}
@@ -253,12 +253,12 @@
         <div class="analytics-progress"><span style="width: {{ resumo_mensal.pct_valor if resumo_mensal.pct_valor <= 100 else 100 }}%"></span></div>
         <div class="analytics-metric">
           <div>
-            <strong>Cobertura de Origens</strong>
-            <p>{{ resumo_mensal.origens_acionadas }} origens acionadas em {{ total_origens_base }} origens monitoradas</p>
+            <strong>Execucao de Acoes</strong>
+            <p>{{ resumo_mensal.acoes_realizadas }} de {{ resumo_mensal.acoes_planejadas }} acoes planejadas</p>
           </div>
-          <span>{{ resumo_mensal.pct_origens }}%</span>
+          <span>{{ resumo_mensal.pct_acoes }}%</span>
         </div>
-        <div class="analytics-progress analytics-progress--dark"><span style="width: {{ resumo_mensal.pct_origens if resumo_mensal.pct_origens <= 100 else 100 }}%"></span></div>
+        <div class="analytics-progress analytics-progress--dark"><span style="width: {{ resumo_mensal.pct_acoes if resumo_mensal.pct_acoes <= 100 else 100 }}%"></span></div>
       </section>
 
       {% if mes_atual.slug == 'resumo_trimestral' %}
@@ -278,7 +278,7 @@
           <div class="analytics-chart-stage">
             <div class="analytics-chart-legend analytics-chart-legend--top">
               <span><i class="analytics-chart-legend__dot analytics-chart-legend__dot--valor"></i> % Valor Captado</span>
-              <span><i class="analytics-chart-legend__dot analytics-chart-legend__dot--acoes"></i> % Cobertura de Origens</span>
+              <span><i class="analytics-chart-legend__dot analytics-chart-legend__dot--acoes"></i> % Acoes Realizadas</span>
             </div>
             <div class="analytics-chart">
               <div class="analytics-chart__gridline analytics-chart__gridline--100"></div>
@@ -343,13 +343,13 @@
             <div>
               <strong>Meta</strong>
               <p>Valor: R$ {{ semana.valor_planejado | brl }}</p>
-              <p>Origens base: {{ total_origens_base }}</p>
+              <p>Acoes planejadas: {{ semana.acoes_planejadas }}</p>
             </div>
             <div>
               <strong>Realizado</strong>
               <p>Valor: R$ {{ semana.valor_realizado | brl }}</p>
               <p>Captacoes: {{ semana.captacoes_realizadas }}</p>
-              <p>Origens: {{ semana.origens_acionadas }}</p>
+              <p>Acoes: {{ semana.acoes_realizadas }}</p>
             </div>
           </div>
           <div class="analytics-metric">
@@ -358,10 +358,10 @@
           </div>
           <div class="analytics-progress"><span style="width: {{ semana.pct_valor if semana.pct_valor <= 100 else 100 }}%"></span></div>
           <div class="analytics-metric">
-            <div><strong>Cobertura de Origens</strong></div>
-            <span>{{ semana.pct_origens }}%</span>
+            <div><strong>Progresso de Acoes</strong></div>
+            <span>{{ semana.pct_acoes }}%</span>
           </div>
-          <div class="analytics-progress analytics-progress--dark"><span style="width: {{ semana.pct_origens if semana.pct_origens <= 100 else 100 }}%"></span></div>
+          <div class="analytics-progress analytics-progress--dark"><span style="width: {{ semana.pct_acoes if semana.pct_acoes <= 100 else 100 }}%"></span></div>
         </article>
         {% endfor %}
       </section>
@@ -382,11 +382,11 @@
                 <th>Valor Meta</th>
                 <th>Valor Captado</th>
                 <th>% Valor</th>
-                <th>Captacoes</th>
-                <th>Origens</th>
-                <th>% Origens</th>
+                <th>Acoes Planejadas</th>
+                <th>Acoes Realizadas</th>
+                <th>% Acoes</th>
                 <th>Acum. Valor</th>
-                <th>Acum. Origens</th>
+                <th>Acum. Acoes</th>
               </tr>
             </thead>
             <tbody>
@@ -397,11 +397,11 @@
                 <td>R$ {{ linha.valor_planejado | brl }}</td>
                 <td>R$ {{ linha.valor_realizado | brl }}</td>
                 <td>{{ linha.pct_valor }}%</td>
-                <td>{{ linha.captacoes_realizadas }}</td>
-                <td>{{ linha.origens_acionadas }}</td>
-                <td>{{ linha.pct_origens }}%</td>
+                <td>{{ linha.acoes_planejadas }}</td>
+                <td>{{ linha.acoes_realizadas }}</td>
+                <td>{{ linha.pct_acoes }}%</td>
                 <td>{{ linha.pct_valor_acumulado }}%</td>
-                <td>{{ linha.pct_origens_acumulado }}%</td>
+                <td>{{ linha.pct_acoes_acumulado }}%</td>
               </tr>
               {% endfor %}
             </tbody>

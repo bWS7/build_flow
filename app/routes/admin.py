@@ -30,6 +30,7 @@ from app.routes.medicao import resumir_medicao_trimestre
 from app.routes.investidores import PERIODO_INVESTIDORES, MESES_INVESTIDORES, montar_contexto_template_investidores
 from app.routes.vendas import MESES_VENDAS, montar_contexto_template_vendas
 from app.services.analytics_ai import analytics_ai_available, analytics_ai_enabled, ask_analytics_assistant, build_global_ai_context, fallback_analytics_answer
+from app.utils.progress import calcular_percentual_planejado_realizado
 
 MESES_RELATORIO = [
     ('abril', 'Abril', 1),
@@ -465,18 +466,28 @@ def _coletar_semana_financeiro(semana: int, filtros: dict | None = None) -> dict
     meta = MetaFinanceiroSemana.query.filter_by(semana=semana).first()
     registros = _consultar_registros_financeiro_semana(semana, filtros)
     valor_planejado = float(meta.valor_meta) if meta else 0.0
+    acoes_planejadas = int(meta.acoes_planejadas or 0) if meta else 0
     valor_realizado = sum(float(r.valor_arrecadado or 0) for r in registros)
+    acoes_realizadas = contar_acoes('financeiro', semana)
     total_negociacoes = len(registros)
     total_bancos = len({(r.banco or '').strip() for r in registros if (r.banco or '').strip()})
-    pct_bancos = _safe_pct(total_bancos, len(BANCOS_BRASIL))
+    pct_planejado_realizado = calcular_percentual_planejado_realizado(
+        valor_realizado,
+        valor_planejado,
+        acoes_realizadas,
+        acoes_planejadas,
+    )
     return {
         'semana': semana,
         'valor_planejado': valor_planejado,
         'valor_realizado': valor_realizado,
+        'acoes_planejadas': acoes_planejadas,
+        'acoes_realizadas': acoes_realizadas,
         'negociacoes_realizadas': total_negociacoes,
         'bancos_acionados': total_bancos,
         'pct_valor': _safe_pct(valor_realizado, valor_planejado),
-        'pct_bancos': pct_bancos,
+        'pct_acoes': _safe_pct(acoes_realizadas, acoes_planejadas),
+        'pct_planejado_realizado': pct_planejado_realizado,
         'total_registros': len(registros),
     }
 
@@ -522,8 +533,8 @@ def _montar_relatorio_financeiro(mes_slug: str, filtros: dict | None = None) -> 
     evolucao = []
     acumulado_valor_planejado = 0.0
     acumulado_valor_realizado = 0.0
-    acumulado_negociacoes = 0
-    acumulado_bancos = 0
+    acumulado_acoes_planejadas = 0
+    acumulado_acoes_realizadas = 0
 
     for slug, nome, inicio in MESES_RELATORIO:
         for offset in range(4):
@@ -536,14 +547,14 @@ def _montar_relatorio_financeiro(mes_slug: str, filtros: dict | None = None) -> 
             })
             acumulado_valor_planejado += linha['valor_planejado']
             acumulado_valor_realizado += linha['valor_realizado']
-            acumulado_negociacoes += linha['negociacoes_realizadas']
-            acumulado_bancos += linha['bancos_acionados']
+            acumulado_acoes_planejadas += linha['acoes_planejadas']
+            acumulado_acoes_realizadas += linha['acoes_realizadas']
             linha['acumulado_valor_planejado'] = acumulado_valor_planejado
             linha['acumulado_valor_realizado'] = acumulado_valor_realizado
-            linha['acumulado_negociacoes'] = acumulado_negociacoes
-            linha['acumulado_bancos'] = acumulado_bancos
+            linha['acumulado_acoes_planejadas'] = acumulado_acoes_planejadas
+            linha['acumulado_acoes_realizadas'] = acumulado_acoes_realizadas
             linha['pct_valor_acumulado'] = _safe_pct(acumulado_valor_realizado, acumulado_valor_planejado)
-            linha['pct_bancos_acumulado'] = _safe_pct(acumulado_bancos, len(BANCOS_BRASIL) * max(len(evolucao) + 1, 1))
+            linha['pct_acoes_acumulado'] = _safe_pct(acumulado_acoes_realizadas, acumulado_acoes_planejadas)
             evolucao.append(linha)
             if mes_selecionado['slug'] == PERIODO_TRIMESTRAL[0] or slug == mes_selecionado['slug']:
                 semanas_mes.append(linha)
@@ -551,19 +562,27 @@ def _montar_relatorio_financeiro(mes_slug: str, filtros: dict | None = None) -> 
     resumo_mensal = {
         'valor_planejado': sum(item['valor_planejado'] for item in semanas_mes),
         'valor_realizado': sum(item['valor_realizado'] for item in semanas_mes),
+        'acoes_planejadas': sum(item['acoes_planejadas'] for item in semanas_mes),
+        'acoes_realizadas': sum(item['acoes_realizadas'] for item in semanas_mes),
         'negociacoes_realizadas': sum(item['negociacoes_realizadas'] for item in semanas_mes),
         'bancos_acionados': sum(item['bancos_acionados'] for item in semanas_mes),
     }
     resumo_mensal['pct_valor'] = _safe_pct(resumo_mensal['valor_realizado'], resumo_mensal['valor_planejado'])
-    resumo_mensal['pct_bancos'] = _safe_pct(resumo_mensal['bancos_acionados'], len(BANCOS_BRASIL) * max(len(semanas_mes), 1))
+    resumo_mensal['pct_acoes'] = _safe_pct(resumo_mensal['acoes_realizadas'], resumo_mensal['acoes_planejadas'])
+    resumo_mensal['pct_planejado_realizado'] = calcular_percentual_planejado_realizado(
+        resumo_mensal['valor_realizado'],
+        resumo_mensal['valor_planejado'],
+        resumo_mensal['acoes_realizadas'],
+        resumo_mensal['acoes_planejadas'],
+    )
 
-    melhor_semana = max(semanas_mes, key=lambda item: (item['pct_valor'] + item['pct_bancos'])) if semanas_mes else None
-    pior_semana = min(semanas_mes, key=lambda item: (item['pct_valor'] + item['pct_bancos'])) if semanas_mes else None
+    melhor_semana = max(semanas_mes, key=lambda item: item['pct_planejado_realizado']) if semanas_mes else None
+    pior_semana = min(semanas_mes, key=lambda item: item['pct_planejado_realizado']) if semanas_mes else None
     destaques = {
         'melhor_semana': melhor_semana,
         'pior_semana': pior_semana,
         'gap_valor': max(resumo_mensal['valor_planejado'] - resumo_mensal['valor_realizado'], 0),
-        'gap_bancos': max((len(BANCOS_BRASIL) * max(len(semanas_mes), 1)) - resumo_mensal['bancos_acionados'], 0),
+        'gap_acoes': max(resumo_mensal['acoes_planejadas'] - resumo_mensal['acoes_realizadas'], 0),
     }
 
     chart_width = 720
@@ -581,7 +600,7 @@ def _montar_relatorio_financeiro(mes_slug: str, filtros: dict | None = None) -> 
     for idx, item in enumerate(semanas_mes):
         x = left_pad + (usable_width * idx / total_points)
         y_valor = 20 + (usable_height * (1 - min(item['pct_valor'], 100) / 100))
-        y_bancos = 20 + (usable_height * (1 - min(item['pct_bancos'], 100) / 100))
+        y_bancos = 20 + (usable_height * (1 - min(item['pct_acoes'], 100) / 100))
         valor_points.append(f"{round(x, 1)},{round(y_valor, 1)}")
         bancos_points.append(f"{round(x, 1)},{round(y_bancos, 1)}")
         valor_markers.append({'x': round(x, 1), 'y': round(y_valor, 1)})
@@ -653,18 +672,28 @@ def _coletar_semana_giro(semana: int, filtros: dict | None = None) -> dict:
     meta = MetaGiroSemana.query.filter_by(semana=semana).first()
     registros = _consultar_registros_giro_semana(semana, filtros)
     valor_planejado = float(meta.valor_meta) if meta else 0.0
+    acoes_planejadas = int(meta.acoes_planejadas or 0) if meta else 0
     valor_realizado = sum(float(r.valor_captado or 0) for r in registros)
+    acoes_realizadas = contar_acoes('giro', semana)
     total_captacoes = len(registros)
     total_origens = len({(r.origem or '').strip() for r in registros if (r.origem or '').strip()})
-    pct_origens = _safe_pct(total_origens, len(ORIGENS_GIRO))
+    pct_planejado_realizado = calcular_percentual_planejado_realizado(
+        valor_realizado,
+        valor_planejado,
+        acoes_realizadas,
+        acoes_planejadas,
+    )
     return {
         'semana': semana,
         'valor_planejado': valor_planejado,
         'valor_realizado': valor_realizado,
+        'acoes_planejadas': acoes_planejadas,
+        'acoes_realizadas': acoes_realizadas,
         'captacoes_realizadas': total_captacoes,
         'origens_acionadas': total_origens,
         'pct_valor': _safe_pct(valor_realizado, valor_planejado),
-        'pct_origens': pct_origens,
+        'pct_acoes': _safe_pct(acoes_realizadas, acoes_planejadas),
+        'pct_planejado_realizado': pct_planejado_realizado,
         'total_registros': len(registros),
     }
 
@@ -710,8 +739,8 @@ def _montar_relatorio_giro(mes_slug: str, filtros: dict | None = None) -> dict:
     evolucao = []
     acumulado_valor_planejado = 0.0
     acumulado_valor_realizado = 0.0
-    acumulado_captacoes = 0
-    acumulado_origens = 0
+    acumulado_acoes_planejadas = 0
+    acumulado_acoes_realizadas = 0
 
     for slug, nome, inicio in MESES_RELATORIO:
         for offset in range(4):
@@ -724,14 +753,14 @@ def _montar_relatorio_giro(mes_slug: str, filtros: dict | None = None) -> dict:
             })
             acumulado_valor_planejado += linha['valor_planejado']
             acumulado_valor_realizado += linha['valor_realizado']
-            acumulado_captacoes += linha['captacoes_realizadas']
-            acumulado_origens += linha['origens_acionadas']
+            acumulado_acoes_planejadas += linha['acoes_planejadas']
+            acumulado_acoes_realizadas += linha['acoes_realizadas']
             linha['acumulado_valor_planejado'] = acumulado_valor_planejado
             linha['acumulado_valor_realizado'] = acumulado_valor_realizado
-            linha['acumulado_captacoes'] = acumulado_captacoes
-            linha['acumulado_origens'] = acumulado_origens
+            linha['acumulado_acoes_planejadas'] = acumulado_acoes_planejadas
+            linha['acumulado_acoes_realizadas'] = acumulado_acoes_realizadas
             linha['pct_valor_acumulado'] = _safe_pct(acumulado_valor_realizado, acumulado_valor_planejado)
-            linha['pct_origens_acumulado'] = _safe_pct(acumulado_origens, len(ORIGENS_GIRO) * max(len(evolucao) + 1, 1))
+            linha['pct_acoes_acumulado'] = _safe_pct(acumulado_acoes_realizadas, acumulado_acoes_planejadas)
             evolucao.append(linha)
             if mes_selecionado['slug'] == PERIODO_TRIMESTRAL[0] or slug == mes_selecionado['slug']:
                 semanas_mes.append(linha)
@@ -739,19 +768,27 @@ def _montar_relatorio_giro(mes_slug: str, filtros: dict | None = None) -> dict:
     resumo_mensal = {
         'valor_planejado': sum(item['valor_planejado'] for item in semanas_mes),
         'valor_realizado': sum(item['valor_realizado'] for item in semanas_mes),
+        'acoes_planejadas': sum(item['acoes_planejadas'] for item in semanas_mes),
+        'acoes_realizadas': sum(item['acoes_realizadas'] for item in semanas_mes),
         'captacoes_realizadas': sum(item['captacoes_realizadas'] for item in semanas_mes),
         'origens_acionadas': sum(item['origens_acionadas'] for item in semanas_mes),
     }
     resumo_mensal['pct_valor'] = _safe_pct(resumo_mensal['valor_realizado'], resumo_mensal['valor_planejado'])
-    resumo_mensal['pct_origens'] = _safe_pct(resumo_mensal['origens_acionadas'], len(ORIGENS_GIRO) * max(len(semanas_mes), 1))
+    resumo_mensal['pct_acoes'] = _safe_pct(resumo_mensal['acoes_realizadas'], resumo_mensal['acoes_planejadas'])
+    resumo_mensal['pct_planejado_realizado'] = calcular_percentual_planejado_realizado(
+        resumo_mensal['valor_realizado'],
+        resumo_mensal['valor_planejado'],
+        resumo_mensal['acoes_realizadas'],
+        resumo_mensal['acoes_planejadas'],
+    )
 
-    melhor_semana = max(semanas_mes, key=lambda item: (item['pct_valor'] + item['pct_origens'])) if semanas_mes else None
-    pior_semana = min(semanas_mes, key=lambda item: (item['pct_valor'] + item['pct_origens'])) if semanas_mes else None
+    melhor_semana = max(semanas_mes, key=lambda item: item['pct_planejado_realizado']) if semanas_mes else None
+    pior_semana = min(semanas_mes, key=lambda item: item['pct_planejado_realizado']) if semanas_mes else None
     destaques = {
         'melhor_semana': melhor_semana,
         'pior_semana': pior_semana,
         'gap_valor': max(resumo_mensal['valor_planejado'] - resumo_mensal['valor_realizado'], 0),
-        'gap_origens': max((len(ORIGENS_GIRO) * max(len(semanas_mes), 1)) - resumo_mensal['origens_acionadas'], 0),
+        'gap_acoes': max(resumo_mensal['acoes_planejadas'] - resumo_mensal['acoes_realizadas'], 0),
     }
 
     chart_width = 720
@@ -769,7 +806,7 @@ def _montar_relatorio_giro(mes_slug: str, filtros: dict | None = None) -> dict:
     for idx, item in enumerate(semanas_mes):
         x = left_pad + (usable_width * idx / total_points)
         y_valor = 20 + (usable_height * (1 - min(item['pct_valor'], 100) / 100))
-        y_origens = 20 + (usable_height * (1 - min(item['pct_origens'], 100) / 100))
+        y_origens = 20 + (usable_height * (1 - min(item['pct_acoes'], 100) / 100))
         valor_points.append(f"{round(x, 1)},{round(y_valor, 1)}")
         origens_points.append(f"{round(x, 1)},{round(y_origens, 1)}")
         valor_markers.append({'x': round(x, 1), 'y': round(y_valor, 1)})
@@ -835,18 +872,28 @@ def _coletar_semana_medicao(semana: int, filtros: dict | None = None) -> dict:
     meta = MetaMedicaoSemana.query.filter_by(semana=semana).first()
     registros = _consultar_registros_medicao_semana(semana, filtros)
     valor_planejado = float(meta.valor_meta) if meta else 0.0
+    acoes_planejadas = int(meta.acoes_planejadas or 0) if meta else 0
     valor_realizado = sum(float(r.valor_medicao or 0) for r in registros)
+    acoes_realizadas = contar_acoes('medicao', semana)
     total_medicoes = len(registros)
     total_empreendimentos = len({(r.empreendimento or '').strip() for r in registros if (r.empreendimento or '').strip()})
-    total_base = Empreendimento.query.filter_by(ativo=True).count()
+    pct_planejado_realizado = calcular_percentual_planejado_realizado(
+        valor_realizado,
+        valor_planejado,
+        acoes_realizadas,
+        acoes_planejadas,
+    )
     return {
         'semana': semana,
         'valor_planejado': valor_planejado,
         'valor_realizado': valor_realizado,
+        'acoes_planejadas': acoes_planejadas,
+        'acoes_realizadas': acoes_realizadas,
         'medicoes_realizadas': total_medicoes,
         'empreendimentos_lancados': total_empreendimentos,
         'pct_valor': _safe_pct(valor_realizado, valor_planejado),
-        'pct_empreendimentos': _safe_pct(total_empreendimentos, total_base),
+        'pct_acoes': _safe_pct(acoes_realizadas, acoes_planejadas),
+        'pct_planejado_realizado': pct_planejado_realizado,
         'total_registros': len(registros),
     }
 
@@ -888,8 +935,8 @@ def _montar_relatorio_medicao(mes_slug: str, filtros: dict | None = None) -> dic
     evolucao = []
     acumulado_valor_planejado = 0.0
     acumulado_valor_realizado = 0.0
-    acumulado_medicoes = 0
-    acumulado_empreendimentos = 0
+    acumulado_acoes_planejadas = 0
+    acumulado_acoes_realizadas = 0
     total_empreendimentos_base = Empreendimento.query.filter_by(ativo=True).count()
 
     for slug, nome, inicio in MESES_RELATORIO:
@@ -903,17 +950,14 @@ def _montar_relatorio_medicao(mes_slug: str, filtros: dict | None = None) -> dic
             })
             acumulado_valor_planejado += linha['valor_planejado']
             acumulado_valor_realizado += linha['valor_realizado']
-            acumulado_medicoes += linha['medicoes_realizadas']
-            acumulado_empreendimentos += linha['empreendimentos_lancados']
+            acumulado_acoes_planejadas += linha['acoes_planejadas']
+            acumulado_acoes_realizadas += linha['acoes_realizadas']
             linha['acumulado_valor_planejado'] = acumulado_valor_planejado
             linha['acumulado_valor_realizado'] = acumulado_valor_realizado
-            linha['acumulado_medicoes'] = acumulado_medicoes
-            linha['acumulado_empreendimentos'] = acumulado_empreendimentos
+            linha['acumulado_acoes_planejadas'] = acumulado_acoes_planejadas
+            linha['acumulado_acoes_realizadas'] = acumulado_acoes_realizadas
             linha['pct_valor_acumulado'] = _safe_pct(acumulado_valor_realizado, acumulado_valor_planejado)
-            linha['pct_empreendimentos_acumulado'] = _safe_pct(
-                acumulado_empreendimentos,
-                total_empreendimentos_base * max(len(evolucao) + 1, 1),
-            )
+            linha['pct_acoes_acumulado'] = _safe_pct(acumulado_acoes_realizadas, acumulado_acoes_planejadas)
             evolucao.append(linha)
             if mes_selecionado['slug'] == PERIODO_TRIMESTRAL[0] or slug == mes_selecionado['slug']:
                 semanas_mes.append(linha)
@@ -921,22 +965,30 @@ def _montar_relatorio_medicao(mes_slug: str, filtros: dict | None = None) -> dic
     resumo_mensal = {
         'valor_planejado': sum(item['valor_planejado'] for item in semanas_mes),
         'valor_realizado': sum(item['valor_realizado'] for item in semanas_mes),
+        'acoes_planejadas': sum(item['acoes_planejadas'] for item in semanas_mes),
+        'acoes_realizadas': sum(item['acoes_realizadas'] for item in semanas_mes),
         'medicoes_realizadas': sum(item['medicoes_realizadas'] for item in semanas_mes),
         'empreendimentos_lancados': sum(item['empreendimentos_lancados'] for item in semanas_mes),
     }
     resumo_mensal['pct_valor'] = _safe_pct(resumo_mensal['valor_realizado'], resumo_mensal['valor_planejado'])
-    resumo_mensal['pct_empreendimentos'] = _safe_pct(
-        resumo_mensal['empreendimentos_lancados'],
-        total_empreendimentos_base * max(len(semanas_mes), 1),
+    resumo_mensal['pct_acoes'] = _safe_pct(
+        resumo_mensal['acoes_realizadas'],
+        resumo_mensal['acoes_planejadas'],
+    )
+    resumo_mensal['pct_planejado_realizado'] = calcular_percentual_planejado_realizado(
+        resumo_mensal['valor_realizado'],
+        resumo_mensal['valor_planejado'],
+        resumo_mensal['acoes_realizadas'],
+        resumo_mensal['acoes_planejadas'],
     )
 
-    melhor_semana = max(semanas_mes, key=lambda item: (item['pct_valor'] + item['pct_empreendimentos'])) if semanas_mes else None
-    pior_semana = min(semanas_mes, key=lambda item: (item['pct_valor'] + item['pct_empreendimentos'])) if semanas_mes else None
+    melhor_semana = max(semanas_mes, key=lambda item: item['pct_planejado_realizado']) if semanas_mes else None
+    pior_semana = min(semanas_mes, key=lambda item: item['pct_planejado_realizado']) if semanas_mes else None
     destaques = {
         'melhor_semana': melhor_semana,
         'pior_semana': pior_semana,
         'gap_valor': max(resumo_mensal['valor_planejado'] - resumo_mensal['valor_realizado'], 0),
-        'gap_empreendimentos': max((total_empreendimentos_base * max(len(semanas_mes), 1)) - resumo_mensal['empreendimentos_lancados'], 0),
+        'gap_acoes': max(resumo_mensal['acoes_planejadas'] - resumo_mensal['acoes_realizadas'], 0),
     }
 
     chart_width = 720
@@ -954,7 +1006,7 @@ def _montar_relatorio_medicao(mes_slug: str, filtros: dict | None = None) -> dic
     for idx, item in enumerate(semanas_mes):
         x = left_pad + (usable_width * idx / total_points)
         y_valor = 20 + (usable_height * (1 - min(item['pct_valor'], 100) / 100))
-        y_empreendimentos = 20 + (usable_height * (1 - min(item['pct_empreendimentos'], 100) / 100))
+        y_empreendimentos = 20 + (usable_height * (1 - min(item['pct_acoes'], 100) / 100))
         valor_points.append(f"{round(x, 1)},{round(y_valor, 1)}")
         empreendimentos_points.append(f"{round(x, 1)},{round(y_empreendimentos, 1)}")
         valor_markers.append({'x': round(x, 1), 'y': round(y_valor, 1)})
@@ -1031,20 +1083,30 @@ def _coletar_semana_fornecedores(semana: int, filtros: dict | None = None) -> di
     meta = MetaFornecedorSemana.query.filter_by(semana=semana).first()
     registros = _consultar_registros_fornecedores_semana(semana, filtros)
     valor_planejado = float(meta.valor_meta) if meta else 0.0
+    acoes_planejadas = int(meta.acoes_planejadas or 0) if meta else 0
     valor_realizado = sum(float(r.valor_negociado or 0) for r in registros if _situacao_fornecedor_conta_como_sim(r.situacao))
+    acoes_realizadas = contar_acoes('fornecedores', semana)
     total_negociacoes = sum(1 for r in registros if _situacao_fornecedor_conta_como_sim(r.situacao))
     total_fornecedores = len({(r.nome_fornecedor or '').strip() for r in registros if (r.nome_fornecedor or '').strip()})
     total_empreendimentos = len({(r.empreendimento or '').strip() for r in registros if (r.empreendimento or '').strip()})
-    total_empreendimentos_base = Empreendimento.query.filter_by(ativo=True).count()
+    pct_planejado_realizado = calcular_percentual_planejado_realizado(
+        valor_realizado,
+        valor_planejado,
+        acoes_realizadas,
+        acoes_planejadas,
+    )
     return {
         'semana': semana,
         'valor_planejado': valor_planejado,
         'valor_realizado': valor_realizado,
+        'acoes_planejadas': acoes_planejadas,
+        'acoes_realizadas': acoes_realizadas,
         'negociacoes_realizadas': total_negociacoes,
         'fornecedores_acionados': total_fornecedores,
         'empreendimentos_acionados': total_empreendimentos,
         'pct_valor': _safe_pct(valor_realizado, valor_planejado),
-        'pct_empreendimentos': _safe_pct(total_empreendimentos, total_empreendimentos_base),
+        'pct_acoes': _safe_pct(acoes_realizadas, acoes_planejadas),
+        'pct_planejado_realizado': pct_planejado_realizado,
         'total_registros': len(registros),
     }
 
@@ -1092,8 +1154,8 @@ def _montar_relatorio_fornecedores(mes_slug: str, filtros: dict | None = None) -
     evolucao = []
     acumulado_valor_planejado = 0.0
     acumulado_valor_realizado = 0.0
-    acumulado_negociacoes = 0
-    acumulado_empreendimentos = 0
+    acumulado_acoes_planejadas = 0
+    acumulado_acoes_realizadas = 0
     total_empreendimentos_base = Empreendimento.query.filter_by(ativo=True).count()
 
     for slug, nome, inicio in MESES_RELATORIO:
@@ -1103,14 +1165,14 @@ def _montar_relatorio_fornecedores(mes_slug: str, filtros: dict | None = None) -
             linha.update({'mes_slug': slug, 'mes_nome': nome, 'semana_label': offset + 1})
             acumulado_valor_planejado += linha['valor_planejado']
             acumulado_valor_realizado += linha['valor_realizado']
-            acumulado_negociacoes += linha['negociacoes_realizadas']
-            acumulado_empreendimentos += linha['empreendimentos_acionados']
+            acumulado_acoes_planejadas += linha['acoes_planejadas']
+            acumulado_acoes_realizadas += linha['acoes_realizadas']
             linha['acumulado_valor_planejado'] = acumulado_valor_planejado
             linha['acumulado_valor_realizado'] = acumulado_valor_realizado
-            linha['acumulado_negociacoes'] = acumulado_negociacoes
-            linha['acumulado_empreendimentos'] = acumulado_empreendimentos
+            linha['acumulado_acoes_planejadas'] = acumulado_acoes_planejadas
+            linha['acumulado_acoes_realizadas'] = acumulado_acoes_realizadas
             linha['pct_valor_acumulado'] = _safe_pct(acumulado_valor_realizado, acumulado_valor_planejado)
-            linha['pct_empreendimentos_acumulado'] = _safe_pct(acumulado_empreendimentos, total_empreendimentos_base * max(len(evolucao) + 1, 1))
+            linha['pct_acoes_acumulado'] = _safe_pct(acumulado_acoes_realizadas, acumulado_acoes_planejadas)
             evolucao.append(linha)
             if mes_selecionado['slug'] == PERIODO_TRIMESTRAL[0] or slug == mes_selecionado['slug']:
                 semanas_mes.append(linha)
@@ -1118,20 +1180,28 @@ def _montar_relatorio_fornecedores(mes_slug: str, filtros: dict | None = None) -
     resumo_mensal = {
         'valor_planejado': sum(item['valor_planejado'] for item in semanas_mes),
         'valor_realizado': sum(item['valor_realizado'] for item in semanas_mes),
+        'acoes_planejadas': sum(item['acoes_planejadas'] for item in semanas_mes),
+        'acoes_realizadas': sum(item['acoes_realizadas'] for item in semanas_mes),
         'negociacoes_realizadas': sum(item['negociacoes_realizadas'] for item in semanas_mes),
         'fornecedores_acionados': sum(item['fornecedores_acionados'] for item in semanas_mes),
         'empreendimentos_acionados': sum(item['empreendimentos_acionados'] for item in semanas_mes),
     }
     resumo_mensal['pct_valor'] = _safe_pct(resumo_mensal['valor_realizado'], resumo_mensal['valor_planejado'])
-    resumo_mensal['pct_empreendimentos'] = _safe_pct(resumo_mensal['empreendimentos_acionados'], total_empreendimentos_base * max(len(semanas_mes), 1))
+    resumo_mensal['pct_acoes'] = _safe_pct(resumo_mensal['acoes_realizadas'], resumo_mensal['acoes_planejadas'])
+    resumo_mensal['pct_planejado_realizado'] = calcular_percentual_planejado_realizado(
+        resumo_mensal['valor_realizado'],
+        resumo_mensal['valor_planejado'],
+        resumo_mensal['acoes_realizadas'],
+        resumo_mensal['acoes_planejadas'],
+    )
 
-    melhor_semana = max(semanas_mes, key=lambda item: (item['pct_valor'] + item['pct_empreendimentos'])) if semanas_mes else None
-    pior_semana = min(semanas_mes, key=lambda item: (item['pct_valor'] + item['pct_empreendimentos'])) if semanas_mes else None
+    melhor_semana = max(semanas_mes, key=lambda item: item['pct_planejado_realizado']) if semanas_mes else None
+    pior_semana = min(semanas_mes, key=lambda item: item['pct_planejado_realizado']) if semanas_mes else None
     destaques = {
         'melhor_semana': melhor_semana,
         'pior_semana': pior_semana,
         'gap_valor': max(resumo_mensal['valor_planejado'] - resumo_mensal['valor_realizado'], 0),
-        'gap_empreendimentos': max((total_empreendimentos_base * max(len(semanas_mes), 1)) - resumo_mensal['empreendimentos_acionados'], 0),
+        'gap_acoes': max(resumo_mensal['acoes_planejadas'] - resumo_mensal['acoes_realizadas'], 0),
     }
 
     chart_width = 720
@@ -1148,7 +1218,7 @@ def _montar_relatorio_fornecedores(mes_slug: str, filtros: dict | None = None) -
     for idx, item in enumerate(semanas_mes):
         x = left_pad + (usable_width * idx / total_points)
         y_valor = 20 + (usable_height * (1 - min(item['pct_valor'], 100) / 100))
-        y_empreendimentos = 20 + (usable_height * (1 - min(item['pct_empreendimentos'], 100) / 100))
+        y_empreendimentos = 20 + (usable_height * (1 - min(item['pct_acoes'], 100) / 100))
         valor_points.append(f"{round(x, 1)},{round(y_valor, 1)}")
         empreendimentos_points.append(f"{round(x, 1)},{round(y_empreendimentos, 1)}")
         valor_markers.append({'x': round(x, 1), 'y': round(y_valor, 1)})
