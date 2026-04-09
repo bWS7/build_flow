@@ -102,6 +102,26 @@ def _data_referencia_da_semana(mes_slug: str, semana_local: int) -> date:
     return date(datetime.now().year, mes_info['numero'], dia_inicial)
 
 
+def _resolver_periodo_payload(dados: dict) -> tuple[str | None, int | None]:
+    mes_slug = (dados.get('mes') or '').strip().lower()
+    if mes_slug not in MESES_MAP:
+        return None, None
+    try:
+        semana_local = int(str(dados.get('semana') or '').strip())
+    except (TypeError, ValueError, AttributeError):
+        return mes_slug, None
+    return mes_slug, semana_local if semana_local in {1, 2, 3, 4} else None
+
+
+def _normalizar_data_para_periodo(data_reserva, mes_slug: str | None, semana_local: int | None):
+    if not data_reserva or not mes_slug or semana_local not in {1, 2, 3, 4}:
+        return data_reserva
+    semana_global_esperada = MESES_MAP[mes_slug]['semana_inicio'] + semana_local - 1
+    if data_reserva.month == MESES_MAP[mes_slug]['numero'] and _semana_global_por_data(data_reserva, mes_slug) == semana_global_esperada:
+        return data_reserva
+    return _data_referencia_da_semana(mes_slug, semana_local)
+
+
 def _garantir_semana_editavel_por_data(data_referencia):
     if not _usuario_pode_editar_investidores():
         return jsonify({'erro': 'Seu perfil possui apenas visualizacao nesta area.'}), 403
@@ -571,6 +591,9 @@ def cadastrar():
         status = 202 if 'desconsiderado' in erro.lower() else 400
         return jsonify({'sucesso': status == 202, 'ignorado': status == 202, 'erro': erro}), status
 
+    mes_slug, semana_local = _resolver_periodo_payload(dados)
+    registro['data_reserva'] = _normalizar_data_para_periodo(registro['data_reserva'], mes_slug, semana_local)
+
     bloqueio = _garantir_semana_editavel_por_data(registro['data_reserva'])
     if bloqueio:
         return bloqueio
@@ -625,6 +648,8 @@ def bulk_cadastrar():
                 ignoradas += 1
                 continue
             return jsonify({'erro': f'Linha {indice}: {erro}'}), 400
+        mes_slug, semana_local = _resolver_periodo_payload(dados)
+        registro['data_reserva'] = _normalizar_data_para_periodo(registro['data_reserva'], mes_slug, semana_local)
         bloqueio = _garantir_semana_editavel_por_data(registro['data_reserva'])
         if bloqueio:
             return bloqueio
@@ -671,6 +696,9 @@ def editar_registro(reg_id):
     registro, erro = _validar_payload_investidor(dados)
     if erro:
         return jsonify({'erro': erro}), 400
+
+    mes_slug, semana_local = _resolver_periodo_payload(dados)
+    registro['data_reserva'] = _normalizar_data_para_periodo(registro['data_reserva'], mes_slug, semana_local)
 
     bloqueio = _garantir_semana_editavel_por_data(registro['data_reserva'])
     if bloqueio:

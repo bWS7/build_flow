@@ -244,18 +244,31 @@ def registrar_acao():
         reg = db.session.get(FinanceiroBanco, int(reg_id))
     if reg and not _pode_gerenciar_registro(reg):
         return jsonify({'erro': 'Voce so pode editar registros criados por voce.'}), 403
-    nova_acao = IndicadorAcao(
-        scope='financeiro',
-        semana=semana,
-        descricao=acao_realizada,
-        responsavel=current_user.nome.upper(),
-        registro_id=reg.id if reg else None,
-        registro_tipo='financeiro' if reg else None,
-    )
-    db.session.add(nova_acao)
+
+    if reg is None:
+        reg = _criar_registro_acao_direta(semana, acao_realizada)
+        db.session.flush()
+        sincronizar_acao_registro(
+            'financeiro',
+            semana,
+            acao_realizada,
+            current_user.nome.upper(),
+            reg.id,
+            'financeiro_registro',
+        )
+    else:
+        nova_acao = IndicadorAcao(
+            scope='financeiro',
+            semana=semana,
+            descricao=acao_realizada,
+            responsavel=current_user.nome.upper(),
+            registro_id=reg.id,
+            registro_tipo='financeiro',
+        )
+        db.session.add(nova_acao)
     db.session.commit()
     _broadcast_update_financeiro(semana)
-    return jsonify({'sucesso': True, 'acao': nova_acao.to_dict()})
+    return jsonify({'sucesso': True})
 
 
 @financeiro_bp.route('/registros')

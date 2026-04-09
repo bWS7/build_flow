@@ -696,6 +696,8 @@ async function salvarInvestidorEditado() {
     imobiliaria: document.getElementById('ii-imobiliaria').value.trim(),
     valor_presente: document.getElementById('ii-valor').value,
     acao_realizada: document.getElementById('ii-acao')?.value.trim() || '',
+    mes: MES_ATUAL,
+    semana: SEMANA_ATUAL,
   };
   if (!validarCamposBasicos(dados)) {
     showToast('Preencha os campos obrigatórios.', 'error');
@@ -903,6 +905,8 @@ document.addEventListener('DOMContentLoaded', () => {
       }
       const btn = document.getElementById('btn-salvar-investidor');
       const dados = coletarForm(formCadastro);
+      dados.mes = MES_ATUAL;
+      dados.semana = SEMANA_ATUAL;
       if (!validarCamposBasicos(dados)) {
         showToast('Preencha os campos obrigatórios.', 'error');
         return;
@@ -970,7 +974,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const resp = await fetch('/investidores/bulk-cadastrar', {
           method: 'POST',
           headers: csrfHeaders({ 'Content-Type': 'application/json' }),
-          body: JSON.stringify({ linhas }),
+          body: JSON.stringify({ linhas, mes: MES_ATUAL, semana: SEMANA_ATUAL }),
         });
         const json = await resp.json();
         if (resp.ok && json.sucesso) {
