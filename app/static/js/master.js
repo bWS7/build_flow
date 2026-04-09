@@ -109,6 +109,7 @@ function atualizarCard(card) {
   const contextEl = item.querySelector('[data-master-card-context]');
   const fillEl = item.querySelector('[data-master-card-fill]');
   const signalEl = item.querySelector('[data-master-card-signal]');
+  const signalStatus = Number(card.percentual || 0) >= 100 ? 'positivo' : (card.desempenho_status || 'neutro');
 
   if (percentualEl) percentualEl.textContent = `${formatarNumeroBr(card.percentual, 1)}%`;
   if (metaEl) {
@@ -120,7 +121,7 @@ function atualizarCard(card) {
   if (fillEl) fillEl.style.width = `${Math.min(Number(card.percentual || 0), 100)}%`;
   if (signalEl) {
     signalEl.textContent = card.desempenho_status === 'positivo' ? '↑' : card.desempenho_status === 'negativo' ? '↓' : '•';
-    signalEl.className = `master-chip__signal master-chip__signal--${card.desempenho_status || 'neutro'}`;
+    signalEl.className = `master-chip__signal master-chip__signal--${signalStatus}`;
     normalizarSinalMasterFinal(signalEl);
   }
 }
@@ -140,13 +141,14 @@ function atualizarCardAcoes(card) {
   const metaEls = item.querySelectorAll('.master-chip__meta');
   const fillEl = item.querySelector('.master-chip__fill');
   const signalEl = item.querySelector('.master-chip__signal');
+  const signalStatus = Number(card.percentual || 0) >= 100 ? 'positivo' : (card.desempenho_status || 'neutro');
 
   if (percentualEl) percentualEl.textContent = `${formatarNumeroBr(card.percentual, 1)}%`;
   if (metaEls[0]) metaEls[0].textContent = `${formatarInteiroBr(card.realizado)} x ${formatarInteiroBr(card.meta)}`;
   if (metaEls[1]) metaEls[1].textContent = card.comparativo_label || '';
   if (fillEl) fillEl.style.width = `${Math.min(Number(card.percentual || 0), 100)}%`;
   if (signalEl) {
-    signalEl.className = `master-chip__signal master-chip__signal--${card.desempenho_status || 'neutro'}`;
+    signalEl.className = `master-chip__signal master-chip__signal--${signalStatus}`;
     normalizarSinalMaster(signalEl);
     normalizarSinalMasterFinal(signalEl);
   }
@@ -157,6 +159,19 @@ function normalizarSinalMasterFinal(signalEl) {
   if (signalEl.classList.contains('master-chip__signal--positivo')) signalEl.textContent = '\u2191';
   else if (signalEl.classList.contains('master-chip__signal--negativo')) signalEl.textContent = '\u2193';
   else signalEl.textContent = '\u2022';
+}
+
+function ajustarSinaisIniciaisMaster() {
+  document.querySelectorAll('[data-master-card], [data-master-card-acoes]').forEach((item) => {
+    const percentualTexto = item.querySelector('.master-chip__value')?.textContent || '0';
+    const percentual = Number(String(percentualTexto).replace('%', '').replace(',', '.')) || 0;
+    const signalEl = item.querySelector('.master-chip__signal');
+    if (!signalEl) return;
+    if (percentual >= 100) {
+      signalEl.className = 'master-chip__signal master-chip__signal--positivo';
+    }
+    normalizarSinalMasterFinal(signalEl);
+  });
 }
 
 function renderizarTabela(cards) {
@@ -255,7 +270,7 @@ function conectarSocketMaster() {
 }
 
 document.addEventListener('DOMContentLoaded', () => {
-  document.querySelectorAll('.master-chip__signal').forEach(normalizarSinalMasterFinal);
+  ajustarSinaisIniciaisMaster();
   iniciarObjetivoMaster();
   iniciarTimerMaster();
   conectarSocketMaster();
