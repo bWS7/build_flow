@@ -439,8 +439,9 @@
 <script>
   const SEMANA_ATUAL = {{ semana_atual }};
   const CURRENT_USER_NOME = {{ (current_user.nome | upper) | tojson }};
-  const IS_ADMIN = {{ 'true' if current_user.tipo == 'admin' else 'false' }};
+  const IS_ADMIN = {{ 'true' if current_user.can_manage_admin() else 'false' }};
   const INITIAL_REGISTROS = {{ registros_json | tojson }};
+  const INITIAL_ACOES = {{ acoes_json | tojson }};
   const BANCOS = {{ bancos | tojson }};
   const NEGOCIACOES = {{ negociacoes | tojson }};
   (function () {
