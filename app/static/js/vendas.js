@@ -36,7 +36,7 @@ function calcularPctPlanejadoRealizado(realizadoMetrica, metaMetrica, realizadoA
   const componentes = [];
   if (Number(metaMetrica || 0) > 0) componentes.push(Number(realizadoMetrica || 0) / Number(metaMetrica || 0));
   if (Number(metaAcoes || 0) > 0) componentes.push(Number(realizadoAcoes || 0) / Number(metaAcoes || 0));
-  if (!componentes.length) return 0;
+  if (!componentes.length) return 100;
   return Number((Math.min((componentes.reduce((acc, item) => acc + item, 0) / componentes.length) * 100, 100)).toFixed(1));
 }
 
@@ -654,7 +654,7 @@ async function salvarAcaoRealizada() {
     const resp = await fetch('/vendas/acao', {
       method: 'POST',
       headers: csrfHeaders({ 'Content-Type': 'application/json' }),
-      body: JSON.stringify({ venda_id: vendaId, acao_realizada: acaoRealizada }),
+      body: JSON.stringify({ venda_id: vendaId, mes: MES_ATUAL, semana: SEMANA_ATUAL, acao_realizada: acaoRealizada }),
     });
     const json = await resp.json();
     if (resp.ok && json.sucesso) {
@@ -683,6 +683,8 @@ async function salvarVendaEditada() {
   const dados = {
     reserva: document.getElementById('vi-reserva').value.trim(),
     data: document.getElementById('vi-data').value.trim(),
+    mes: MES_ATUAL,
+    semana: SEMANA_ATUAL,
     situacao: document.getElementById('vi-situacao').value.trim(),
     empreendimento: document.getElementById('vi-empreendimento').value.trim(),
     tipo_venda: document.getElementById('vi-tipo-venda').value.trim(),
@@ -900,6 +902,8 @@ document.addEventListener('DOMContentLoaded', () => {
       }
       const btn = document.getElementById('btn-salvar-venda');
       const dados = coletarForm(formCadastro);
+      dados.mes = MES_ATUAL;
+      dados.semana = SEMANA_ATUAL;
       if (!validarCamposBasicos(dados)) {
         showToast('Preencha os campos obrigatórios.', 'error');
         return;
@@ -964,10 +968,11 @@ document.addEventListener('DOMContentLoaded', () => {
       }
 
       try {
+        const linhasComPeriodo = linhas.map((linha) => ({ ...linha, mes: MES_ATUAL, semana: SEMANA_ATUAL }));
         const resp = await fetch('/vendas/bulk-cadastrar', {
           method: 'POST',
           headers: csrfHeaders({ 'Content-Type': 'application/json' }),
-          body: JSON.stringify({ linhas }),
+          body: JSON.stringify({ linhas: linhasComPeriodo }),
         });
         const json = await resp.json();
         if (resp.ok && json.sucesso) {

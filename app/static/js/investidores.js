@@ -36,7 +36,7 @@ function calcularPctPlanejadoRealizado(realizadoMetrica, metaMetrica, realizadoA
   const componentes = [];
   if (Number(metaMetrica || 0) > 0) componentes.push(Number(realizadoMetrica || 0) / Number(metaMetrica || 0));
   if (Number(metaAcoes || 0) > 0) componentes.push(Number(realizadoAcoes || 0) / Number(metaAcoes || 0));
-  if (!componentes.length) return 0;
+  if (!componentes.length) return 100;
   return Number((Math.min((componentes.reduce((acc, item) => acc + item, 0) / componentes.length) * 100, 100)).toFixed(1));
 }
 
