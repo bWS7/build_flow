@@ -741,7 +741,7 @@
 
 <div id="toast" class="toast" aria-live="polite"></div>
 <script>
-  window.CAN_EDIT_LOCKED_METAS = {{ 'true' if current_user.can_manage_admin() else 'false' }};
+  window.CAN_EDIT_LOCKED_METAS = {{ 'true' if current_user.can_access_metas_dashboard() else 'false' }};
 </script>
 <script src="{{ url_for('static', filename='js/admin.js') }}"></script>
 <script>
