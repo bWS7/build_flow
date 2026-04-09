@@ -9,7 +9,7 @@ from app.models.indicador_acao import IndicadorAcao, consultar_acoes, contar_aco
 from app.models.medicao import MedicaoRegistro
 from app.models.meta_medicao import MetaMedicaoSemana
 from app.models.meta_configuracao import MetaConfiguracaoIndicador
-from app.utils.progress import calcular_percentual_planejado_realizado
+from app.utils.progress import calcular_percentual_meta, calcular_percentual_planejado_realizado
 from app.utils.quarter import semana_editavel
 
 
@@ -48,8 +48,8 @@ def _calcular_indicadores_medicao(semana: int, registros: list[MedicaoRegistro] 
     total_medicoes = len(todos)
     total_empreendimentos = len({(item.empreendimento or '').strip() for item in todos if (item.empreendimento or '').strip()})
     acoes_realizadas = contar_acoes('medicao', semana)
-    percentual = (valor_realizado / valor_meta * 100) if valor_meta > 0 else 0
-    percentual_acoes = (acoes_realizadas / acoes_planejadas * 100) if acoes_planejadas > 0 else 0
+    percentual = calcular_percentual_meta(valor_realizado, valor_meta)
+    percentual_acoes = calcular_percentual_meta(acoes_realizadas, acoes_planejadas)
     percentual_planejado_realizado = calcular_percentual_planejado_realizado(
         valor_realizado,
         valor_meta,
@@ -91,12 +91,12 @@ def resumir_medicao_trimestre() -> dict:
         'valor_realizado': valor_realizado,
         'valor_meta': valor_meta,
         'meta_base_total': float(meta_base.meta_base_total or 0) if meta_base else 0.0,
-        'percentual_atingimento': round((valor_realizado / valor_meta) * 100, 1) if valor_meta > 0 else 0.0,
+        'percentual_atingimento': calcular_percentual_meta(valor_realizado, valor_meta),
         'total_medicoes': len(registros),
         'total_empreendimentos': len({(item.empreendimento or '').strip() for item in registros if (item.empreendimento or '').strip()}),
         'acoes_planejadas': acoes_planejadas,
         'acoes_realizadas': acoes_realizadas,
-        'percentual_acoes': round((acoes_realizadas / acoes_planejadas) * 100, 1) if acoes_planejadas > 0 else 0.0,
+        'percentual_acoes': calcular_percentual_meta(acoes_realizadas, acoes_planejadas),
         'percentual_planejado_realizado': percentual_planejado_realizado,
     }
 

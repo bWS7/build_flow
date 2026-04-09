@@ -8,7 +8,7 @@ from app.models.empreendimento import Empreendimento
 from app.models.meta import MetaSemana
 from app.models.meta_configuracao import MetaConfiguracaoIndicador
 from sqlalchemy import func
-from app.utils.progress import calcular_percentual_planejado_realizado
+from app.utils.progress import calcular_percentual_meta, calcular_percentual_planejado_realizado
 from app.utils.quarter import semana_editavel
 
 relacionamento_bp = Blueprint('relacionamento', __name__)
@@ -55,8 +55,8 @@ def _calcular_indicadores(semana: int, registros: list[Relacionamento] | None = 
     registros_sim = [r for r in todos if _situacao_conta_como_sim(r.situacao)]
     soma_valores = sum(float(r.valor) for r in registros_sim if r.valor > 0)
 
-    pct_acoes = (acoes_realizadas / acoes_planejadas * 100) if acoes_planejadas > 0 else 0
-    pct_valor = (soma_valores / valor_meta * 100) if valor_meta > 0 else 0
+    pct_acoes = calcular_percentual_meta(acoes_realizadas, acoes_planejadas)
+    pct_valor = calcular_percentual_meta(soma_valores, valor_meta)
     pct_planejado_realizado = calcular_percentual_planejado_realizado(
         soma_valores,
         valor_meta,

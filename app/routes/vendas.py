@@ -13,7 +13,7 @@ from app.models.meta_configuracao import MetaConfiguracaoIndicador
 from app.models.meta_venda_semana import MetaVendaSemana
 from app.models.venda import SITUACAO_VENDA_OPCOES, TIPO_VENDA_OPCOES, Venda
 from app.services.analytics_ai import analytics_ai_available, analytics_ai_enabled, ask_analytics_assistant, build_global_ai_context, fallback_analytics_answer
-from app.utils.progress import calcular_percentual_planejado_realizado
+from app.utils.progress import calcular_percentual_meta, calcular_percentual_planejado_realizado
 from app.utils.quarter import semana_editavel
 
 
@@ -344,8 +344,8 @@ def _calcular_financeiro(mes_slug: str, vendas: list[Venda] | None = None, seman
     )
     total_vendidas = sum(1 for venda in vendas if _normalizar_situacao(venda.situacao) == 'VENDIDA')
     acoes_realizadas = contar_acoes('vendas', _semanas_periodo_vendas(mes_slug, semana_local))
-    percentual = round((total_vendidas / meta_quantidade) * 100, 1) if meta_quantidade > 0 else 0.0
-    percentual_acoes = round((acoes_realizadas / meta_acoes) * 100, 1) if meta_acoes > 0 else 0.0
+    percentual = calcular_percentual_meta(total_vendidas, meta_quantidade)
+    percentual_acoes = calcular_percentual_meta(acoes_realizadas, meta_acoes)
     percentual_planejado_realizado = calcular_percentual_planejado_realizado(
         total_vendidas,
         meta_quantidade,

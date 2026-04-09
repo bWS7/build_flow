@@ -30,7 +30,7 @@ from app.routes.medicao import resumir_medicao_trimestre
 from app.routes.investidores import PERIODO_INVESTIDORES, MESES_INVESTIDORES, montar_contexto_template_investidores
 from app.routes.vendas import MESES_VENDAS, montar_contexto_template_vendas
 from app.services.analytics_ai import analytics_ai_available, analytics_ai_enabled, ask_analytics_assistant, build_global_ai_context, fallback_analytics_answer
-from app.utils.progress import calcular_percentual_planejado_realizado
+from app.utils.progress import calcular_percentual_meta, calcular_percentual_planejado_realizado
 
 MESES_RELATORIO = [
     ('abril', 'Abril', 1),
@@ -70,9 +70,7 @@ MASTER_SEMANAS = [
 
 
 def _safe_pct(realizado: float, planejado: float) -> float:
-    if planejado <= 0:
-        return 0.0
-    return min(round((realizado / planejado) * 100, 1), 999.9)
+    return calcular_percentual_meta(realizado, planejado)
 
 
 def _obter_meta_base_total(scope: str) -> float:

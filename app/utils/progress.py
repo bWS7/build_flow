@@ -1,3 +1,11 @@
+def calcular_percentual_meta(realizado: float | int, planejado: float | int) -> float:
+    planejado_num = float(planejado or 0)
+    if planejado_num <= 0:
+        return 100.0
+    percentual = (float(realizado or 0) / planejado_num) * 100
+    return min(round(percentual, 1), 100.0)
+
+
 def calcular_percentual_planejado_realizado(
     realizado_metrica: float | int,
     meta_metrica: float | int,
@@ -15,7 +23,7 @@ def calcular_percentual_planejado_realizado(
         componentes.append(float(realizado_acoes or 0) / meta_acoes_num)
 
     if not componentes:
-        return 0.0
+        return 100.0
 
     percentual = (sum(componentes) / len(componentes)) * 100
     return min(round(percentual, 1), 100.0)

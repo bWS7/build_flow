@@ -8,7 +8,7 @@ from app.models.giro import NEGOCIACAO_GIRO_OPCOES, ORIGENS_GIRO, GiroCaptacao
 from app.models.indicador_acao import IndicadorAcao, consultar_acoes, contar_acoes, sincronizar_acao_registro
 from app.models.meta_giro import MetaGiroSemana
 from app.models.meta_configuracao import MetaConfiguracaoIndicador
-from app.utils.progress import calcular_percentual_planejado_realizado
+from app.utils.progress import calcular_percentual_meta, calcular_percentual_planejado_realizado
 from app.utils.quarter import semana_editavel
 
 
@@ -47,8 +47,8 @@ def _calcular_indicadores_giro(semana: int, registros: list[GiroCaptacao] | None
     total_captacoes = len(todos)
     total_origens = len({(item.origem or '').strip() for item in todos if (item.origem or '').strip()})
     acoes_realizadas = contar_acoes('giro', semana)
-    percentual = (valor_captado / valor_meta * 100) if valor_meta > 0 else 0
-    percentual_acoes = (acoes_realizadas / acoes_planejadas * 100) if acoes_planejadas > 0 else 0
+    percentual = calcular_percentual_meta(valor_captado, valor_meta)
+    percentual_acoes = calcular_percentual_meta(acoes_realizadas, acoes_planejadas)
     meta_base = MetaConfiguracaoIndicador.query.filter_by(scope='giro').first()
     percentual_planejado_realizado = calcular_percentual_planejado_realizado(
         valor_captado,
@@ -90,12 +90,12 @@ def resumir_giro_trimestre() -> dict:
         'valor_realizado': valor_realizado,
         'valor_meta': valor_meta,
         'meta_base_total': float(meta_base.meta_base_total or 0) if meta_base else 0.0,
-        'percentual_atingimento': round((valor_realizado / valor_meta) * 100, 1) if valor_meta > 0 else 0.0,
+        'percentual_atingimento': calcular_percentual_meta(valor_realizado, valor_meta),
         'total_captacoes': len(registros),
         'total_origens': len({(item.origem or '').strip() for item in registros if (item.origem or '').strip()}),
         'acoes_planejadas': acoes_planejadas,
         'acoes_realizadas': acoes_realizadas,
-        'percentual_acoes': round((acoes_realizadas / acoes_planejadas) * 100, 1) if acoes_planejadas > 0 else 0.0,
+        'percentual_acoes': calcular_percentual_meta(acoes_realizadas, acoes_planejadas),
         'percentual_planejado_realizado': percentual_planejado_realizado,
     }
 

@@ -9,7 +9,7 @@ from app.models.fornecedor import FornecedorRegistro, SITUACAO_FORNECEDOR_OPCOES
 from app.models.indicador_acao import IndicadorAcao, consultar_acoes, contar_acoes, sincronizar_acao_registro
 from app.models.meta_fornecedor import MetaFornecedorSemana
 from app.models.meta_configuracao import MetaConfiguracaoIndicador
-from app.utils.progress import calcular_percentual_planejado_realizado
+from app.utils.progress import calcular_percentual_meta, calcular_percentual_planejado_realizado
 from app.utils.quarter import semana_editavel
 
 
@@ -59,8 +59,8 @@ def _calcular_indicadores_fornecedores(semana: int, registros: list[FornecedorRe
     total_fornecedores = len({(item.nome_fornecedor or '').strip() for item in todos if (item.nome_fornecedor or '').strip()})
     total_empreendimentos = len({(item.empreendimento or '').strip() for item in todos if (item.empreendimento or '').strip()})
     acoes_realizadas = contar_acoes('fornecedores', semana)
-    percentual = (valor_negociado / valor_meta * 100) if valor_meta > 0 else 0
-    percentual_acoes = (acoes_realizadas / acoes_planejadas * 100) if acoes_planejadas > 0 else 0
+    percentual = calcular_percentual_meta(valor_negociado, valor_meta)
+    percentual_acoes = calcular_percentual_meta(acoes_realizadas, acoes_planejadas)
     percentual_planejado_realizado = calcular_percentual_planejado_realizado(
         valor_negociado,
         valor_meta,
@@ -107,13 +107,13 @@ def resumir_fornecedores_trimestre() -> dict:
         'valor_realizado': valor_realizado,
         'valor_meta': valor_meta,
         'meta_base_total': float(meta_base.meta_base_total or 0) if meta_base else 0.0,
-        'percentual_atingimento': round((valor_realizado / valor_meta) * 100, 1) if valor_meta > 0 else 0.0,
+        'percentual_atingimento': calcular_percentual_meta(valor_realizado, valor_meta),
         'total_negociacoes': sum(1 for item in registros if _situacao_conta_como_negociado(item.situacao)),
         'total_fornecedores': len({(item.nome_fornecedor or '').strip() for item in registros if (item.nome_fornecedor or '').strip()}),
         'total_empreendimentos': len({(item.empreendimento or '').strip() for item in registros if (item.empreendimento or '').strip()}),
         'acoes_planejadas': acoes_planejadas,
         'acoes_realizadas': acoes_realizadas,
-        'percentual_acoes': round((acoes_realizadas / acoes_planejadas) * 100, 1) if acoes_planejadas > 0 else 0.0,
+        'percentual_acoes': calcular_percentual_meta(acoes_realizadas, acoes_planejadas),
         'percentual_planejado_realizado': percentual_planejado_realizado,
     }
 
