@@ -341,6 +341,10 @@ def _ensure_database_columns():
         'metas_medicao_semana': {
             'acoes_planejadas': "ALTER TABLE metas_medicao_semana ADD COLUMN acoes_planejadas INTEGER NOT NULL DEFAULT 0",
         },
+        'exclusao_auditoria': {
+            'usuario_nome': "ALTER TABLE exclusao_auditoria ADD COLUMN usuario_nome VARCHAR(120) NOT NULL DEFAULT ''",
+            'usuario_email': "ALTER TABLE exclusao_auditoria ADD COLUMN usuario_email VARCHAR(120) NOT NULL DEFAULT ''",
+        },
     }
 
     for tabela, colunas in tabelas.items():

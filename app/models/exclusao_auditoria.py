@@ -23,6 +23,8 @@ class ExclusaoAuditoria(db.Model):
     semana = db.Column(db.Integer, nullable=True, index=True)
     responsavel_registro = db.Column(db.String(120), nullable=True)
     usuario_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False, index=True)
+    usuario_nome = db.Column(db.String(120), nullable=False, default='')
+    usuario_email = db.Column(db.String(120), nullable=False, default='')
     payload_json = db.Column(db.Text, nullable=False, default='{}')
     criado_em = db.Column(db.DateTime, nullable=False, server_default=db.func.now(), index=True)
 
@@ -37,6 +39,8 @@ class ExclusaoAuditoria(db.Model):
             'semana': self.semana,
             'responsavel_registro': self.responsavel_registro,
             'usuario_id': self.usuario_id,
+            'usuario_nome': self.usuario_nome,
+            'usuario_email': self.usuario_email,
             'usuario': getattr(self.usuario, 'nome', ''),
             'payload': json.loads(self.payload_json or '{}'),
             'criado_em': self.criado_em.isoformat() if self.criado_em else None,
@@ -65,9 +69,20 @@ def registrar_exclusao_auditoria(
     scope: str,
     instance,
     usuario_id: int,
+    usuario_nome: str = '',
+    usuario_email: str = '',
     registro_tipo: str | None = None,
 ) -> ExclusaoAuditoria:
     snapshot = _snapshot_model(instance)
+    usuario = None
+    if usuario_id:
+        try:
+            from app.models.user import User
+            usuario = db.session.get(User, int(usuario_id))
+        except Exception:
+            usuario = None
+    nome_exclusor = usuario_nome or getattr(usuario, 'nome', '') or ''
+    email_exclusor = usuario_email or getattr(usuario, 'email', '') or ''
     auditoria = ExclusaoAuditoria(
         scope=scope,
         registro_tipo=registro_tipo or getattr(instance, '__tablename__', instance.__class__.__name__),
@@ -75,6 +90,8 @@ def registrar_exclusao_auditoria(
         semana=getattr(instance, 'semana', None),
         responsavel_registro=getattr(instance, 'responsavel', None),
         usuario_id=usuario_id,
+        usuario_nome=nome_exclusor,
+        usuario_email=email_exclusor,
         payload_json=json.dumps(snapshot, ensure_ascii=False, default=_json_default),
     )
     db.session.add(auditoria)
