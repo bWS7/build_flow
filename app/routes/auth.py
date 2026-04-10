@@ -165,4 +165,18 @@ def em_construcao():
 def _redirecionar(tipo: str):
     tipo_normalizado = TIPOS_LEGADOS_MAP.get(str(tipo or '').strip().lower(), str(tipo or '').strip().lower())
     destino = REDIRECT_MAP.get(tipo_normalizado, 'auth.login')
+    if destino == 'financeiro.index':
+        return redirect(url_for(destino, semana=2))
+    if destino == 'medicao.index':
+        return redirect(url_for(destino, semana=2))
+    if destino == 'fornecedores.index':
+        return redirect(url_for(destino, semana=2))
+    if destino == 'giro.index':
+        return redirect(url_for(destino, semana=2))
+    if destino == 'relacionamento.index':
+        return redirect(url_for(destino, semana=2))
+    if destino == 'vendas.index':
+        return redirect(url_for(destino, mes='abril', semana=2))
+    if destino == 'investidores.index':
+        return redirect(url_for(destino, mes='abril', semana=2))
     return redirect(url_for(destino))

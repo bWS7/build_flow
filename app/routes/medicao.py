@@ -11,7 +11,7 @@ from app.models.medicao import MedicaoRegistro
 from app.models.meta_medicao import MetaMedicaoSemana
 from app.models.meta_configuracao import MetaConfiguracaoIndicador
 from app.utils.progress import calcular_percentual_meta, calcular_percentual_planejado_realizado
-from app.utils.quarter import semana_editavel
+from app.utils.quarter import semana_editavel, semana_padrao_preenchimento
 
 
 medicao_bp = Blueprint('medicao', __name__)
@@ -122,7 +122,7 @@ def _pode_gerenciar_registro(registro: MedicaoRegistro) -> bool:
 def _garantir_semana_editavel(semana: int):
     if not current_user.can_edit_page('medicao'):
         return jsonify({'erro': 'Seu perfil possui apenas visualizacao nesta area.'}), 403
-    if not semana_editavel(semana, current_user.can_override_week_lock()):
+    if not semana_editavel(semana, current_user.can_override_week_lock(), current_user.can_manage_admin()):
         return jsonify({'erro': 'Esta semana esta bloqueada para edicao. Apenas perfis admin podem alterar semanas anteriores.'}), 403
     return None
 
@@ -136,7 +136,7 @@ def _empreendimento_padrao() -> str:
 @login_required
 @requer_medicao_ou_admin
 def index():
-    semana = _parse_semana(request.args.get('semana', 1)) or 1
+    semana = _parse_semana(request.args.get('semana', semana_padrao_preenchimento())) or semana_padrao_preenchimento()
     empreendimentos = Empreendimento.query.filter_by(ativo=True).order_by(Empreendimento.nome).all()
     registros = (
         MedicaoRegistro.query.filter_by(semana=semana)
@@ -151,7 +151,7 @@ def index():
         registros_json=[item.to_dict() for item in registros],
         acoes_json=[item.to_dict() for item in consultar_acoes('medicao', semana)],
         semana_atual=semana,
-        permite_edicao=current_user.can_edit_page('medicao') and semana_editavel(semana, current_user.can_override_week_lock()),
+        permite_edicao=current_user.can_edit_page('medicao') and semana_editavel(semana, current_user.can_override_week_lock(), current_user.can_manage_admin()),
     )
 
 
@@ -245,7 +245,7 @@ def registrar_acao():
 @login_required
 @requer_medicao_ou_admin
 def listar_registros():
-    semana = _parse_semana(request.args.get('semana', 1))
+    semana = _parse_semana(request.args.get('semana', semana_padrao_preenchimento()))
     if semana is None:
         return jsonify({'erro': 'Semana invalida.'}), 400
     registros = (

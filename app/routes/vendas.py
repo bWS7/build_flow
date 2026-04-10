@@ -15,7 +15,7 @@ from app.models.meta_venda_semana import MetaVendaSemana
 from app.models.venda import SITUACAO_VENDA_OPCOES, TIPO_VENDA_OPCOES, Venda
 from app.services.analytics_ai import analytics_ai_available, analytics_ai_enabled, ask_analytics_assistant, build_global_ai_context, fallback_analytics_answer
 from app.utils.progress import calcular_percentual_meta, calcular_percentual_planejado_realizado
-from app.utils.quarter import semana_editavel
+from app.utils.quarter import semana_editavel, semana_padrao_preenchimento
 
 
 vendas_bp = Blueprint('vendas', __name__)
@@ -83,10 +83,10 @@ def _mes_slug_atual() -> str:
 
 def _semana_do_mes_atual() -> int:
     try:
-        semana = int((request.args.get('semana') or request.form.get('semana') or '1').strip())
+        semana = int((request.args.get('semana') or request.form.get('semana') or str(semana_padrao_preenchimento())).strip())
     except (TypeError, ValueError, AttributeError):
-        semana = 1
-    return semana if semana in {1, 2, 3, 4} else 1
+        semana = semana_padrao_preenchimento()
+    return semana if semana in {1, 2, 3, 4} else semana_padrao_preenchimento()
 
 
 def _semana_global_por_data(data_reserva, mes_slug: str | None = None) -> int | None:
@@ -144,7 +144,7 @@ def montar_contexto_template_vendas(mes_slug: str, incluir_resumo: bool = False,
     if mes_slug == RESUMO_TRIMESTRAL[0]:
         permite_edicao = _usuario_pode_editar_vendas()
     else:
-        permite_edicao = _usuario_pode_editar_vendas() and semana_editavel(semana_global, _usuario_admin_total())
+        permite_edicao = _usuario_pode_editar_vendas() and semana_editavel(semana_global, _usuario_admin_total(), current_user.can_manage_admin())
     return {
         'meses': meses,
         'mes_atual': mes_slug,
@@ -230,7 +230,7 @@ def _garantir_semana_editavel_por_data(data_referencia):
     semana_global = _semana_global_por_data(data_referencia)
     if semana_global is None:
         return jsonify({'erro': 'Nao foi possivel identificar a semana do registro.'}), 400
-    if not semana_editavel(semana_global, _usuario_admin_total()):
+    if not semana_editavel(semana_global, _usuario_admin_total(), current_user.can_manage_admin()):
         return jsonify({'erro': 'Esta semana esta bloqueada para edicao. Apenas o admin pode alterar semanas anteriores.'}), 403
     return None
 
@@ -240,7 +240,7 @@ def _garantir_semana_editavel_global(semana_global: int | None):
         return jsonify({'erro': 'Seu perfil possui apenas visualizacao nesta area.'}), 403
     if semana_global is None:
         return jsonify({'erro': 'Nao foi possivel identificar a semana do registro.'}), 400
-    if not semana_editavel(semana_global, _usuario_admin_total()):
+    if not semana_editavel(semana_global, _usuario_admin_total(), current_user.can_manage_admin()):
         return jsonify({'erro': 'Esta semana esta bloqueada para edicao. Apenas o admin pode alterar semanas anteriores.'}), 403
     return None
 

@@ -1931,6 +1931,12 @@ def _pode_editar_meta_existente(scope: str) -> bool:
     return current_user.can_access_meta_scope(scope)
 
 
+def _apenas_admin_pode_editar_primeira_semana(semana: int):
+    if int(semana or 0) == 1 and not current_user.can_manage_admin():
+        return jsonify({'erro': 'A semana 1 de abril esta travada para metas. Apenas o ADMIN pode alterar este periodo.'}), 403
+    return None
+
+
 def _meta_relacionamento_preenchida(meta: MetaSemana | None) -> bool:
     if meta is None:
         return False
@@ -2424,6 +2430,9 @@ def salvar_meta():
     _garantir_permissao_meta('relacionamento')
     dados = request.get_json(silent=True) or request.form.to_dict()
     semana = int(dados.get('semana', 1))
+    bloqueio_semana = _apenas_admin_pode_editar_primeira_semana(semana)
+    if bloqueio_semana:
+        return bloqueio_semana
     if not _garantir_meta_liberada('relacionamento', semana):
         return jsonify({'erro': 'Meta ainda nao foi disponibilizada pelo administrador.'}), 403
     try:
@@ -2464,6 +2473,9 @@ def salvar_meta_investidor():
         meta_base_total = float(dados.get('meta_base_total', 0) or 0)
     except (ValueError, TypeError):
         return jsonify({'erro': 'Valor invalido.'}), 400
+    bloqueio_semana = _apenas_admin_pode_editar_primeira_semana(semana)
+    if bloqueio_semana:
+        return bloqueio_semana
     if not _garantir_meta_liberada('investidores', semana):
         return jsonify({'erro': 'Meta ainda nao foi disponibilizada pelo administrador.'}), 403
 
@@ -2498,6 +2510,9 @@ def salvar_meta_financeiro():
         meta_base_total = float(dados.get('meta_base_total', 0) or 0)
     except (ValueError, TypeError):
         return jsonify({'erro': 'Valores invalidos.'}), 400
+    bloqueio_semana = _apenas_admin_pode_editar_primeira_semana(semana)
+    if bloqueio_semana:
+        return bloqueio_semana
     if not _garantir_meta_liberada('financeiro', semana):
         return jsonify({'erro': 'Meta ainda nao foi disponibilizada pelo administrador.'}), 403
 
@@ -2532,6 +2547,9 @@ def salvar_meta_giro():
         meta_base_total = float(dados.get('meta_base_total', 0) or 0)
     except (ValueError, TypeError):
         return jsonify({'erro': 'Valores invalidos.'}), 400
+    bloqueio_semana = _apenas_admin_pode_editar_primeira_semana(semana)
+    if bloqueio_semana:
+        return bloqueio_semana
     if not _garantir_meta_liberada('giro', semana):
         return jsonify({'erro': 'Meta ainda nao foi disponibilizada pelo administrador.'}), 403
 
@@ -2566,6 +2584,9 @@ def salvar_meta_fornecedor():
         meta_base_total = float(dados.get('meta_base_total', 0) or 0)
     except (ValueError, TypeError):
         return jsonify({'erro': 'Valores invalidos.'}), 400
+    bloqueio_semana = _apenas_admin_pode_editar_primeira_semana(semana)
+    if bloqueio_semana:
+        return bloqueio_semana
     if not _garantir_meta_liberada('fornecedores', semana):
         return jsonify({'erro': 'Meta ainda nao foi disponibilizada pelo administrador.'}), 403
 
@@ -2600,6 +2621,9 @@ def salvar_meta_medicao():
         meta_base_total = float(dados.get('meta_base_total', 0) or 0)
     except (ValueError, TypeError):
         return jsonify({'erro': 'Valores invalidos.'}), 400
+    bloqueio_semana = _apenas_admin_pode_editar_primeira_semana(semana)
+    if bloqueio_semana:
+        return bloqueio_semana
     if not _garantir_meta_liberada('medicao', semana):
         return jsonify({'erro': 'Meta ainda nao foi disponibilizada pelo administrador.'}), 403
 
@@ -2635,6 +2659,9 @@ def salvar_meta_venda():
     except (ValueError, TypeError):
         return jsonify({'erro': 'Quantidade inválida.'}), 400
 
+    bloqueio_semana = _apenas_admin_pode_editar_primeira_semana(semana)
+    if bloqueio_semana:
+        return bloqueio_semana
     if not _garantir_meta_liberada('vendas', semana):
         return jsonify({'erro': 'Meta ainda nao foi disponibilizada pelo administrador.'}), 403
     meta = MetaVendaSemana.query.filter_by(semana=semana).first()

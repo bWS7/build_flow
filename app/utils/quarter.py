@@ -2,6 +2,9 @@ from __future__ import annotations
 
 from datetime import date, datetime
 
+PRIMEIRA_SEMANA_ABRIL = 1
+SEMANA_PADRAO_PREENCHIMENTO_ABRIL = 2
+
 MASTER_SEMANAS = [
     (1, datetime(2026, 4, 1, 0, 0, 0), datetime(2026, 4, 7, 23, 59, 59)),
     (2, datetime(2026, 4, 8, 0, 0, 0), datetime(2026, 4, 14, 23, 59, 59)),
@@ -51,6 +54,10 @@ def semana_local_atual(mes_slug: str, agora: datetime | None = None) -> int:
     return semana_local
 
 
+def semana_padrao_preenchimento() -> int:
+    return SEMANA_PADRAO_PREENCHIMENTO_ABRIL
+
+
 def semana_global_por_mes_local(mes_slug: str, semana_local: int) -> int:
     info = MESES_MAP.get(mes_slug, MESES_MAP["abril"])
     semana_normalizada = min(max(int(semana_local or 1), 1), 4)
@@ -68,7 +75,15 @@ def semana_global_por_data(data_referencia: date | None, fallback_mes: str = "ab
     return None
 
 
-def semana_editavel(semana_global: int, is_admin: bool, agora: datetime | None = None) -> bool:
-    if is_admin:
+def semana_editavel(
+    semana_global: int,
+    can_override_past_lock: bool,
+    is_admin: bool = False,
+    agora: datetime | None = None,
+) -> bool:
+    semana = int(semana_global or 0)
+    if semana == PRIMEIRA_SEMANA_ABRIL and not is_admin:
+        return False
+    if can_override_past_lock:
         return True
-    return int(semana_global or 0) >= semana_global_atual(agora)
+    return semana >= semana_global_atual(agora)

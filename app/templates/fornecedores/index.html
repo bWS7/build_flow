@@ -116,7 +116,8 @@
           </button>
           <div class="week-month__body week-month__body--collapsed" id="body-{{ mes_id }}">
             {% for s in range(mes_ini, mes_ini + 4) %}
-            <a href="?semana={{ s }}" class="week-pill {% if s == semana_atual %}week-pill--active{% endif %}">S{{ loop.index }}</a>
+            {% set semana_travada = s == 1 and not current_user.can_manage_admin() %}
+            <a {% if not semana_travada %}href="?semana={{ s }}"{% endif %} class="week-pill {% if s == semana_atual %}week-pill--active{% endif %} {% if semana_travada %}week-pill--locked{% endif %}" {% if semana_travada %}aria-disabled="true" title="Semana 1 de abril travada para perfis nao ADMIN"{% endif %}>S{{ loop.index }}</a>
             {% endfor %}
           </div>
         </div>

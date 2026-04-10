@@ -55,6 +55,12 @@
 }
 .week-pill:hover { border-color: var(--wine); color: var(--wine); }
 .week-pill--active { background: var(--wine); color: var(--white); border-color: var(--wine); }
+.week-pill--locked {
+  opacity: .55;
+  cursor: not-allowed;
+  pointer-events: none;
+  border-style: dashed;
+}
 
 /* -- INDICATORS (KPI CARDS) ------------------------------------------------- */
 .indicators {
@@ -346,6 +352,10 @@ html[data-theme='dark'] .week-pill--active {
   background: linear-gradient(135deg, var(--wine-light), var(--wine));
   color: #fff8f5;
   border-color: transparent;
+}
+html[data-theme='dark'] .week-pill--locked {
+  color: rgba(255, 255, 255, 0.45);
+  border-color: rgba(255, 255, 255, 0.1);
 }
 html[data-theme='dark'] .kpi-card,
 html[data-theme='dark'] .progress-block,
