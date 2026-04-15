@@ -127,9 +127,9 @@
             {% for s in range(mes_ini, mes_ini + 4) %}
             {% set semana_local = loop.index %}
             {% set semana_travada = s == 1 and not current_user.can_manage_admin() %}
-            <a {% if not semana_travada %}href="?semana={{ s }}"{% endif %}
+            <a href="?semana={{ s }}"
                class="week-pill {% if s == semana_atual %}week-pill--active{% endif %} {% if semana_travada %}week-pill--locked{% endif %}"
-               {% if semana_travada %}aria-disabled="true" title="Semana 1 de abril travada para perfis nao ADMIN"{% endif %}>
+               {% if semana_travada %}title="Semana encerrada: apenas visualizacao"{% endif %}>
               S{{ semana_local }}
             </a>
             {% endfor %}
@@ -431,6 +431,7 @@
 <script src="{{ url_for('static', filename='js/relacionamento.js') }}"></script>
 <script>
   const SEMANA_ATUAL = {{ semana_atual }};
+  const PODE_EDITAR_SEMANA = {{ permite_edicao | tojson }};
   const CURRENT_USER_NOME = {{ (current_user.nome | upper) | tojson }};
   const IS_ADMIN = {{ 'true' if current_user.can_manage_admin() else 'false' }};
   const INITIAL_REGISTROS = {{ registros_json | tojson }};

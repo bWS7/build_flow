@@ -178,7 +178,7 @@
           <div class="week-month__body week-month__body--collapsed" id="body-{{ mes_id }}">
             {% for s in range(1, 5) %}
             {% set semana_travada = mes_id == 'abril' and s == 1 and not current_user.can_manage_admin() %}
-            <a {% if not semana_travada %}href="{% if painel_admin_vendas %}{{ url_for('admin.vendas_painel', mes=mes_id, semana=s) }}{% else %}{{ url_for('vendas.index', mes=mes_id, semana=s) }}{% endif %}"{% endif %} class="week-pill {% if mes_id == mes_atual and s == semana_atual %}week-pill--active{% endif %} {% if semana_travada %}week-pill--locked{% endif %}" {% if semana_travada %}aria-disabled="true" title="Semana 1 de abril travada para perfis nao ADMIN"{% endif %}>
+            <a href="{% if painel_admin_vendas %}{{ url_for('admin.vendas_painel', mes=mes_id, semana=s) }}{% else %}{{ url_for('vendas.index', mes=mes_id, semana=s) }}{% endif %}" class="week-pill {% if mes_id == mes_atual and s == semana_atual %}week-pill--active{% endif %} {% if semana_travada %}week-pill--locked{% endif %}" {% if semana_travada %}title="Semana encerrada: apenas visualizacao"{% endif %}>
               S{{ s }}
             </a>
             {% endfor %}

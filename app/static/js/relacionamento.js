@@ -17,6 +17,21 @@ function csrfHeaders(extra = {}) {
   return { 'X-CSRFToken': window.APP_CSRF_TOKEN || '', ...extra };
 }
 
+function semanaPermiteEdicao() {
+  return typeof PODE_EDITAR_SEMANA === 'undefined' ? true : Boolean(PODE_EDITAR_SEMANA);
+}
+
+function aplicarBloqueioEdicao() {
+  if (semanaPermiteEdicao()) return;
+  document.querySelectorAll('#form-cadastro input, #form-cadastro select, #form-cadastro textarea, #form-cadastro button, #form-acao input, #form-acao select, #form-acao textarea, #form-acao button, #form-ficha input, #form-ficha select, #form-ficha textarea, #form-ficha button').forEach((el) => {
+    el.disabled = true;
+  });
+  ['toggle-form', 'toggle-action-form', 'confirm-delete-btn'].forEach((id) => {
+    const el = document.getElementById(id);
+    if (el) el.disabled = true;
+  });
+}
+
 function parseBulkValorBr(valor) {
   const limpo = String(valor || '')
     .replace(/R\$\s*/gi, '')
@@ -64,11 +79,11 @@ function atualizarFeedbackBulkRelacionamento(linhas) {
 }
 
 function podeExcluirRegistro(registro) {
-  return IS_ADMIN || registro.responsavel === CURRENT_USER_NOME;
+  return semanaPermiteEdicao() && (IS_ADMIN || registro.responsavel === CURRENT_USER_NOME);
 }
 
 function podeEditarRegistro(registro) {
-  return IS_ADMIN || registro.responsavel === CURRENT_USER_NOME;
+  return semanaPermiteEdicao() && (IS_ADMIN || registro.responsavel === CURRENT_USER_NOME);
 }
 
 function preencherSelect(el, options, selectedValue) {
@@ -257,7 +272,7 @@ function renderizarTabelaAcoes(acoes) {
         <td>${r.descricao || '-'}</td>
         <td>${r.responsavel || '-'}</td>
         <td class="td-data">${r.data || '-'}</td>
-        <td>${IS_ADMIN || r.responsavel === CURRENT_USER_NOME ? `<button class="btn-del" onclick="deletarAcao(${r.id}, this)" title="Excluir acao"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/></svg></button>` : ''}</td>
+        <td>${semanaPermiteEdicao() && (IS_ADMIN || r.responsavel === CURRENT_USER_NOME) ? `<button class="btn-del" onclick="deletarAcao(${r.id}, this)" title="Excluir acao"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/></svg></button>` : ''}</td>
       </tr>`).join('');
 }
 
@@ -282,6 +297,10 @@ function conectarSocket() {
 
 document.getElementById('form-cadastro').addEventListener('submit', async (e) => {
   e.preventDefault();
+  if (!semanaPermiteEdicao()) {
+    showToast('Esta semana esta bloqueada para edicao.', 'error');
+    return;
+  }
   const form = e.target;
   const btn = document.getElementById('btn-salvar');
   const dados = {};
@@ -482,6 +501,7 @@ document.addEventListener('DOMContentLoaded', () => {
   renderizarTabela(registrosCache);
   renderizarTabelaAcoes(acoesCache);
   renderizarOpcoesAcao();
+  aplicarBloqueioEdicao();
   _buscarAtualizacao();
   const formAcao = document.getElementById('form-acao');
   if (formAcao) {
@@ -545,6 +565,10 @@ conectarSocket();
 
 
 async function salvarAcaoRealizada() {
+  if (!semanaPermiteEdicao()) {
+    showToast('Esta semana esta bloqueada para edicao.', 'error');
+    return;
+  }
   const textarea = document.getElementById('acao-descricao');
   const feedback = document.getElementById('acao-feedback');
   const btn = document.getElementById('btn-salvar-acao');
@@ -576,6 +600,10 @@ async function salvarAcaoRealizada() {
 }
 
 async function deletarAcao(id, btnEl) {
+  if (!semanaPermiteEdicao()) {
+    showToast('Esta semana esta bloqueada para edicao.', 'error');
+    return;
+  }
   if (!id || !btnEl) return;
   btnEl.disabled = true;
   try {

@@ -57,8 +57,7 @@
 .week-pill--active { background: var(--wine); color: var(--white); border-color: var(--wine); }
 .week-pill--locked {
   opacity: .55;
-  cursor: not-allowed;
-  pointer-events: none;
+  cursor: pointer;
   border-style: dashed;
 }
 
