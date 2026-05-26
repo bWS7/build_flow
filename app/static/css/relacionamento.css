@@ -249,6 +249,14 @@
   padding: 3px 10px; border-radius: 99px;
 }
 
+.section-header__actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
 .cadastro-form {
   padding: 20px;
   display: flex;

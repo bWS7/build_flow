@@ -407,3 +407,31 @@ def deletar_registro(reg_id):
     db.session.commit()
     _broadcast_update(semana)
     return jsonify({'sucesso': True})
+
+
+@relacionamento_bp.route('/registros', methods=['DELETE'])
+@login_required
+@requer_relacionamento_ou_admin
+def deletar_registros_semana():
+    if not request.args.get('semana'):
+        return jsonify({'erro': 'Informe a semana para excluir registros.'}), 400
+    semana = _parse_semana(request.args.get('semana', semana_padrao_preenchimento()))
+    if semana is None:
+        return jsonify({'erro': 'Semana invalida.'}), 400
+    bloqueio = _garantir_semana_editavel(semana)
+    if bloqueio:
+        return bloqueio
+
+    registros = Relacionamento.query.filter_by(semana=semana).all()
+    registros_permitidos = [reg for reg in registros if _pode_gerenciar_registro(reg)]
+    if registros and len(registros_permitidos) != len(registros) and not current_user.can_manage_admin():
+        return jsonify({'erro': 'Voce so pode excluir em massa registros criados por voce.'}), 403
+    if not registros_permitidos:
+        return jsonify({'sucesso': True, 'quantidade': 0})
+
+    for reg in registros_permitidos:
+        registrar_exclusao_auditoria(scope='relacionamento', instance=reg, usuario_id=current_user.id, registro_tipo='relacionamento_registro')
+        db.session.delete(reg)
+    db.session.commit()
+    _broadcast_update(semana)
+    return jsonify({'sucesso': True, 'quantidade': len(registros_permitidos)})

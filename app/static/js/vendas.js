@@ -468,9 +468,9 @@ function openDeleteAllModal() {
   const titleEl = document.getElementById('delete-modal-title');
   const textEl = document.getElementById('delete-modal-text');
   const confirmEl = document.getElementById('confirm-delete-btn');
-  if (titleEl) titleEl.textContent = 'Excluir todos os registros';
-  if (textEl) textEl.textContent = 'Deseja realmente excluir todos os registros de vendas? Essa ação apagará todas as informações e não poderá ser desfeita.';
-  if (confirmEl) confirmEl.textContent = 'Excluir tudo';
+  if (titleEl) titleEl.textContent = 'Excluir registros da semana';
+  if (textEl) textEl.textContent = 'Deseja realmente excluir todos os registros de vendas desta semana? Essa acao nao podera ser desfeita.';
+  if (confirmEl) confirmEl.textContent = 'Excluir semana';
   document.getElementById('modal-delete')?.removeAttribute('hidden');
 }
 
@@ -737,11 +737,12 @@ async function confirmarExclusaoVenda() {
   closeDeleteModal();
   btnEl.disabled = true;
   try {
-    const url = mode === 'all' ? '/vendas/registros' : `/vendas/registro/${id}`;
+    const params = new URLSearchParams({ mes: MES_ATUAL, semana: SEMANA_ATUAL });
+    const url = mode === 'all' ? `/vendas/registros?${params.toString()}` : `/vendas/registro/${id}`;
     const resp = await fetch(url, { method: 'DELETE', headers: csrfHeaders() });
     const json = await resp.json();
     if (resp.ok && json.sucesso) {
-      showToast(mode === 'all' ? 'Todos os registros de vendas foram excluídos.' : 'Venda excluída.');
+      showToast(mode === 'all' ? `${json.quantidade || 0} registros da semana foram excluidos.` : 'Venda excluida.');
       recarregarDados();
     } else {
       showToast(json.erro || 'Erro ao excluir.', 'error');

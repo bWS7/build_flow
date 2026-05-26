@@ -2,7 +2,7 @@
 
 let registrosCache = [];
 let acoesCache = [];
-let deleteState = { id: null, btnEl: null };
+let deleteState = { id: null, btnEl: null, mode: 'single' };
 const MESES_RELACIONAMENTO = ['abril', 'maio', 'junho'];
 
 function renderizarOpcoesAcao() {
@@ -26,7 +26,7 @@ function aplicarBloqueioEdicao() {
   document.querySelectorAll('#form-cadastro input, #form-cadastro select, #form-cadastro textarea, #form-cadastro button, #form-acao input, #form-acao select, #form-acao textarea, #form-acao button, #form-ficha input, #form-ficha select, #form-ficha textarea, #form-ficha button').forEach((el) => {
     el.disabled = true;
   });
-  ['toggle-form', 'toggle-action-form', 'confirm-delete-btn'].forEach((id) => {
+  ['toggle-form', 'toggle-action-form', 'confirm-delete-btn', 'btn-delete-all'].forEach((id) => {
     const el = document.getElementById(id);
     if (el) el.disabled = true;
   });
@@ -189,13 +189,30 @@ function closeFicha() {
 }
 
 function openDeleteModal(id, btnEl) {
-  deleteState = { id, btnEl };
+  deleteState = { id, btnEl, mode: 'single' };
+  const titleEl = document.getElementById('delete-modal-title');
+  const textEl = document.getElementById('delete-modal-text');
+  const confirmEl = document.getElementById('confirm-delete-btn');
+  if (titleEl) titleEl.textContent = 'Excluir registro';
+  if (textEl) textEl.textContent = 'Deseja excluir este registro? Essa acao nao podera ser desfeita.';
+  if (confirmEl) confirmEl.textContent = 'Excluir';
   document.getElementById('modal-delete').removeAttribute('hidden');
 }
 
 function closeDeleteModal() {
-  deleteState = { id: null, btnEl: null };
+  deleteState = { id: null, btnEl: null, mode: 'single' };
   document.getElementById('modal-delete').setAttribute('hidden', '');
+}
+
+function openDeleteAllModal() {
+  deleteState = { id: null, btnEl: document.getElementById('btn-delete-all'), mode: 'all' };
+  const titleEl = document.getElementById('delete-modal-title');
+  const textEl = document.getElementById('delete-modal-text');
+  const confirmEl = document.getElementById('confirm-delete-btn');
+  if (titleEl) titleEl.textContent = 'Excluir registros da semana';
+  if (textEl) textEl.textContent = 'Deseja realmente excluir os registros de inadimplencia desta semana? Essa acao nao podera ser desfeita.';
+  if (confirmEl) confirmEl.textContent = 'Excluir semana';
+  document.getElementById('modal-delete').removeAttribute('hidden');
 }
 
 function toggleMesRelacionamento(mesId) {
@@ -381,24 +398,27 @@ async function deletarRegistro(id, btnEl) {
 }
 
 async function confirmarExclusaoRegistro() {
-  const { id, btnEl } = deleteState;
-  if (!id || !btnEl) return;
+  const { id, btnEl, mode } = deleteState;
+  if (!btnEl || (mode !== 'all' && !id)) return;
 
   closeDeleteModal();
   btnEl.disabled = true;
 
   try {
-    const resp = await fetch(`/relacionamento/registro/${id}`, {
+    const url = mode === 'all'
+      ? `/relacionamento/registros?semana=${encodeURIComponent(SEMANA_ATUAL)}`
+      : `/relacionamento/registro/${id}`;
+    const resp = await fetch(url, {
       method: 'DELETE',
       headers: csrfHeaders(),
     });
     const json = await resp.json();
     if (resp.ok && json.sucesso) {
-      const atualizados = registrosCache.filter((registro) => registro.id !== id);
+      const atualizados = mode === 'all' ? [] : registrosCache.filter((registro) => registro.id !== id);
       renderizarTabela(atualizados);
       renderizarTabelaAcoes(acoesCache);
       renderizarOpcoesAcao();
-      showToast('Registro excluido com sucesso!', 'success');
+      showToast(mode === 'all' ? `${json.quantidade || 0} registros da semana foram excluidos.` : 'Registro excluido com sucesso!', 'success');
       _buscarAtualizacao();
     } else {
       showToast(json.erro || 'Erro ao excluir.', 'error');
@@ -543,6 +563,10 @@ document.addEventListener('DOMContentLoaded', () => {
   const confirmDeleteBtn = document.getElementById('confirm-delete-btn');
   if (confirmDeleteBtn) {
     confirmDeleteBtn.addEventListener('click', confirmarExclusaoRegistro);
+  }
+  const deleteAllBtn = document.getElementById('btn-delete-all');
+  if (deleteAllBtn) {
+    deleteAllBtn.addEventListener('click', openDeleteAllModal);
   }
   MESES_RELACIONAMENTO.forEach((mesId) => {
     const body = document.getElementById(`body-${mesId}`);

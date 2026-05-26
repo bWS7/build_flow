@@ -795,7 +795,13 @@ def deletar_registro(reg_id):
 @login_required
 @requer_vendas
 def deletar_todos_registros():
-    vendas = Venda.query.all()
+    if not request.args.get('mes') or not request.args.get('semana'):
+        return jsonify({'erro': 'Informe mes e semana para excluir registros.'}), 400
+    mes_slug = _mes_slug_atual()
+    if mes_slug == RESUMO_TRIMESTRAL[0]:
+        return jsonify({'erro': 'Selecione um mes e uma semana para excluir registros.'}), 400
+    semana_local = _semana_do_mes_atual()
+    vendas = _consultar_vendas_periodo(mes_slug, semana_local=semana_local)
     if not vendas:
         return jsonify({'sucesso': True, 'quantidade': 0})
     for venda in vendas:

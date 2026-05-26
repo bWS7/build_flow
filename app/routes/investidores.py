@@ -44,6 +44,11 @@ TIPO_VENDA_ALIAS = {
     'AVISTA / DIRETA': 'A VISTA / DIRETA',
     'AVISTA DIRETA': 'A VISTA / DIRETA',
     'DIRETA': 'DIRETA',
+    'FINANCIADA': 'FINANCIADA',
+    'FINANCIADO': 'FINANCIADA',
+    'FINANCIAMENTO': 'FINANCIADA',
+    'VENDA FINANCIADA': 'FINANCIADA',
+    'VENDAS FINANCIADAS': 'FINANCIADA',
     'INDIRETA': 'INDIRETA',
     'PARCERIA': 'PARCERIA',
     'REPASSE': 'REPASSE',
@@ -758,7 +763,13 @@ def deletar_registro(reg_id):
 @login_required
 @requer_investidores
 def deletar_todos_registros():
-    investidores = Investidor.query.all()
+    if not request.args.get('mes') or not request.args.get('semana'):
+        return jsonify({'erro': 'Informe mes e semana para excluir registros.'}), 400
+    mes_slug = _mes_slug_atual()
+    if mes_slug == PERIODO_INVESTIDORES[0]:
+        return jsonify({'erro': 'Selecione um mes e uma semana para excluir registros.'}), 400
+    semana_local = _semana_do_mes_atual()
+    investidores = _consultar_investidores_periodo(mes_slug, semana_local=semana_local)
     if not investidores:
         return jsonify({'sucesso': True, 'quantidade': 0})
     for investidor in investidores:

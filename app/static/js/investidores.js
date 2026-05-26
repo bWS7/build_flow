@@ -508,9 +508,9 @@ function openDeleteAllModal() {
   const titleEl = document.getElementById('delete-modal-title');
   const textEl = document.getElementById('delete-modal-text');
   const confirmEl = document.getElementById('confirm-delete-btn');
-  if (titleEl) titleEl.textContent = 'Excluir todos os registros';
-  if (textEl) textEl.textContent = 'Deseja realmente excluir todos os registros de investidores? Essa ação apagará todas as informações e não poderá ser desfeita.';
-  if (confirmEl) confirmEl.textContent = 'Excluir tudo';
+  if (titleEl) titleEl.textContent = 'Excluir registros da semana';
+  if (textEl) textEl.textContent = 'Deseja realmente excluir todos os registros de investidores desta semana? Essa acao nao podera ser desfeita.';
+  if (confirmEl) confirmEl.textContent = 'Excluir semana';
   document.getElementById('modal-delete')?.removeAttribute('hidden');
 }
 
@@ -740,11 +740,12 @@ async function confirmarExclusaoInvestidor() {
   closeDeleteModal();
   btnEl.disabled = true;
   try {
-    const url = mode === 'all' ? '/investidores/registros' : `/investidores/registro/${id}`;
+    const params = new URLSearchParams({ mes: MES_ATUAL, semana: SEMANA_ATUAL });
+    const url = mode === 'all' ? `/investidores/registros?${params.toString()}` : `/investidores/registro/${id}`;
     const resp = await fetch(url, { method: 'DELETE', headers: csrfHeaders() });
     const json = await resp.json();
     if (resp.ok && json.sucesso) {
-      showToast(mode === 'all' ? 'Todos os registros de investidores foram excluídos.' : 'Investidor excluido.');
+      showToast(mode === 'all' ? `${json.quantidade || 0} registros da semana foram excluidos.` : 'Investidor excluido.');
       recarregarDados();
     } else {
       showToast(json.erro || 'Erro ao excluir.', 'error');
