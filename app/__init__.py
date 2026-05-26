@@ -314,6 +314,7 @@ def _ensure_database_columns():
         },
         'vendas_investidor': {
             'acao_realizada': "ALTER TABLE vendas_investidor ADD COLUMN acao_realizada TEXT",
+            'valor_unitario': "ALTER TABLE vendas_investidor ADD COLUMN valor_unitario NUMERIC(15, 2) NOT NULL DEFAULT 0",
         },
         'financeiro_bancos': {
             'negociacao': "ALTER TABLE financeiro_bancos ADD COLUMN negociacao VARCHAR(20) NOT NULL DEFAULT 'PARCIAL'",

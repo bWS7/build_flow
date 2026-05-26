@@ -305,6 +305,7 @@
               <div class="field"><label class="field__label">Corretor</label><input class="field__input" name="corretor" type="text" /></div>
               <div class="field"><label class="field__label">Imobiliaria</label><input class="field__input" name="imobiliaria" type="text" /></div>
               <div class="field"><label class="field__label">Valor Presente</label><input class="field__input" name="valor_presente" type="text" inputmode="decimal" data-money-field="true" placeholder="R$ 0,00" /></div>
+              <div class="field"><label class="field__label">Valor Unitario</label><input class="field__input" name="valor_unitario" type="text" inputmode="decimal" data-money-field="true" placeholder="R$ 0,00" /></div>
               <div class="field"><label class="field__label">Tipo de Venda *</label><select class="field__input" name="tipo_venda" required>{% for tipo in tipos_venda %}<option value="{{ tipo }}">{{ tipo }}</option>{% endfor %}</select></div>
             </div>
             <div class="form-actions">
@@ -318,7 +319,7 @@
               <h4>Entrada em Massa</h4>
               <p>Cole linhas do Excel/Sheets na ordem da tabela.</p>
             </div>
-            <textarea id="bulk-paste" class="field__input field__textarea bulk-card__textarea" rows="9" placeholder="Reserva[TAB]Data[TAB]Situacao[TAB]Empreendimento[TAB]Bloco[TAB]Unidade[TAB]Cliente[TAB]Corretor[TAB]Imobiliaria[TAB]Valor Presente[TAB]Tipo Venda"></textarea>
+            <textarea id="bulk-paste" class="field__input field__textarea bulk-card__textarea" rows="9" placeholder="Reserva[TAB]Data[TAB]Situacao[TAB]Empreendimento[TAB]Bloco[TAB]Unidade[TAB]Cliente[TAB]Corretor[TAB]Imobiliaria[TAB]Valor Presente[TAB]Tipo Venda[TAB]Valor Unitario"></textarea>
             <div class="bulk-card__actions">
               <button class="btn btn--ghost" type="button" id="btn-preview-bulk">Validar linhas</button>
               <button class="btn btn--primary" type="button" id="btn-save-bulk">Salvar em massa</button>
@@ -398,6 +399,7 @@
               <th>Corretor</th>
               <th>Imobiliária</th>
               <th>Valor Presente</th>
+              <th>Valor Unitário</th>
               <th>Tipo de Venda</th>
               <th></th>
             </tr>
@@ -449,6 +451,7 @@
       <div class="field"><label class="field__label">Cliente</label><input class="field__input" id="ii-cliente" type="text" /></div>
       <div class="field"><label class="field__label">Corretor</label><input class="field__input" id="ii-corretor" type="text" /></div>
       <div class="field"><label class="field__label">Imobiliária</label><input class="field__input" id="ii-imobiliaria" type="text" /></div>
+      <div class="field"><label class="field__label">Valor Unitário</label><input class="field__input" id="ii-valor-unitario" type="text" inputmode="decimal" data-money-field="true" placeholder="R$ 0,00" /></div>
       <div class="field"><label class="field__label">Valor Presente</label><input class="field__input" id="ii-valor" type="text" inputmode="decimal" data-money-field="true" placeholder="R$ 0,00" /></div>
       <div class="field"><label class="field__label">Tipo de Venda</label><select class="field__input" id="ii-tipo-venda"></select></div>
       <div class="field field--full"><label class="field__label">Ação realizada</label><textarea class="field__input field__textarea" id="ii-acao" rows="3"></textarea></div>

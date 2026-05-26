@@ -487,6 +487,7 @@ def _validar_payload_investidor(dados: dict) -> tuple[dict, str | None]:
         'corretor': _normalizar_texto(dados.get('corretor')),
         'imobiliaria': _normalizar_texto(dados.get('imobiliaria')),
         'valor_presente': _parse_decimal(dados.get('valor_presente')),
+        'valor_unitario': _parse_decimal(dados.get('valor_unitario')),
     }
     obrigatorios = ('reserva', 'data_reserva', 'situacao', 'tipo_venda', 'empreendimento', 'cliente')
     for campo in obrigatorios:
@@ -498,6 +499,20 @@ def _validar_payload_investidor(dados: dict) -> tuple[dict, str | None]:
         return registro, 'Situacao invalida.'
     if registro['tipo_venda'] not in TIPO_VENDA_OPCOES:
         return registro, 'Tipo de venda invalido.'
+    
+    # Aplicar lógica de preenchimento automático e validação de valores
+    tipo_venda = registro['tipo_venda']
+    tipos_vista_direta = ('A VISTA / DIRETA', 'DIRETA', 'A VISTA')
+    
+    if tipo_venda == 'FINANCIADA':
+        # Para vendas FINANCIADA, o valor_unitario é obrigatório
+        if registro['valor_unitario'] <= 0:
+            return registro, 'Para vendas FINANCIADA, o campo VALOR UNITARIO é obrigatorio e deve ser maior que zero.'
+    elif tipo_venda in tipos_vista_direta:
+        # Para vendas À VISTA / DIRETA, o valor_presente é obrigatório
+        if registro['valor_presente'] <= 0:
+            return registro, 'Para vendas A VISTA / DIRETA, o campo VALOR PRESENTE é obrigatorio e deve ser maior que zero.'
+    
     return registro, None
 
 
@@ -617,6 +632,7 @@ def cadastrar():
         corretor=registro['corretor'] or None,
         imobiliaria=registro['imobiliaria'] or None,
         valor_presente=registro['valor_presente'],
+        valor_unitario=registro['valor_unitario'],
         acao_realizada=_normalizar_texto(dados.get('acao_realizada')) or None,
         criado_por=current_user.nome.upper(),
     )
@@ -673,6 +689,7 @@ def bulk_cadastrar():
             corretor=registro['corretor'] or None,
             imobiliaria=registro['imobiliaria'] or None,
             valor_presente=registro['valor_presente'],
+            valor_unitario=registro['valor_unitario'],
             criado_por=current_user.nome.upper(),
         )
         investidores.append(investidor)
@@ -723,6 +740,7 @@ def editar_registro(reg_id):
     investidor.corretor = registro['corretor'] or None
     investidor.imobiliaria = registro['imobiliaria'] or None
     investidor.valor_presente = registro['valor_presente']
+    investidor.valor_unitario = registro['valor_unitario']
     investidor.acao_realizada = _normalizar_texto(dados.get('acao_realizada')) or None
     sincronizar_acao_registro(
         'investidores',

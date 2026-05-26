@@ -127,7 +127,7 @@ function escaparCsv(valor) {
 
 function baixarCsvAtual() {
   const linhas = [
-    ['Reserva', 'Data', 'Situacao', 'Empreendimento', 'Bloco', 'Unidade', 'Cliente', 'Corretor', 'Imobiliaria', 'Valor Presente', 'Tipo de Venda'],
+    ['Reserva', 'Data', 'Situacao', 'Empreendimento', 'Bloco', 'Unidade', 'Cliente', 'Corretor', 'Imobiliaria', 'Valor Presente', 'Tipo de Venda', 'Valor Unitario'],
     ...investidoresFiltradosCache.map((item) => [
       item.reserva,
       item.data,
@@ -140,6 +140,7 @@ function baixarCsvAtual() {
       item.imobiliaria || '',
       Number(item.valor_presente || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }),
       item.tipo_venda || '',
+      Number(item.valor_unitario || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }),
     ]),
   ];
   const conteudo = '\uFEFF' + linhas.map((linha) => linha.map(escaparCsv).join(';')).join('\r\n');
@@ -335,7 +336,7 @@ function renderizarTabela(registros) {
   if (!tbody) return;
 
   if (!registros.length) {
-    tbody.innerHTML = '<tr id="empty-row"><td colspan="12" class="td-empty">Nenhum investidor encontrado para os filtros atuais.</td></tr>';
+    tbody.innerHTML = '<tr id="empty-row"><td colspan="13" class="td-empty">Nenhum investidor encontrado para os filtros atuais.</td></tr>';
     return;
   }
 
@@ -351,6 +352,7 @@ function renderizarTabela(registros) {
       <td>${r.corretor || '—'}</td>
       <td>${r.imobiliaria || '—'}</td>
       <td>${r.valor_presente > 0 ? fmtMoeda(r.valor_presente) : '—'}</td>
+      <td>${r.valor_unitario > 0 ? fmtMoeda(r.valor_unitario) : '—'}</td>
       <td>${r.tipo_venda || ''}</td>
       <td onclick="event.stopPropagation()">${renderizarBotaoExcluirRegistro(r.id)}</td>
     </tr>
@@ -529,6 +531,8 @@ function abrirInvestidor(id) {
   document.getElementById('ii-corretor').value = investidor.corretor || '';
   document.getElementById('ii-imobiliaria').value = investidor.imobiliaria || '';
   document.getElementById('ii-valor').value = formatarCampoMoeda(investidor.valor_presente || 0);
+  const valorUnitarioEl = document.getElementById('ii-valor-unitario');
+  if (valorUnitarioEl) valorUnitarioEl.value = formatarCampoMoeda(investidor.valor_unitario || 0);
   const acaoEl = document.getElementById('ii-acao');
   if (acaoEl) acaoEl.value = investidor.acao_realizada || '';
   document.getElementById('form-investidor').dataset.id = String(investidor.id);
@@ -549,6 +553,26 @@ function validarCamposBasicos(dados) {
   return dados.reserva && dados.data && dados.situacao && dados.tipo_venda && dados.empreendimento && dados.cliente;
 }
 
+function validarValoresPorTipoVenda(dados) {
+  const tipoVenda = (dados.tipo_venda || '').toUpperCase();
+  const valorPresente = parseFloat((dados.valor_presente || '').replace(/\D/g, '') || '0') / 100;
+  const valorUnitario = parseFloat((dados.valor_unitario || '').replace(/\D/g, '') || '0') / 100;
+  
+  const tiposVistaDirecta = ['A VISTA / DIRETA', 'DIRETA', 'A VISTA'];
+  
+  if (tipoVenda === 'FINANCIADA') {
+    if (valorUnitario <= 0) {
+      return 'Para vendas FINANCIADA, o campo VALOR UNITARIO é obrigatório e deve ser maior que zero.';
+    }
+  } else if (tiposVistaDirecta.includes(tipoVenda)) {
+    if (valorPresente <= 0) {
+      return 'Para vendas A VISTA / DIRETA, o campo VALOR PRESENTE é obrigatório e deve ser maior que zero.';
+    }
+  }
+  
+  return null;
+}
+
 function normalizarLinhaBulk(colunas) {
   return {
     reserva: (colunas[0] || '').trim(),
@@ -562,6 +586,7 @@ function normalizarLinhaBulk(colunas) {
     imobiliaria: (colunas[8] || '').trim(),
     valor_presente: (colunas[9] || '').trim(),
     tipo_venda: (colunas[10] || '').trim(),
+    valor_unitario: (colunas[11] || '').trim(),
   };
 }
 
@@ -695,12 +720,18 @@ async function salvarInvestidorEditado() {
     corretor: document.getElementById('ii-corretor').value.trim(),
     imobiliaria: document.getElementById('ii-imobiliaria').value.trim(),
     valor_presente: document.getElementById('ii-valor').value,
+    valor_unitario: document.getElementById('ii-valor-unitario')?.value || '',
     acao_realizada: document.getElementById('ii-acao')?.value.trim() || '',
     mes: MES_ATUAL,
     semana: SEMANA_ATUAL,
   };
   if (!validarCamposBasicos(dados)) {
     showToast('Preencha os campos obrigatórios.', 'error');
+    return;
+  }
+  const erroValidacao = validarValoresPorTipoVenda(dados);
+  if (erroValidacao) {
+    showToast(erroValidacao, 'error');
     return;
   }
 
@@ -912,6 +943,11 @@ document.addEventListener('DOMContentLoaded', () => {
         showToast('Preencha os campos obrigatórios.', 'error');
         return;
       }
+      const erroValidacao = validarValoresPorTipoVenda(dados);
+      if (erroValidacao) {
+        showToast(erroValidacao, 'error');
+        return;
+      }
 
       btn.disabled = true;
       btn.textContent = 'Salvando...';
@@ -968,6 +1004,11 @@ document.addEventListener('DOMContentLoaded', () => {
       }
       if (linhas.some((linha) => !validarCamposBasicos(linha))) {
         showToast('Há linhas com campos obrigatórios faltando.', 'error');
+        return;
+      }
+      const linhasComErroValor = linhas.filter((linha) => validarValoresPorTipoVenda(linha));
+      if (linhasComErroValor.length) {
+        showToast(`${linhasComErroValor.length} linha(s) com valores inconsistentes para o tipo de venda.`, 'error');
         return;
       }
 
