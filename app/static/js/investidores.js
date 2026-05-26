@@ -585,8 +585,8 @@ function normalizarLinhaBulk(colunas) {
     corretor: (colunas[7] || '').trim(),
     imobiliaria: (colunas[8] || '').trim(),
     valor_presente: (colunas[9] || '').trim(),
-    tipo_venda: (colunas[10] || '').trim(),
-    valor_unitario: (colunas[11] || '').trim(),
+    valor_unitario: (colunas[10] || '').trim(),
+    tipo_venda: (colunas[11] || '').trim(),
   };
 }
 
