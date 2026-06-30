@@ -1,6 +1,6 @@
 from datetime import datetime, timedelta
 
-from flask import Blueprint, flash, redirect, render_template, request, url_for
+from flask import Blueprint, flash, redirect, render_template, request, session, url_for
 from flask_login import current_user, login_required, login_user, logout_user
 
 from app import db
@@ -115,7 +115,10 @@ def _register_failed_login(email: str) -> int:
 @auth_bp.route('/login', methods=['GET', 'POST'])
 def login():
     if current_user.is_authenticated:
-        return _redirecionar(current_user.tipo)
+        # Se já tem trimestre na sessão, redireciona direto; senão vai para seleção
+        if session.get('trimestre'):
+            return _redirecionar(current_user.tipo)
+        return redirect(url_for('auth.selecionar_trimestre'))
 
     erro = None
     if request.method == 'POST':
@@ -137,7 +140,9 @@ def login():
                 _reset_login_throttle(throttle)
                 db.session.commit()
                 login_user(user, remember=False)
-                return _redirecionar(user.tipo)
+                # Sempre pede seleção de trimestre após login
+                session.pop('trimestre', None)
+                return redirect(url_for('auth.selecionar_trimestre'))
 
             minutos = _register_failed_login(email)
             if minutos:
@@ -148,9 +153,23 @@ def login():
     return render_template('auth/login.html', erro=erro)
 
 
+@auth_bp.route('/selecionar-trimestre', methods=['GET', 'POST'])
+@login_required
+def selecionar_trimestre():
+    if request.method == 'POST':
+        trimestre = request.form.get('trimestre', 'q1')
+        if trimestre not in ('q1', 'q2'):
+            trimestre = 'q1'
+        session['trimestre'] = trimestre
+        return _redirecionar(current_user.tipo)
+
+    return render_template('auth/selecionar_trimestre.html')
+
+
 @auth_bp.route('/logout', methods=['POST'])
 @login_required
 def logout():
+    session.pop('trimestre', None)
     logout_user()
     flash('Sessao encerrada com sucesso.', 'info')
     return redirect(url_for('auth.login'))
@@ -163,6 +182,10 @@ def em_construcao():
 
 
 def _redirecionar(tipo: str):
+    from app.utils.trimestre_context import get_trimestre, get_primeiro_mes_slug
+    tri = get_trimestre()
+    primeiro_mes = get_primeiro_mes_slug()
+
     tipo_normalizado = TIPOS_LEGADOS_MAP.get(str(tipo or '').strip().lower(), str(tipo or '').strip().lower())
     destino = REDIRECT_MAP.get(tipo_normalizado, 'auth.login')
     if destino == 'financeiro.index':
@@ -176,7 +199,7 @@ def _redirecionar(tipo: str):
     if destino == 'relacionamento.index':
         return redirect(url_for(destino, semana=2))
     if destino == 'vendas.index':
-        return redirect(url_for(destino, mes='abril', semana=2))
+        return redirect(url_for(destino, mes=primeiro_mes, semana=2))
     if destino == 'investidores.index':
-        return redirect(url_for(destino, mes='abril', semana=2))
+        return redirect(url_for(destino, mes=primeiro_mes, semana=2))
     return redirect(url_for(destino))

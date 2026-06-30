@@ -117,7 +117,10 @@
         </span>
       </div>
       <div class="topbar__weeks">
-        {% for mes_nome, mes_ini, mes_id in [('Abril', 1, 'abril'), ('Maio', 5, 'maio'), ('Junho', 9, 'junho')] %}
+        {% for mes in meses_trimestre %}
+        {% set mes_nome = mes.nome %}
+        {% set mes_ini = mes.semana_inicio %}
+        {% set mes_id = mes.slug %}
         <div class="week-month">
           <button class="week-month__toggle" type="button" onclick="toggleMesRelacionamento('{{ mes_id }}')">
             <span>{{ mes_nome }}</span>

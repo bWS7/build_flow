@@ -16,16 +16,10 @@ from app.models.venda import SITUACAO_VENDA_OPCOES, TIPO_VENDA_OPCOES, Venda
 from app.services.analytics_ai import analytics_ai_available, analytics_ai_enabled, ask_analytics_assistant, build_global_ai_context, fallback_analytics_answer
 from app.utils.progress import calcular_percentual_meta, calcular_percentual_planejado_realizado
 from app.utils.quarter import semana_editavel, semana_padrao_preenchimento
-
+from app.utils.trimestre_context import get_meses, get_meses_map, get_meses_numeros, get_primeiro_mes_slug, get_trimestre
 
 vendas_bp = Blueprint('vendas', __name__)
 
-MESES_VENDAS = [
-    ('abril', 'Abril', 4, 1),
-    ('maio', 'Maio', 5, 5),
-    ('junho', 'Junho', 6, 9),
-]
-MESES_MAP = {slug: {'slug': slug, 'nome': nome, 'numero': numero, 'semana_inicio': semana_inicio} for slug, nome, numero, semana_inicio in MESES_VENDAS}
 RESUMO_TRIMESTRAL = ('resumo_trimestral', 'Resumo Trimestral', None)
 EMPREENDIMENTO_IGNORADO = 'J J NEGOCIOS IMOBILIARIOS'
 SITUACOES_FUNIL_AGRUPADAS = {
@@ -53,6 +47,22 @@ TIPO_VENDA_ALIAS = {
 }
 
 
+def _get_meses_vendas():
+    return get_meses()
+
+
+def _get_meses_map():
+    return get_meses_map()
+
+
+def _get_primeiro_mes_slug():
+    return get_primeiro_mes_slug()
+
+
+def _get_meses_numeros():
+    return get_meses_numeros()
+
+
 def requer_vendas(f):
     @wraps(f)
     def decorated(*args, **kwargs):
@@ -78,7 +88,7 @@ def _mes_slug_atual() -> str:
     mes = (request.args.get('mes') or request.form.get('mes') or '').strip().lower()
     if mes == RESUMO_TRIMESTRAL[0]:
         return mes
-    return mes if mes in MESES_MAP else 'abril'
+    return mes if mes in _get_meses_map() else _get_primeiro_mes_slug()
 
 
 def _semana_do_mes_atual() -> int:
@@ -93,9 +103,10 @@ def _semana_global_por_data(data_reserva, mes_slug: str | None = None) -> int | 
     if not data_reserva:
         return None
     mes_numero = data_reserva.month
-    if mes_slug and mes_slug in MESES_MAP:
-        mes_numero = MESES_MAP[mes_slug]['numero']
-    for slug, info in MESES_MAP.items():
+    meses_map = _get_meses_map()
+    if mes_slug and mes_slug in meses_map:
+        mes_numero = meses_map[mes_slug]['numero']
+    for slug, info in meses_map.items():
         if info['numero'] == mes_numero:
             semana_local = min(((data_reserva.day - 1) // 7) + 1, 4)
             return info['semana_inicio'] + semana_local - 1
@@ -103,14 +114,14 @@ def _semana_global_por_data(data_reserva, mes_slug: str | None = None) -> int | 
 
 
 def _data_referencia_da_semana(mes_slug: str, semana_local: int) -> date:
-    mes_info = MESES_MAP.get(mes_slug, MESES_MAP['abril'])
+    mes_info = _get_meses_map().get(mes_slug, _get_meses_map()[_get_primeiro_mes_slug()])
     dia_inicial = {1: 1, 2: 8, 3: 15, 4: 22}.get(semana_local, 1)
     return date(datetime.now().year, mes_info['numero'], dia_inicial)
 
 
 def _resolver_periodo_payload(dados: dict) -> tuple[str | None, int | None]:
     mes_slug = (dados.get('mes') or '').strip().lower()
-    if mes_slug not in MESES_MAP:
+    if mes_slug not in _get_meses_map():
         return None, None
     try:
         semana_local = int(str(dados.get('semana') or '').strip())
@@ -122,25 +133,26 @@ def _resolver_periodo_payload(dados: dict) -> tuple[str | None, int | None]:
 def _normalizar_data_para_periodo(data_reserva, mes_slug: str | None, semana_local: int | None):
     if not data_reserva or not mes_slug or semana_local not in {1, 2, 3, 4}:
         return data_reserva
-    semana_global_esperada = MESES_MAP[mes_slug]['semana_inicio'] + semana_local - 1
-    if data_reserva.month == MESES_MAP[mes_slug]['numero'] and _semana_global_por_data(data_reserva, mes_slug) == semana_global_esperada:
+    meses_map = _get_meses_map()
+    semana_global_esperada = meses_map[mes_slug]['semana_inicio'] + semana_local - 1
+    if data_reserva.month == meses_map[mes_slug]['numero'] and _semana_global_por_data(data_reserva, mes_slug) == semana_global_esperada:
         return data_reserva
     return _data_referencia_da_semana(mes_slug, semana_local)
 
 
 def montar_contexto_template_vendas(mes_slug: str, incluir_resumo: bool = False, semana_local: int | None = None) -> dict:
     if mes_slug == RESUMO_TRIMESTRAL[0] and not incluir_resumo:
-        mes_slug = 'abril'
+        mes_slug = _get_primeiro_mes_slug()
     semana_local_normalizada = semana_local if semana_local in {1, 2, 3, 4} else None
-    mes_info = {'nome': RESUMO_TRIMESTRAL[1]} if mes_slug == RESUMO_TRIMESTRAL[0] else MESES_MAP[mes_slug]
+    mes_info = {'nome': RESUMO_TRIMESTRAL[1]} if mes_slug == RESUMO_TRIMESTRAL[0] else _get_meses_map()[mes_slug]
     empreendimentos = Empreendimento.query.filter_by(ativo=True).order_by(Empreendimento.nome).all()
     vendas = _consultar_vendas_periodo(mes_slug, semana_local=semana_local_normalizada)
-    meses = [(slug, nome, numero) for slug, nome, numero, _ in MESES_VENDAS]
+    meses = [(slug, nome, numero) for slug, nome, numero, _ in _get_meses_vendas()]
     if incluir_resumo:
         meses.append(RESUMO_TRIMESTRAL)
     semana_global = None
     if mes_slug != RESUMO_TRIMESTRAL[0] and semana_local_normalizada is not None:
-        semana_global = MESES_MAP[mes_slug]['semana_inicio'] + semana_local_normalizada - 1
+        semana_global = _get_meses_map()[mes_slug]['semana_inicio'] + semana_local_normalizada - 1
     if mes_slug == RESUMO_TRIMESTRAL[0]:
         permite_edicao = _usuario_pode_editar_vendas()
     else:
@@ -221,7 +233,7 @@ def _consultar_vendas_por_mes(mes_numero: int):
 
 
 def _mes_slug_por_numero(mes_numero: int) -> str:
-    return next(slug for slug, _, numero, _ in MESES_VENDAS if numero == mes_numero)
+    return next(slug for slug, _, numero, _ in _get_meses_vendas() if numero == mes_numero)
 
 
 def _garantir_semana_editavel_por_data(data_referencia):
@@ -249,54 +261,56 @@ def _consultar_vendas_periodo(mes_slug: str, semana_local: int | None = None):
     if mes_slug == RESUMO_TRIMESTRAL[0]:
         return (
             Venda.query
-            .filter(extract('month', Venda.data_reserva).in_([4, 5, 6]))
+            .filter(extract('month', Venda.data_reserva).in_(_get_meses_numeros()))
             .filter(func.upper(Venda.empreendimento) != EMPREENDIMENTO_IGNORADO)
             .order_by(Venda.data_reserva.desc(), Venda.id.desc())
             .all()
         )
-    vendas = _consultar_vendas_por_mes(MESES_MAP[mes_slug]['numero'])
+    vendas = _consultar_vendas_por_mes(_get_meses_map()[mes_slug]['numero'])
     if semana_local is None:
         return vendas
-    semana_global = MESES_MAP[mes_slug]['semana_inicio'] + semana_local - 1
+    semana_global = _get_meses_map()[mes_slug]['semana_inicio'] + semana_local - 1
     return [venda for venda in vendas if _semana_global_por_data(venda.data_reserva, mes_slug) == semana_global]
 
 
 def _obter_meta_semana(semana_global: int | None) -> int:
     if not semana_global:
         return 0
-    meta = MetaVendaSemana.query.filter_by(semana=semana_global).first()
+    tri = get_trimestre()
+    meta = MetaVendaSemana.query.filter_by(semana=semana_global, trimestre=tri).first()
     return int(meta.quantidade_meta) if meta else 0
 
 
 def _obter_meta_acoes_semana(semana_global: int | None) -> int:
     if not semana_global:
         return 0
-    meta = MetaVendaSemana.query.filter_by(semana=semana_global).first()
+    tri = get_trimestre()
+    meta = MetaVendaSemana.query.filter_by(semana=semana_global, trimestre=tri).first()
     return int(meta.acoes_planejadas or 0) if meta else 0
 
 
 def _obter_meta_mes(mes_slug: str) -> int:
-    inicio = MESES_MAP[mes_slug]['semana_inicio']
+    inicio = _get_meses_map()[mes_slug]['semana_inicio']
     return sum(_obter_meta_semana(inicio + offset) for offset in range(4))
 
 
 def _obter_meta_trimestral() -> int:
-    return sum(_obter_meta_mes(slug) for slug, _, _, _ in MESES_VENDAS)
+    return sum(_obter_meta_mes(slug) for slug, _, _, _ in _get_meses_vendas())
 
 
 def _obter_meta_acoes_mes(mes_slug: str) -> int:
-    inicio = MESES_MAP[mes_slug]['semana_inicio']
+    inicio = _get_meses_map()[mes_slug]['semana_inicio']
     return sum(_obter_meta_acoes_semana(inicio + offset) for offset in range(4))
 
 
 def _obter_meta_acoes_trimestral() -> int:
-    return sum(_obter_meta_acoes_mes(slug) for slug, _, _, _ in MESES_VENDAS)
+    return sum(_obter_meta_acoes_mes(slug) for slug, _, _, _ in _get_meses_vendas())
 
 
 def _semanas_periodo_vendas(mes_slug: str, semana_local: int | None = None):
     if mes_slug == RESUMO_TRIMESTRAL[0]:
         return range(1, 13)
-    inicio = MESES_MAP[mes_slug]['semana_inicio']
+    inicio = _get_meses_map()[mes_slug]['semana_inicio']
     if semana_local:
         return [inicio + semana_local - 1]
     return [inicio + offset for offset in range(4)]
@@ -352,7 +366,7 @@ def _calcular_financeiro(mes_slug: str, vendas: list[Venda] | None = None, seman
         meta_quantidade = _obter_meta_trimestral()
         meta_acoes = _obter_meta_acoes_trimestral()
     elif semana_local:
-        semana_global = MESES_MAP[mes_slug]['semana_inicio'] + semana_local - 1
+        semana_global = _get_meses_map()[mes_slug]['semana_inicio'] + semana_local - 1
         meta_quantidade = _obter_meta_semana(semana_global)
         meta_acoes = _obter_meta_acoes_semana(semana_global)
     else:
@@ -373,7 +387,8 @@ def _calcular_financeiro(mes_slug: str, vendas: list[Venda] | None = None, seman
         acoes_realizadas,
         meta_acoes,
     )
-    meta_base = MetaConfiguracaoIndicador.query.filter_by(scope='vendas').first()
+    tri = get_trimestre()
+    meta_base = MetaConfiguracaoIndicador.query.filter_by(scope='vendas', trimestre=tri).first()
     return {
         'mes': mes_slug,
         'semana_local': semana_local,
@@ -407,7 +422,7 @@ def _montar_contexto_ia_vendas(mes_slug: str) -> dict:
     vendas = _consultar_vendas_periodo(mes_slug)
     financeiro = _calcular_financeiro(mes_slug)
     return {
-        'periodo': 'Resumo Trimestral' if mes_slug == RESUMO_TRIMESTRAL[0] else MESES_MAP[mes_slug]['nome'],
+        'periodo': 'Resumo Trimestral' if mes_slug == RESUMO_TRIMESTRAL[0] else _get_meses_map()[mes_slug]['nome'],
         'resumo_financeiro': financeiro,
         'registros': [venda.to_dict() for venda in vendas[:500]],
         'situacoes': {item['label']: item['quantidade'] for item in financeiro['funil']},
@@ -419,7 +434,7 @@ def _montar_contexto_ia_vendas(mes_slug: str) -> dict:
 
 
 def _broadcast_update(mes_slug: str):
-    mes_info = MESES_MAP[mes_slug]
+    mes_info = _get_meses_map()[mes_slug]
     vendas = _consultar_vendas_por_mes(mes_info['numero'])
     socketio.emit('vendas_atualizadas', {
         'mes': mes_slug,
@@ -447,17 +462,19 @@ def registrar_acao():
             semana_local = int(dados.get('semana', 1) or 1)
         except (TypeError, ValueError):
             semana_local = 0
-        if mes_slug not in MESES_MAP:
+        if mes_slug not in _get_meses_map():
             return jsonify({'erro': 'Mes invalido para registrar a acao.'}), 400
         if semana_local not in {1, 2, 3, 4}:
             return jsonify({'erro': 'Semana invalida para registrar a acao.'}), 400
         bloqueio = _garantir_semana_editavel_por_data(_data_referencia_da_semana(mes_slug, semana_local))
         if bloqueio:
             return bloqueio
-        semana_global = MESES_MAP[mes_slug]['semana_inicio'] + semana_local - 1
+        semana_global = _get_meses_map()[mes_slug]['semana_inicio'] + semana_local - 1
+        tri = get_trimestre()
         nova_acao = IndicadorAcao(
             scope='vendas',
             semana=semana_global,
+            trimestre=tri,
             descricao=acao_realizada,
             responsavel=current_user.nome.upper(),
         )
@@ -481,9 +498,11 @@ def registrar_acao():
         return bloqueio
 
     semana_global = _semana_global_por_data(venda.data_reserva, _mes_slug_por_numero(venda.data_reserva.month))
+    tri = get_trimestre()
     nova_acao = IndicadorAcao(
         scope='vendas',
         semana=semana_global,
+        trimestre=tri,
         descricao=acao_realizada,
         responsavel=current_user.nome.upper(),
         registro_id=venda.id,
@@ -521,9 +540,10 @@ def _validar_payload_venda(dados: dict) -> tuple[dict, str | None]:
         return registro, 'Situação inválida.'
     if registro['tipo_venda'] not in TIPO_VENDA_OPCOES:
         return registro, 'Tipo de venda inválido.'
-    mes_valido = any(registro['data_reserva'].month == info['numero'] for info in MESES_MAP.values())
+    mes_valido = any(registro['data_reserva'].month == info['numero'] for info in _get_meses_map().values())
     if not mes_valido:
-        return registro, 'A data deve estar entre abril e junho.'
+        meses_nomes = [info['nome'] for info in _get_meses_map().values()]
+        return registro, f'A data deve estar entre os meses do trimestre ativo: {", ".join(meses_nomes)}.'
     return registro, None
 
 
@@ -571,7 +591,7 @@ def deletar_acao(acao_id):
     db.session.delete(acao)
     db.session.commit()
 
-    for slug, info in MESES_MAP.items():
+    for slug, info in _get_meses_map().items():
         if semana in range(info['semana_inicio'], info['semana_inicio'] + 4):
             _broadcast_update(slug)
             break
@@ -595,7 +615,7 @@ def vendas_ai_chat():
         return jsonify({'erro': 'Pergunta obrigatoria.'}), 400
 
     mes_slug = (dados.get('mes') or RESUMO_TRIMESTRAL[0]).strip().lower()
-    if mes_slug != RESUMO_TRIMESTRAL[0] and mes_slug not in MESES_MAP:
+    if mes_slug != RESUMO_TRIMESTRAL[0] and mes_slug not in _get_meses_map():
         mes_slug = RESUMO_TRIMESTRAL[0]
     history = dados.get('history') or []
     financeiro = _calcular_financeiro(mes_slug)
@@ -604,7 +624,7 @@ def vendas_ai_chat():
         actor=current_user,
         extra_context={
             'mes_atual': mes_slug,
-            'periodo': 'Resumo Trimestral' if mes_slug == RESUMO_TRIMESTRAL[0] else MESES_MAP[mes_slug]['nome'],
+            'periodo': 'Resumo Trimestral' if mes_slug == RESUMO_TRIMESTRAL[0] else _get_meses_map()[mes_slug]['nome'],
             'resumo_painel': financeiro,
             'situacoes_funil': {item['label']: item['quantidade'] for item in financeiro['funil']},
         },
@@ -812,7 +832,7 @@ def deletar_todos_registros():
     meses_afetados = {
         slug
         for venda in vendas
-        for slug, _, numero, _ in MESES_VENDAS
+        for slug, _, numero, _ in _get_meses_vendas()
         if venda.data_reserva and venda.data_reserva.month == numero
     }
 

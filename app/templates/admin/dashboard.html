@@ -157,7 +157,10 @@
           <div style="margin-top:10px"><button class="btn btn--sm btn--primary" type="button" onclick="salvarMetaBase('vendas', this, false)">Salvar Meta Base</button></div>
           {% endif %}
         </div>
-        {% for mes_nome, mes_ini, mes_id in [('Abril', 1, 'vendas-abril'), ('Maio', 5, 'vendas-maio'), ('Junho', 9, 'vendas-junho')] %}
+        {% for mes in meses_trimestre %}
+        {% set mes_nome = mes.nome %}
+        {% set mes_ini = mes.semana_inicio %}
+        {% set mes_id = 'vendas-' ~ mes.slug %}
         <div class="mes-group" id="mes-{{ mes_id }}">
           <button class="mes-label" type="button" onclick="toggleMesVendas('{{ mes_id }}')">
             {{ mes_nome }}
@@ -235,7 +238,10 @@
           <div style="margin-top:10px"><button class="btn btn--sm btn--primary" type="button" onclick="salvarMetaBase('investidores', this)">Salvar Meta Base</button></div>
           {% endif %}
         </div>
-        {% for mes_nome, mes_ini, mes_id in [('Abril', 1, 'investidores-abril'), ('Maio', 5, 'investidores-maio'), ('Junho', 9, 'investidores-junho')] %}
+        {% for mes in meses_trimestre %}
+        {% set mes_nome = mes.nome %}
+        {% set mes_ini = mes.semana_inicio %}
+        {% set mes_id = 'investidores-' ~ mes.slug %}
         <div class="mes-group" id="mes-{{ mes_id }}">
           <button class="mes-label" type="button" onclick="toggleMesInvestidores('{{ mes_id }}')">
             {{ mes_nome }}
@@ -313,7 +319,10 @@
           <div style="margin-top:10px"><button class="btn btn--sm btn--primary" type="button" onclick="salvarMetaBase('financeiro', this)">Salvar Meta Base</button></div>
           {% endif %}
         </div>
-        {% for mes_nome, mes_ini, mes_id in [('Abril', 1, 'financeiro-abril'), ('Maio', 5, 'financeiro-maio'), ('Junho', 9, 'financeiro-junho')] %}
+        {% for mes in meses_trimestre %}
+        {% set mes_nome = mes.nome %}
+        {% set mes_ini = mes.semana_inicio %}
+        {% set mes_id = 'financeiro-' ~ mes.slug %}
         <div class="mes-group" id="mes-{{ mes_id }}">
           <button class="mes-label" type="button" onclick="toggleMesFinanceiro('{{ mes_id }}')">
             {{ mes_nome }}
@@ -392,7 +401,10 @@
             <div style="margin-top:10px"><button class="btn btn--sm btn--primary" type="button" onclick="salvarMetaBase('giro', this)">Salvar Meta Base</button></div>
             {% endif %}
           </div>
-          {% for mes_nome, mes_ini, mes_id in [('Abril', 1, 'giro-abril'), ('Maio', 5, 'giro-maio'), ('Junho', 9, 'giro-junho')] %}
+          {% for mes in meses_trimestre %}
+          {% set mes_nome = mes.nome %}
+          {% set mes_ini = mes.semana_inicio %}
+          {% set mes_id = 'giro-' ~ mes.slug %}
           <div class="mes-group" id="mes-{{ mes_id }}">
             <button class="mes-label" type="button" onclick="toggleMesGiro('{{ mes_id }}')">
               {{ mes_nome }}
@@ -471,7 +483,10 @@
             <div style="margin-top:10px"><button class="btn btn--sm btn--primary" type="button" onclick="salvarMetaBase('fornecedores', this)">Salvar Meta Base</button></div>
             {% endif %}
           </div>
-          {% for mes_nome, mes_ini, mes_id in [('Abril', 1, 'fornecedores-abril'), ('Maio', 5, 'fornecedores-maio'), ('Junho', 9, 'fornecedores-junho')] %}
+          {% for mes in meses_trimestre %}
+          {% set mes_nome = mes.nome %}
+          {% set mes_ini = mes.semana_inicio %}
+          {% set mes_id = 'fornecedores-' ~ mes.slug %}
           <div class="mes-group" id="mes-{{ mes_id }}">
             <button class="mes-label" type="button" onclick="toggleMesFornecedores('{{ mes_id }}')">
               {{ mes_nome }}
@@ -541,7 +556,10 @@
             <div style="margin-top:10px"><button class="btn btn--sm btn--primary" type="button" onclick="salvarMetaBase('medicao', this)">Salvar Meta Base</button></div>
             {% endif %}
           </div>
-          {% for mes_nome, mes_ini, mes_id in [('Abril', 1, 'medicao-abril'), ('Maio', 5, 'medicao-maio'), ('Junho', 9, 'medicao-junho')] %}
+          {% for mes in meses_trimestre %}
+          {% set mes_nome = mes.nome %}
+          {% set mes_ini = mes.semana_inicio %}
+          {% set mes_id = 'medicao-' ~ mes.slug %}
           <div class="mes-group" id="mes-{{ mes_id }}">
             <button class="mes-label" type="button" onclick="toggleMesMedicao('{{ mes_id }}')">
               {{ mes_nome }}
@@ -621,7 +639,10 @@
           {% endif %}
         </div>
 
-        {% for mes_nome, mes_ini, mes_id in [('Abril', 1, 'abril'), ('Maio', 5, 'maio'), ('Junho', 9, 'junho')] %}
+        {% for mes in meses_trimestre %}
+        {% set mes_nome = mes.nome %}
+        {% set mes_ini = mes.semana_inicio %}
+        {% set mes_id = mes.slug %}
         <div class="mes-group" id="mes-{{ mes_id }}">
           <button class="mes-label" type="button" onclick="toggleMes('{{ mes_id }}')">
             {{ mes_nome }}

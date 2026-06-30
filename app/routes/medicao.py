@@ -12,7 +12,7 @@ from app.models.meta_medicao import MetaMedicaoSemana
 from app.models.meta_configuracao import MetaConfiguracaoIndicador
 from app.utils.progress import calcular_percentual_meta, calcular_percentual_planejado_realizado
 from app.utils.quarter import semana_editavel, semana_padrao_preenchimento
-
+from app.utils.trimestre_context import get_trimestre
 
 medicao_bp = Blueprint('medicao', __name__)
 
@@ -41,10 +41,11 @@ def _parse_semana(valor) -> int | None:
 
 
 def _calcular_indicadores_medicao(semana: int, registros: list[MedicaoRegistro] | None = None) -> dict:
-    meta = MetaMedicaoSemana.query.filter_by(semana=semana).first()
+    tri = get_trimestre()
+    meta = MetaMedicaoSemana.query.filter_by(semana=semana, trimestre=tri).first()
     valor_meta = float(meta.valor_meta) if meta else 0.0
     acoes_planejadas = int(meta.acoes_planejadas or 0) if meta else 0
-    todos = registros if registros is not None else MedicaoRegistro.query.filter_by(semana=semana).all()
+    todos = registros if registros is not None else MedicaoRegistro.query.filter_by(semana=semana, trimestre=tri).all()
     valor_realizado = sum(float(item.valor_medicao or 0) for item in todos)
     total_medicoes = len(todos)
     total_empreendimentos = len({(item.empreendimento or '').strip() for item in todos if (item.empreendimento or '').strip()})
@@ -57,7 +58,7 @@ def _calcular_indicadores_medicao(semana: int, registros: list[MedicaoRegistro] 
         acoes_realizadas,
         acoes_planejadas,
     )
-    meta_base = MetaConfiguracaoIndicador.query.filter_by(scope='medicao').first()
+    meta_base = MetaConfiguracaoIndicador.query.filter_by(scope='medicao', trimestre=tri).first()
 
     return {
         'semana': semana,
@@ -75,13 +76,14 @@ def _calcular_indicadores_medicao(semana: int, registros: list[MedicaoRegistro] 
 
 
 def resumir_medicao_trimestre() -> dict:
-    registros = MedicaoRegistro.query.filter(MedicaoRegistro.semana.in_(range(1, 13))).all()
-    metas = MetaMedicaoSemana.query.filter(MetaMedicaoSemana.semana.in_(range(1, 13))).all()
+    tri = get_trimestre()
+    registros = MedicaoRegistro.query.filter(MedicaoRegistro.semana.in_(range(1, 13)), MedicaoRegistro.trimestre == tri).all()
+    metas = MetaMedicaoSemana.query.filter(MetaMedicaoSemana.semana.in_(range(1, 13)), MetaMedicaoSemana.trimestre == tri).all()
     valor_realizado = sum(float(item.valor_medicao or 0) for item in registros)
     valor_meta = sum(float(item.valor_meta or 0) for item in metas)
     acoes_planejadas = sum(int(item.acoes_planejadas or 0) for item in metas)
     acoes_realizadas = contar_acoes('medicao', range(1, 13))
-    meta_base = MetaConfiguracaoIndicador.query.filter_by(scope='medicao').first()
+    meta_base = MetaConfiguracaoIndicador.query.filter_by(scope='medicao', trimestre=tri).first()
     percentual_planejado_realizado = calcular_percentual_planejado_realizado(
         valor_realizado,
         valor_meta,
@@ -103,8 +105,9 @@ def resumir_medicao_trimestre() -> dict:
 
 
 def _broadcast_update_medicao(semana: int):
+    tri = get_trimestre()
     registros = (
-        MedicaoRegistro.query.filter_by(semana=semana)
+        MedicaoRegistro.query.filter_by(semana=semana, trimestre=tri)
         .order_by(MedicaoRegistro.criado_em.desc())
         .all()
     )
@@ -138,8 +141,9 @@ def _empreendimento_padrao() -> str:
 def index():
     semana = _parse_semana(request.args.get('semana', semana_padrao_preenchimento())) or semana_padrao_preenchimento()
     empreendimentos = Empreendimento.query.filter_by(ativo=True).order_by(Empreendimento.nome).all()
+    tri = get_trimestre()
     registros = (
-        MedicaoRegistro.query.filter_by(semana=semana)
+        MedicaoRegistro.query.filter_by(semana=semana, trimestre=tri)
         .order_by(MedicaoRegistro.criado_em.desc())
         .all()
     )
@@ -183,6 +187,7 @@ def cadastrar():
     if bloqueio:
         return bloqueio
 
+    tri = get_trimestre()
     novo = MedicaoRegistro(
         empreendimento=empreendimento,
         valor_medicao=valor_medicao,
@@ -190,6 +195,7 @@ def cadastrar():
         acao_realizada=(dados.get('acao_realizada') or '').upper().strip() or None,
         responsavel=current_user.nome.upper(),
         semana=semana,
+        trimestre=tri,
     )
     db.session.add(novo)
     db.session.flush()
@@ -227,9 +233,11 @@ def registrar_acao():
     reg = db.session.get(MedicaoRegistro, int(reg_id)) if reg_id else None
     if reg and not _pode_gerenciar_registro(reg):
         return jsonify({'erro': 'Voce so pode editar registros criados por voce.'}), 403
+    tri = get_trimestre()
     nova_acao = IndicadorAcao(
         scope='medicao',
         semana=semana,
+        trimestre=tri,
         descricao=acao_realizada,
         responsavel=current_user.nome.upper(),
         registro_id=reg.id if reg else None,
@@ -248,8 +256,9 @@ def listar_registros():
     semana = _parse_semana(request.args.get('semana', semana_padrao_preenchimento()))
     if semana is None:
         return jsonify({'erro': 'Semana invalida.'}), 400
+    tri = get_trimestre()
     registros = (
-        MedicaoRegistro.query.filter_by(semana=semana)
+        MedicaoRegistro.query.filter_by(semana=semana, trimestre=tri)
         .order_by(MedicaoRegistro.criado_em.desc())
         .all()
     )

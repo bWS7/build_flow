@@ -11,7 +11,7 @@ from app.models.meta_financeiro import MetaFinanceiroSemana
 from app.models.meta_configuracao import MetaConfiguracaoIndicador
 from app.utils.progress import calcular_percentual_meta, calcular_percentual_planejado_realizado
 from app.utils.quarter import semana_editavel, semana_padrao_preenchimento
-
+from app.utils.trimestre_context import get_trimestre
 
 financeiro_bp = Blueprint('financeiro', __name__)
 
@@ -40,10 +40,11 @@ def _parse_semana(valor) -> int | None:
 
 
 def _calcular_indicadores_financeiro(semana: int, registros: list[FinanceiroBanco] | None = None) -> dict:
-    meta = MetaFinanceiroSemana.query.filter_by(semana=semana).first()
+    tri = get_trimestre()
+    meta = MetaFinanceiroSemana.query.filter_by(semana=semana, trimestre=tri).first()
     valor_meta = float(meta.valor_meta) if meta else 0.0
     acoes_planejadas = int(meta.acoes_planejadas or 0) if meta else 0
-    todos = registros if registros is not None else FinanceiroBanco.query.filter_by(semana=semana).all()
+    todos = registros if registros is not None else FinanceiroBanco.query.filter_by(semana=semana, trimestre=tri).all()
     valor_arrecadado = sum(float(item.valor_arrecadado or 0) for item in todos)
     total_negociacoes = len(todos)
     total_bancos = len({(item.banco or '').strip() for item in todos if (item.banco or '').strip()})
@@ -56,7 +57,7 @@ def _calcular_indicadores_financeiro(semana: int, registros: list[FinanceiroBanc
         acoes_realizadas,
         acoes_planejadas,
     )
-    meta_base = MetaConfiguracaoIndicador.query.filter_by(scope='financeiro').first()
+    meta_base = MetaConfiguracaoIndicador.query.filter_by(scope='financeiro', trimestre=tri).first()
 
     return {
         'semana': semana,
@@ -74,13 +75,14 @@ def _calcular_indicadores_financeiro(semana: int, registros: list[FinanceiroBanc
 
 
 def resumir_financeiro_bancos_trimestre() -> dict:
-    registros = FinanceiroBanco.query.filter(FinanceiroBanco.semana.in_(range(1, 13))).all()
-    metas = MetaFinanceiroSemana.query.filter(MetaFinanceiroSemana.semana.in_(range(1, 13))).all()
+    tri = get_trimestre()
+    registros = FinanceiroBanco.query.filter(FinanceiroBanco.semana.in_(range(1, 13)), FinanceiroBanco.trimestre == tri).all()
+    metas = MetaFinanceiroSemana.query.filter(MetaFinanceiroSemana.semana.in_(range(1, 13)), MetaFinanceiroSemana.trimestre == tri).all()
     valor_realizado = sum(float(item.valor_arrecadado or 0) for item in registros)
     valor_meta = sum(float(item.valor_meta or 0) for item in metas)
     acoes_planejadas = sum(int(item.acoes_planejadas or 0) for item in metas)
     acoes_realizadas = contar_acoes('financeiro', range(1, 13))
-    meta_base = MetaConfiguracaoIndicador.query.filter_by(scope='financeiro').first()
+    meta_base = MetaConfiguracaoIndicador.query.filter_by(scope='financeiro', trimestre=tri).first()
     percentual_planejado_realizado = calcular_percentual_planejado_realizado(
         valor_realizado,
         valor_meta,
@@ -102,8 +104,9 @@ def resumir_financeiro_bancos_trimestre() -> dict:
 
 
 def _broadcast_update_financeiro(semana: int):
+    tri = get_trimestre()
     registros = (
-        FinanceiroBanco.query.filter_by(semana=semana)
+        FinanceiroBanco.query.filter_by(semana=semana, trimestre=tri)
         .order_by(FinanceiroBanco.criado_em.desc())
         .all()
     )
@@ -127,6 +130,7 @@ def _garantir_semana_editavel(semana: int):
 
 
 def _criar_registro_acao_direta(semana: int, acao_realizada: str) -> FinanceiroBanco:
+    tri = get_trimestre()
     registro = FinanceiroBanco(
         banco='BANCO DO BRASIL',
         negociacao='PARCIAL',
@@ -137,6 +141,7 @@ def _criar_registro_acao_direta(semana: int, acao_realizada: str) -> FinanceiroB
         referencia='ACAO DIRETA',
         responsavel=current_user.nome.upper(),
         semana=semana,
+        trimestre=tri,
     )
     db.session.add(registro)
     return registro
@@ -147,8 +152,9 @@ def _criar_registro_acao_direta(semana: int, acao_realizada: str) -> FinanceiroB
 @requer_financeiro_ou_admin
 def index():
     semana = _parse_semana(request.args.get('semana', semana_padrao_preenchimento())) or semana_padrao_preenchimento()
+    tri = get_trimestre()
     registros = (
-        FinanceiroBanco.query.filter_by(semana=semana)
+        FinanceiroBanco.query.filter_by(semana=semana, trimestre=tri)
         .order_by(FinanceiroBanco.criado_em.desc())
         .all()
     )
@@ -196,6 +202,7 @@ def cadastrar():
     if bloqueio:
         return bloqueio
 
+    tri = get_trimestre()
     novo = FinanceiroBanco(
         banco=banco,
         negociacao=negociacao,
@@ -206,6 +213,7 @@ def cadastrar():
         referencia=(dados.get('referencia') or '').upper().strip() or None,
         responsavel=current_user.nome.upper(),
         semana=semana,
+        trimestre=tri,
     )
     db.session.add(novo)
     db.session.flush()
@@ -258,9 +266,11 @@ def registrar_acao():
             'financeiro_registro',
         )
     else:
+        tri = get_trimestre()
         nova_acao = IndicadorAcao(
             scope='financeiro',
             semana=semana,
+            trimestre=tri,
             descricao=acao_realizada,
             responsavel=current_user.nome.upper(),
             registro_id=reg.id,
@@ -279,8 +289,9 @@ def listar_registros():
     semana = _parse_semana(request.args.get('semana', semana_padrao_preenchimento()))
     if semana is None:
         return jsonify({'erro': 'Semana invalida.'}), 400
+    tri = get_trimestre()
     registros = (
-        FinanceiroBanco.query.filter_by(semana=semana)
+        FinanceiroBanco.query.filter_by(semana=semana, trimestre=tri)
         .order_by(FinanceiroBanco.criado_em.desc())
         .all()
     )

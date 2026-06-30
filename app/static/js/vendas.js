@@ -5,7 +5,8 @@ let vendasFiltradasCache = [];
 let acoesCache = [];
 let activeSituacaoChart = '';
 let deleteState = { id: null, btnEl: null, mode: 'single' };
-const MESES_VENDAS_TOPBAR = ['abril', 'maio', 'junho'];
+const MESES_VENDAS_TOPBAR = Array.from(document.querySelectorAll('.week-month__body[id^="body-"]'))
+  .map((el) => el.id.replace('body-', ''));
 
 function csrfHeaders(extra = {}) {
   return { 'X-CSRFToken': window.APP_CSRF_TOKEN || '', ...extra };

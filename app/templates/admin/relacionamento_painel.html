@@ -265,7 +265,7 @@
       <section class="analytics-panel">
         <div class="analytics-panel__header">
           <h2>Evolucao das Metas</h2>
-          <span>{% if mes_atual.slug == 'resumo_trimestral' %}Abril a Junho{% else %}{{ mes_atual.nome }}{% endif %}</span>
+          <span>{% if mes_atual.slug == 'resumo_trimestral' %}{{ meses_trimestre[0].nome }} a {{ meses_trimestre[-1].nome }}{% else %}{{ mes_atual.nome }}{% endif %}</span>
         </div>
         <div class="analytics-chart-shell">
           <div class="analytics-chart-side">

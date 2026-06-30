@@ -3,7 +3,8 @@
 let registrosCache = [];
 let acoesCache = [];
 let deleteState = { id: null, btnEl: null };
-const MESES_GIRO = ['abril', 'maio', 'junho'];
+const MESES_GIRO = Array.from(document.querySelectorAll('.week-month__body[id^="body-"]'))
+  .map((el) => el.id.replace('body-', ''));
 
 function renderizarOpcoesAcao() {
   const feedback = document.getElementById('acao-feedback');

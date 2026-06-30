@@ -12,7 +12,7 @@ from app.models.meta_fornecedor import MetaFornecedorSemana
 from app.models.meta_configuracao import MetaConfiguracaoIndicador
 from app.utils.progress import calcular_percentual_meta, calcular_percentual_planejado_realizado
 from app.utils.quarter import semana_editavel, semana_padrao_preenchimento
-
+from app.utils.trimestre_context import get_trimestre
 
 fornecedores_bp = Blueprint('fornecedores', __name__)
 
@@ -47,10 +47,11 @@ def _situacao_conta_como_negociado(situacao: str | None) -> bool:
 
 
 def _calcular_indicadores_fornecedores(semana: int, registros: list[FornecedorRegistro] | None = None) -> dict:
-    meta = MetaFornecedorSemana.query.filter_by(semana=semana).first()
+    tri = get_trimestre()
+    meta = MetaFornecedorSemana.query.filter_by(semana=semana, trimestre=tri).first()
     valor_meta = float(meta.valor_meta) if meta else 0.0
     acoes_planejadas = int(meta.acoes_planejadas or 0) if meta else 0
-    todos = registros if registros is not None else FornecedorRegistro.query.filter_by(semana=semana).all()
+    todos = registros if registros is not None else FornecedorRegistro.query.filter_by(semana=semana, trimestre=tri).all()
     valor_negociado = sum(
         float(item.valor_negociado or 0)
         for item in todos
@@ -68,7 +69,7 @@ def _calcular_indicadores_fornecedores(semana: int, registros: list[FornecedorRe
         acoes_realizadas,
         acoes_planejadas,
     )
-    meta_base = MetaConfiguracaoIndicador.query.filter_by(scope='fornecedores').first()
+    meta_base = MetaConfiguracaoIndicador.query.filter_by(scope='fornecedores', trimestre=tri).first()
 
     return {
         'semana': semana,
@@ -87,8 +88,9 @@ def _calcular_indicadores_fornecedores(semana: int, registros: list[FornecedorRe
 
 
 def resumir_fornecedores_trimestre() -> dict:
-    registros = FornecedorRegistro.query.filter(FornecedorRegistro.semana.in_(range(1, 13))).all()
-    metas = MetaFornecedorSemana.query.filter(MetaFornecedorSemana.semana.in_(range(1, 13))).all()
+    tri = get_trimestre()
+    registros = FornecedorRegistro.query.filter(FornecedorRegistro.semana.in_(range(1, 13)), FornecedorRegistro.trimestre == tri).all()
+    metas = MetaFornecedorSemana.query.filter(MetaFornecedorSemana.semana.in_(range(1, 13)), MetaFornecedorSemana.trimestre == tri).all()
     valor_realizado = sum(
         float(item.valor_negociado or 0)
         for item in registros
@@ -97,7 +99,7 @@ def resumir_fornecedores_trimestre() -> dict:
     valor_meta = sum(float(item.valor_meta or 0) for item in metas)
     acoes_planejadas = sum(int(item.acoes_planejadas or 0) for item in metas)
     acoes_realizadas = contar_acoes('fornecedores', range(1, 13))
-    meta_base = MetaConfiguracaoIndicador.query.filter_by(scope='fornecedores').first()
+    meta_base = MetaConfiguracaoIndicador.query.filter_by(scope='fornecedores', trimestre=tri).first()
     percentual_planejado_realizado = calcular_percentual_planejado_realizado(
         valor_realizado,
         valor_meta,
@@ -120,8 +122,9 @@ def resumir_fornecedores_trimestre() -> dict:
 
 
 def _broadcast_update_fornecedores(semana: int):
+    tri = get_trimestre()
     registros = (
-        FornecedorRegistro.query.filter_by(semana=semana)
+        FornecedorRegistro.query.filter_by(semana=semana, trimestre=tri)
         .order_by(FornecedorRegistro.criado_em.desc())
         .all()
     )
@@ -155,8 +158,9 @@ def _empreendimento_padrao() -> str:
 def index():
     semana = _parse_semana(request.args.get('semana', semana_padrao_preenchimento())) or semana_padrao_preenchimento()
     empreendimentos = Empreendimento.query.filter_by(ativo=True).order_by(Empreendimento.nome).all()
+    tri = get_trimestre()
     registros = (
-        FornecedorRegistro.query.filter_by(semana=semana)
+        FornecedorRegistro.query.filter_by(semana=semana, trimestre=tri)
         .order_by(FornecedorRegistro.criado_em.desc())
         .all()
     )
@@ -208,6 +212,7 @@ def cadastrar():
     if bloqueio:
         return bloqueio
 
+    tri = get_trimestre()
     novo = FornecedorRegistro(
         empreendimento=empreendimento,
         nome_fornecedor=(dados.get('nome_fornecedor') or '').upper().strip(),
@@ -220,6 +225,7 @@ def cadastrar():
         acao_realizada=(dados.get('acao_realizada') or '').upper().strip() or None,
         responsavel=current_user.nome.upper(),
         semana=semana,
+        trimestre=tri,
     )
     db.session.add(novo)
     db.session.flush()
@@ -248,6 +254,7 @@ def bulk_cadastrar():
 
     registros_criados = []
     semanas_processadas = set()
+    tri = get_trimestre()
 
     for indice, linha in enumerate(linhas, start=1):
         if not isinstance(linha, dict):
@@ -290,6 +297,7 @@ def bulk_cadastrar():
             observacao=None,
             responsavel=current_user.nome.upper(),
             semana=semana,
+            trimestre=tri,
         )
         db.session.add(novo)
         registros_criados.append(novo)
@@ -323,9 +331,11 @@ def registrar_acao():
     reg = db.session.get(FornecedorRegistro, int(reg_id)) if reg_id else None
     if reg and not _pode_gerenciar_registro(reg):
         return jsonify({'erro': 'Voce so pode editar registros criados por voce.'}), 403
+    tri = get_trimestre()
     nova_acao = IndicadorAcao(
         scope='fornecedores',
         semana=semana,
+        trimestre=tri,
         descricao=acao_realizada,
         responsavel=current_user.nome.upper(),
         registro_id=reg.id if reg else None,
@@ -344,8 +354,9 @@ def listar_registros():
     semana = _parse_semana(request.args.get('semana', semana_padrao_preenchimento()))
     if semana is None:
         return jsonify({'erro': 'Semana invalida.'}), 400
+    tri = get_trimestre()
     registros = (
-        FornecedorRegistro.query.filter_by(semana=semana)
+        FornecedorRegistro.query.filter_by(semana=semana, trimestre=tri)
         .order_by(FornecedorRegistro.criado_em.desc())
         .all()
     )

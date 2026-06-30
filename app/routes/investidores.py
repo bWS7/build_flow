@@ -16,17 +16,11 @@ from app.models.meta_investidor_semana import MetaInvestidorSemana
 from app.services.analytics_ai import analytics_ai_available, analytics_ai_enabled, ask_analytics_assistant, build_global_ai_context, fallback_analytics_answer
 from app.utils.progress import calcular_percentual_meta, calcular_percentual_planejado_realizado
 from app.utils.quarter import semana_editavel, semana_padrao_preenchimento
-
+from app.utils.trimestre_context import get_meses, get_meses_map, get_meses_numeros, get_primeiro_mes_slug, get_trimestre
 
 investidores_bp = Blueprint('investidores', __name__)
 
 PERIODO_INVESTIDORES = ('resumo_trimestral', 'Resumo Trimestral', None)
-MESES_INVESTIDORES = [
-    ('abril', 'Abril', 4, 1),
-    ('maio', 'Maio', 5, 5),
-    ('junho', 'Junho', 6, 9),
-]
-MESES_MAP = {slug: {'slug': slug, 'nome': nome, 'numero': numero, 'semana_inicio': semana_inicio} for slug, nome, numero, semana_inicio in MESES_INVESTIDORES}
 EMPREENDIMENTO_IGNORADO = 'J J NEGOCIOS IMOBILIARIOS'
 SITUACOES_FUNIL_AGRUPADAS = {
     'CANCELADA': 'Cancelada',
@@ -55,6 +49,22 @@ TIPO_VENDA_ALIAS = {
 }
 
 
+def _get_meses_investidores():
+    return get_meses()
+
+
+def _get_meses_map():
+    return get_meses_map()
+
+
+def _get_primeiro_mes_slug():
+    return get_primeiro_mes_slug()
+
+
+def _get_meses_numeros():
+    return get_meses_numeros()
+
+
 def requer_investidores(f):
     @wraps(f)
     def decorated(*args, **kwargs):
@@ -77,10 +87,10 @@ def _usuario_pode_editar_investidores() -> bool:
 
 
 def _mes_slug_atual() -> str:
-    mes = (request.args.get('mes') or request.form.get('mes') or 'abril').strip().lower()
+    mes = (request.args.get('mes') or request.form.get('mes') or '').strip().lower()
     if mes == PERIODO_INVESTIDORES[0]:
         return mes
-    return mes if mes in MESES_MAP else 'abril'
+    return mes if mes in _get_meses_map() else _get_primeiro_mes_slug()
 
 
 def _semana_do_mes_atual() -> int:
@@ -95,7 +105,7 @@ def _semana_global_por_data(data_reserva, mes_slug: str | None = None) -> int | 
     if not data_reserva:
         return None
     mes_numero = data_reserva.month
-    for slug, _, numero, semana_inicio in MESES_INVESTIDORES:
+    for slug, _, numero, semana_inicio in _get_meses_investidores():
         if numero == mes_numero:
             semana_local = min(((data_reserva.day - 1) // 7) + 1, 4)
             return semana_inicio + semana_local - 1
@@ -103,14 +113,14 @@ def _semana_global_por_data(data_reserva, mes_slug: str | None = None) -> int | 
 
 
 def _data_referencia_da_semana(mes_slug: str, semana_local: int) -> date:
-    mes_info = MESES_MAP.get(mes_slug, MESES_MAP['abril'])
+    mes_info = _get_meses_map().get(mes_slug, _get_meses_map()[_get_primeiro_mes_slug()])
     dia_inicial = {1: 1, 2: 8, 3: 15, 4: 22}.get(semana_local, 1)
     return date(datetime.now().year, mes_info['numero'], dia_inicial)
 
 
 def _resolver_periodo_payload(dados: dict) -> tuple[str | None, int | None]:
     mes_slug = (dados.get('mes') or '').strip().lower()
-    if mes_slug not in MESES_MAP:
+    if mes_slug not in _get_meses_map():
         return None, None
     try:
         semana_local = int(str(dados.get('semana') or '').strip())
@@ -122,8 +132,9 @@ def _resolver_periodo_payload(dados: dict) -> tuple[str | None, int | None]:
 def _normalizar_data_para_periodo(data_reserva, mes_slug: str | None, semana_local: int | None):
     if not data_reserva or not mes_slug or semana_local not in {1, 2, 3, 4}:
         return data_reserva
-    semana_global_esperada = MESES_MAP[mes_slug]['semana_inicio'] + semana_local - 1
-    if data_reserva.month == MESES_MAP[mes_slug]['numero'] and _semana_global_por_data(data_reserva, mes_slug) == semana_global_esperada:
+    meses_map = _get_meses_map()
+    semana_global_esperada = meses_map[mes_slug]['semana_inicio'] + semana_local - 1
+    if data_reserva.month == meses_map[mes_slug]['numero'] and _semana_global_por_data(data_reserva, mes_slug) == semana_global_esperada:
         return data_reserva
     return _data_referencia_da_semana(mes_slug, semana_local)
 
@@ -151,21 +162,21 @@ def _garantir_semana_editavel_global(semana_global: int | None):
 
 def montar_contexto_template_investidores(mes_slug: str, incluir_resumo: bool = False, semana_local: int | None = None) -> dict:
     if mes_slug == PERIODO_INVESTIDORES[0] and not incluir_resumo:
-        mes_slug = 'abril'
+        mes_slug = _get_primeiro_mes_slug()
     semana_local_normalizada = semana_local if semana_local in {1, 2, 3, 4} else None
-    mes_info = {'nome': PERIODO_INVESTIDORES[1]} if mes_slug == PERIODO_INVESTIDORES[0] else MESES_MAP[mes_slug]
+    mes_info = {'nome': PERIODO_INVESTIDORES[1]} if mes_slug == PERIODO_INVESTIDORES[0] else _get_meses_map()[mes_slug]
     empreendimentos = Empreendimento.query.filter_by(ativo=True).order_by(Empreendimento.nome).all()
     investidores = _consultar_investidores_periodo(mes_slug, semana_local=semana_local_normalizada)
     semana_global = None
     if mes_slug != PERIODO_INVESTIDORES[0] and semana_local_normalizada is not None:
-        semana_inicio = next(semana_inicio for slug, _, _, semana_inicio in MESES_INVESTIDORES if slug == mes_slug)
+        semana_inicio = next(semana_inicio for slug, _, _, semana_inicio in _get_meses_investidores() if slug == mes_slug)
         semana_global = semana_inicio + semana_local_normalizada - 1
     if mes_slug == PERIODO_INVESTIDORES[0]:
         permite_edicao = _usuario_pode_editar_investidores()
     else:
         permite_edicao = _usuario_pode_editar_investidores() and semana_editavel(semana_global, _usuario_admin_total(), current_user.can_manage_admin())
     return {
-        'meses': [(slug, nome, numero) for slug, nome, numero, _ in MESES_INVESTIDORES] + ([PERIODO_INVESTIDORES] if incluir_resumo else []),
+        'meses': [(slug, nome, numero) for slug, nome, numero, _ in _get_meses_investidores()] + ([PERIODO_INVESTIDORES] if incluir_resumo else []),
         'mes_atual': mes_slug,
         'semana_atual': semana_local_normalizada,
         'mes_atual_nome': mes_info['nome'],
@@ -234,12 +245,12 @@ def _consultar_investidores_periodo(mes_slug: str, semana_local: int | None = No
         .filter(func.upper(Investidor.empreendimento) != EMPREENDIMENTO_IGNORADO)
     )
     if mes_slug != PERIODO_INVESTIDORES[0]:
-        query = query.filter(extract('month', Investidor.data_reserva) == MESES_MAP[mes_slug]['numero'])
+        query = query.filter(extract('month', Investidor.data_reserva) == _get_meses_map()[mes_slug]['numero'])
     else:
-        query = query.filter(extract('month', Investidor.data_reserva).in_([4, 5, 6]))
+        query = query.filter(extract('month', Investidor.data_reserva).in_(_get_meses_numeros()))
     investidores = query.order_by(Investidor.data_reserva.desc(), Investidor.id.desc()).all()
     if mes_slug != PERIODO_INVESTIDORES[0] and semana_local is not None:
-        semana_global = next(semana_inicio for slug, _, _, semana_inicio in MESES_INVESTIDORES if slug == mes_slug) + semana_local - 1
+        semana_global = next(semana_inicio for slug, _, _, semana_inicio in _get_meses_investidores() if slug == mes_slug) + semana_local - 1
         investidores = [item for item in investidores if _semana_global_por_data(item.data_reserva, mes_slug) == semana_global]
     return investidores
 
@@ -247,39 +258,41 @@ def _consultar_investidores_periodo(mes_slug: str, semana_local: int | None = No
 def _obter_meta_semana(semana_global: int | None) -> float:
     if not semana_global:
         return 0.0
-    meta = MetaInvestidorSemana.query.filter_by(semana=semana_global).first()
+    tri = get_trimestre()
+    meta = MetaInvestidorSemana.query.filter_by(semana=semana_global, trimestre=tri).first()
     return float(meta.valor_meta or 0) if meta else 0.0
 
 
 def _obter_meta_acoes_semana(semana_global: int | None) -> int:
     if not semana_global:
         return 0
-    meta = MetaInvestidorSemana.query.filter_by(semana=semana_global).first()
+    tri = get_trimestre()
+    meta = MetaInvestidorSemana.query.filter_by(semana=semana_global, trimestre=tri).first()
     return int(meta.acoes_planejadas or 0) if meta else 0
 
 
 def _obter_meta_mes(mes_slug: str) -> float:
-    semana_inicio = next(semana_inicio for slug, _, _, semana_inicio in MESES_INVESTIDORES if slug == mes_slug)
+    semana_inicio = next(semana_inicio for slug, _, _, semana_inicio in _get_meses_investidores() if slug == mes_slug)
     return sum(_obter_meta_semana(semana_inicio + offset) for offset in range(4))
 
 
 def _obter_meta_geral() -> float:
-    return sum(_obter_meta_mes(slug) for slug, _, _, _ in MESES_INVESTIDORES)
+    return sum(_obter_meta_mes(slug) for slug, _, _, _ in _get_meses_investidores())
 
 
 def _obter_meta_acoes_mes(mes_slug: str) -> int:
-    semana_inicio = next(semana_inicio for slug, _, _, semana_inicio in MESES_INVESTIDORES if slug == mes_slug)
+    semana_inicio = next(semana_inicio for slug, _, _, semana_inicio in _get_meses_investidores() if slug == mes_slug)
     return sum(_obter_meta_acoes_semana(semana_inicio + offset) for offset in range(4))
 
 
 def _obter_meta_acoes_geral() -> int:
-    return sum(_obter_meta_acoes_mes(slug) for slug, _, _, _ in MESES_INVESTIDORES)
+    return sum(_obter_meta_acoes_mes(slug) for slug, _, _, _ in _get_meses_investidores())
 
 
 def _semanas_periodo_investidores(mes_slug: str, semana_local: int | None = None):
     if mes_slug == PERIODO_INVESTIDORES[0]:
         return range(1, 13)
-    inicio = MESES_MAP[mes_slug]['semana_inicio']
+    inicio = _get_meses_map()[mes_slug]['semana_inicio']
     if semana_local:
         return [inicio + semana_local - 1]
     return [inicio + offset for offset in range(4)]
@@ -335,7 +348,7 @@ def _calcular_financeiro(mes_slug: str, investidores: list[Investidor] | None = 
         meta_valor = _obter_meta_geral()
         meta_acoes = _obter_meta_acoes_geral()
     elif semana_local:
-        semana_inicio = next(semana_inicio for slug, _, _, semana_inicio in MESES_INVESTIDORES if slug == mes_slug)
+        semana_inicio = next(semana_inicio for slug, _, _, semana_inicio in _get_meses_investidores() if slug == mes_slug)
         semana_global = semana_inicio + semana_local - 1
         meta_valor = _obter_meta_semana(semana_global)
         meta_acoes = _obter_meta_acoes_semana(semana_global)
@@ -357,7 +370,8 @@ def _calcular_financeiro(mes_slug: str, investidores: list[Investidor] | None = 
         acoes_realizadas,
         meta_acoes,
     )
-    meta_base = MetaConfiguracaoIndicador.query.filter_by(scope='investidores').first()
+    tri = get_trimestre()
+    meta_base = MetaConfiguracaoIndicador.query.filter_by(scope='investidores', trimestre=tri).first()
     return {
         'mes': mes_slug,
         'meta_valor': meta_valor,
@@ -390,7 +404,7 @@ def _montar_contexto_ia_investidores(mes_slug: str) -> dict:
     investidores = _consultar_investidores_periodo(mes_slug)
     financeiro = _calcular_financeiro(mes_slug, investidores=investidores)
     return {
-        'periodo': MESES_MAP[PERIODO_INVESTIDORES[0]]['nome'],
+        'periodo': _get_meses_map()[PERIODO_INVESTIDORES[0]]['nome'] if PERIODO_INVESTIDORES[0] in _get_meses_map() else PERIODO_INVESTIDORES[1],
         'resumo_financeiro': financeiro,
         'registros': [investidor.to_dict() for investidor in investidores[:500]],
         'situacoes': {item['label']: item['quantidade'] for item in financeiro['funil']},
@@ -431,17 +445,19 @@ def registrar_acao():
             semana_local = int(dados.get('semana', 1) or 1)
         except (TypeError, ValueError):
             semana_local = 0
-        if mes_slug not in MESES_MAP:
+        if mes_slug not in _get_meses_map():
             return jsonify({'erro': 'Mes invalido para registrar a acao.'}), 400
         if semana_local not in {1, 2, 3, 4}:
             return jsonify({'erro': 'Semana invalida para registrar a acao.'}), 400
-        semana_global = MESES_MAP[mes_slug]['semana_inicio'] + semana_local - 1
+        semana_global = _get_meses_map()[mes_slug]['semana_inicio'] + semana_local - 1
         bloqueio = _garantir_semana_editavel_global(semana_global)
         if bloqueio:
             return bloqueio
+        tri = get_trimestre()
         nova_acao = IndicadorAcao(
             scope='investidores',
             semana=semana_global,
+            trimestre=tri,
             descricao=acao_realizada,
             responsavel=current_user.nome.upper(),
         )
@@ -459,9 +475,11 @@ def registrar_acao():
     if bloqueio:
         return bloqueio
 
+    tri = get_trimestre()
     nova_acao = IndicadorAcao(
         scope='investidores',
         semana=semana_global,
+        trimestre=tri,
         descricao=acao_realizada,
         responsavel=current_user.nome.upper(),
         registro_id=investidor.id,
@@ -579,7 +597,7 @@ def investidores_ai_chat():
         return jsonify({'erro': 'Pergunta obrigatoria.'}), 400
 
     mes_slug = (dados.get('mes') or PERIODO_INVESTIDORES[0]).strip().lower()
-    if mes_slug != PERIODO_INVESTIDORES[0] and mes_slug not in MESES_MAP:
+    if mes_slug != PERIODO_INVESTIDORES[0] and mes_slug not in _get_meses_map():
         mes_slug = PERIODO_INVESTIDORES[0]
     history = dados.get('history') or []
     investidores = _consultar_investidores_periodo(mes_slug)
@@ -589,7 +607,7 @@ def investidores_ai_chat():
         actor=current_user,
         extra_context={
             'mes_atual': mes_slug,
-            'periodo': 'Resumo Trimestral' if mes_slug == PERIODO_INVESTIDORES[0] else MESES_MAP[mes_slug]['nome'],
+            'periodo': 'Resumo Trimestral' if mes_slug == PERIODO_INVESTIDORES[0] else _get_meses_map()[mes_slug]['nome'],
             'resumo_painel': financeiro,
             'situacoes_funil': {item['label']: item['quantidade'] for item in financeiro['funil']},
         },
@@ -671,7 +689,7 @@ def bulk_cadastrar():
                 ignoradas += 1
                 continue
             return jsonify({'erro': f'Linha {indice}: {erro}'}), 400
-        mes_slug, semana_local = _resolver_periodo_payload(dados)
+        mes_slug, semana_local = _resolver_periodo_payload(linha or {})
         registro['data_reserva'] = _normalizar_data_para_periodo(registro['data_reserva'], mes_slug, semana_local)
         bloqueio = _garantir_semana_editavel_por_data(registro['data_reserva'])
         if bloqueio:

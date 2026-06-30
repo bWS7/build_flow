@@ -27,46 +27,68 @@ from app.routes.fornecedores import resumir_fornecedores_trimestre
 from app.routes.financeiro import resumir_financeiro_bancos_trimestre
 from app.routes.giro import resumir_giro_trimestre
 from app.routes.medicao import resumir_medicao_trimestre
-from app.routes.investidores import PERIODO_INVESTIDORES, MESES_INVESTIDORES, montar_contexto_template_investidores
-from app.routes.vendas import MESES_VENDAS, montar_contexto_template_vendas
+from app.routes.investidores import PERIODO_INVESTIDORES, montar_contexto_template_investidores
+from app.routes.vendas import montar_contexto_template_vendas
 from app.services.analytics_ai import analytics_ai_available, analytics_ai_enabled, ask_analytics_assistant, build_global_ai_context, fallback_analytics_answer
 from app.utils.progress import calcular_percentual_meta, calcular_percentual_planejado_realizado
+from app.utils.trimestre_context import (
+    get_master_semanas,
+    get_meses,
+    get_periodo_label,
+    get_primeiro_mes_slug,
+    get_trimestre,
+)
 
-MESES_RELATORIO = [
-    ('abril', 'Abril', 1),
-    ('maio', 'Maio', 5),
-    ('junho', 'Junho', 9),
-]
 PERIODO_TRIMESTRAL = ('resumo_trimestral', 'Resumo Trimestral', 1)
 META_FINAL_MONTH = 11
 META_FINAL_DAY = 30
 MIN_PASSWORD_LENGTH = 10
-MASTER_START_DATE = datetime(2026, 4, 1, 0, 0, 0)
-MASTER_END_DATE = datetime(2026, 6, 30, 23, 59, 59)
 MASTER_METRICAS_FICTICIAS = (
     ('fornecedores', 'Fornecedores', 12.0, 100.0, 'Status provisório enquanto o painel não recebe inputs reais.'),
 )
 
 
-MASTER_MESES = [
-    ('abril', 'Abril', range(1, 5), datetime(2026, 4, 1, 0, 0, 0), datetime(2026, 4, 30, 23, 59, 59)),
-    ('maio', 'Maio', range(5, 9), datetime(2026, 5, 1, 0, 0, 0), datetime(2026, 5, 31, 23, 59, 59)),
-    ('junho', 'Junho', range(9, 13), datetime(2026, 6, 1, 0, 0, 0), datetime(2026, 6, 30, 23, 59, 59)),
-]
-MASTER_SEMANAS = [
-    ('s1', 'Abril - Semana 1', 1, datetime(2026, 4, 1, 0, 0, 0), datetime(2026, 4, 7, 23, 59, 59)),
-    ('s2', 'Abril - Semana 2', 2, datetime(2026, 4, 8, 0, 0, 0), datetime(2026, 4, 14, 23, 59, 59)),
-    ('s3', 'Abril - Semana 3', 3, datetime(2026, 4, 15, 0, 0, 0), datetime(2026, 4, 21, 23, 59, 59)),
-    ('s4', 'Abril - Semana 4', 4, datetime(2026, 4, 28, 0, 0, 0), datetime(2026, 4, 30, 23, 59, 59)),
-    ('s5', 'Maio - Semana 1', 5, datetime(2026, 5, 1, 0, 0, 0), datetime(2026, 5, 7, 23, 59, 59)),
-    ('s6', 'Maio - Semana 2', 6, datetime(2026, 5, 8, 0, 0, 0), datetime(2026, 5, 14, 23, 59, 59)),
-    ('s7', 'Maio - Semana 3', 7, datetime(2026, 5, 15, 0, 0, 0), datetime(2026, 5, 21, 23, 59, 59)),
-    ('s8', 'Maio - Semana 4', 8, datetime(2026, 5, 28, 0, 0, 0), datetime(2026, 5, 31, 23, 59, 59)),
-    ('s9', 'Junho - Semana 1', 9, datetime(2026, 6, 1, 0, 0, 0), datetime(2026, 6, 7, 23, 59, 59)),
-    ('s10', 'Junho - Semana 2', 10, datetime(2026, 6, 8, 0, 0, 0), datetime(2026, 6, 14, 23, 59, 59)),
-    ('s11', 'Junho - Semana 3', 11, datetime(2026, 6, 15, 0, 0, 0), datetime(2026, 6, 21, 23, 59, 59)),
-    ('s12', 'Junho - Semana 4', 12, datetime(2026, 6, 28, 0, 0, 0), datetime(2026, 6, 30, 23, 59, 59)),
-]
+def _meses_vendas() -> list[tuple[str, str, int, int]]:
+    return get_meses()
+
+
+def _meses_relatorio() -> list[tuple[str, str, int]]:
+    return [(slug, nome, semana_inicio) for slug, nome, _numero, semana_inicio in get_meses()]
+
+
+def _periodo_trimestral_label() -> str:
+    return get_periodo_label().replace('1º Trimestre (', '').replace('2º Trimestre (', '').rstrip(')')
+
+
+def _master_meses() -> list[tuple[str, str, range, datetime, datetime]]:
+    meses = get_meses()
+    semanas = get_master_semanas()
+    resultado = []
+    for slug, nome, _numero, semana_inicio in meses:
+        intervalo = range(semana_inicio, semana_inicio + 4)
+        inicio = semanas[semana_inicio - 1][1]
+        fim = semanas[semana_inicio + 2][2]
+        resultado.append((slug, nome, intervalo, inicio, fim))
+    return resultado
+
+
+def _master_semanas() -> list[tuple[str, str, int, datetime, datetime]]:
+    meses_por_inicio = {semana_inicio: nome for _slug, nome, _numero, semana_inicio in get_meses()}
+    resultado = []
+    for semana, inicio, fim in get_master_semanas():
+        mes_inicio = ((semana - 1) // 4) * 4 + 1
+        nome_mes = meses_por_inicio.get(mes_inicio, '')
+        semana_local = ((semana - 1) % 4) + 1
+        resultado.append((f's{semana}', f'{nome_mes} - Semana {semana_local}', semana, inicio, fim))
+    return resultado
+
+
+def _master_start_date() -> datetime:
+    return get_master_semanas()[0][1]
+
+
+def _master_end_date() -> datetime:
+    return get_master_semanas()[-1][2]
 
 
 def _safe_pct(realizado: float, planejado: float) -> float:
@@ -74,14 +96,17 @@ def _safe_pct(realizado: float, planejado: float) -> float:
 
 
 def _obter_meta_base_total(scope: str) -> float:
-    config = MetaConfiguracaoIndicador.query.filter_by(scope=scope).first()
+    config = MetaConfiguracaoIndicador.query.filter_by(scope=scope, trimestre=get_trimestre()).first()
     return float(config.meta_base_total or 0) if config else 0.0
 
 
 def _mapa_meta_base_total() -> dict[str, float]:
     return {
         item.scope: float(item.meta_base_total or 0)
-        for item in MetaConfiguracaoIndicador.query.order_by(MetaConfiguracaoIndicador.scope.asc()).all()
+        for item in MetaConfiguracaoIndicador.query
+        .filter_by(trimestre=get_trimestre())
+        .order_by(MetaConfiguracaoIndicador.scope.asc())
+        .all()
     }
 
 
@@ -104,10 +129,11 @@ def _registrar_auditoria_meta(scope: str, campo: str, valor_anterior, valor_novo
 
 def _salvar_meta_base_total(scope: str, valor: float) -> float:
     valor_normalizado = max(float(valor or 0), 0.0)
-    config = MetaConfiguracaoIndicador.query.filter_by(scope=scope).first()
+    tri = get_trimestre()
+    config = MetaConfiguracaoIndicador.query.filter_by(scope=scope, trimestre=tri).first()
     anterior = float(config.meta_base_total or 0) if config else 0.0
     if config is None:
-        config = MetaConfiguracaoIndicador(scope=scope, meta_base_total=valor_normalizado)
+        config = MetaConfiguracaoIndicador(scope=scope, trimestre=tri, meta_base_total=valor_normalizado)
         db.session.add(config)
     else:
         config.meta_base_total = valor_normalizado
@@ -136,7 +162,7 @@ def _situacao_conta_como_sim(situacao: str | None) -> bool:
 
 
 def _consultar_registros_semana(semana: int, filtros: dict):
-    query = Relacionamento.query.filter_by(semana=semana)
+    query = Relacionamento.query.filter_by(semana=semana, trimestre=get_trimestre())
     if filtros.get('empreendimento'):
         query = query.filter(func.upper(Relacionamento.empreendimento) == filtros['empreendimento'])
     if filtros.get('responsavel'):
@@ -161,7 +187,7 @@ def _listar_opcoes_filtro(coluna) -> list[str]:
 
 def _coletar_semana(semana: int, filtros: dict | None = None) -> dict:
     filtros = filtros or {}
-    meta = MetaSemana.query.filter_by(semana=semana).first()
+    meta = MetaSemana.query.filter_by(semana=semana, trimestre=get_trimestre()).first()
     registros = _consultar_registros_semana(semana, filtros)
     valor_planejado = float(meta.valor_meta) if meta else 0.0
     acoes_planejadas = int(meta.acoes_planejadas) if meta else 0
@@ -182,7 +208,7 @@ def _coletar_semana(semana: int, filtros: dict | None = None) -> dict:
 def _resumir_entidades_trimestre(filtros: dict | None = None) -> dict:
     filtros = filtros or {}
     semanas = list(range(1, 13))
-    query = Relacionamento.query.filter(Relacionamento.semana.in_(semanas))
+    query = Relacionamento.query.filter(Relacionamento.semana.in_(semanas), Relacionamento.trimestre == get_trimestre())
     if filtros.get('empreendimento'):
         query = query.filter(func.upper(Relacionamento.empreendimento) == filtros['empreendimento'])
     if filtros.get('responsavel'):
@@ -236,7 +262,7 @@ def _resumir_entidades_trimestre(filtros: dict | None = None) -> dict:
 def _listar_registros_contexto_ia(filtros: dict | None = None, limite: int = 500) -> list[dict]:
     filtros = filtros or {}
     semanas = list(range(1, 13))
-    query = Relacionamento.query.filter(Relacionamento.semana.in_(semanas))
+    query = Relacionamento.query.filter(Relacionamento.semana.in_(semanas), Relacionamento.trimestre == get_trimestre())
     if filtros.get('empreendimento'):
         query = query.filter(func.upper(Relacionamento.empreendimento) == filtros['empreendimento'])
     if filtros.get('responsavel'):
@@ -325,9 +351,11 @@ def _montar_contexto_ia_relacionamento(mes_slug: str, filtros: dict | None = Non
 
 def _montar_relatorio_relacionamento(mes_slug: str, filtros: dict | None = None) -> dict:
     filtros = filtros or {}
-    meses_map = {slug: {'slug': slug, 'nome': nome, 'inicio': inicio} for slug, nome, inicio in MESES_RELATORIO}
+    meses_relatorio = _meses_relatorio()
+    primeiro_mes = get_primeiro_mes_slug()
+    meses_map = {slug: {'slug': slug, 'nome': nome, 'inicio': inicio} for slug, nome, inicio in meses_relatorio}
     meses_map[PERIODO_TRIMESTRAL[0]] = {'slug': PERIODO_TRIMESTRAL[0], 'nome': PERIODO_TRIMESTRAL[1], 'inicio': PERIODO_TRIMESTRAL[2]}
-    mes_selecionado = meses_map.get(mes_slug, meses_map['abril'])
+    mes_selecionado = meses_map.get(mes_slug, meses_map[primeiro_mes])
     semanas_mes = []
     evolucao = []
     acumulado_valor_planejado = 0.0
@@ -335,7 +363,7 @@ def _montar_relatorio_relacionamento(mes_slug: str, filtros: dict | None = None)
     acumulado_acoes_planejadas = 0
     acumulado_acoes_realizadas = 0
 
-    for slug, nome, inicio in MESES_RELATORIO:
+    for slug, nome, inicio in meses_relatorio:
         for offset in range(4):
             semana = inicio + offset
             linha = _coletar_semana(semana, filtros)
@@ -424,7 +452,7 @@ def _montar_relatorio_relacionamento(mes_slug: str, filtros: dict | None = None)
     }
 
     return {
-        'meses': [meses_map[slug] for slug, _, _ in MESES_RELATORIO] + [meses_map[PERIODO_TRIMESTRAL[0]]],
+        'meses': [meses_map[slug] for slug, _, _ in meses_relatorio] + [meses_map[PERIODO_TRIMESTRAL[0]]],
         'mes_atual': mes_selecionado,
         'semanas_mes': semanas_mes,
         'resumo_mensal': resumo_mensal,
@@ -447,7 +475,7 @@ def _normalizar_filtros_financeiro(args) -> dict:
 
 
 def _consultar_registros_financeiro_semana(semana: int, filtros: dict):
-    query = FinanceiroBanco.query.filter_by(semana=semana)
+    query = FinanceiroBanco.query.filter_by(semana=semana, trimestre=get_trimestre())
     if filtros.get('banco'):
         query = query.filter(func.upper(FinanceiroBanco.banco) == filtros['banco'])
     if filtros.get('responsavel'):
@@ -461,7 +489,7 @@ def _consultar_registros_financeiro_semana(semana: int, filtros: dict):
 
 def _coletar_semana_financeiro(semana: int, filtros: dict | None = None) -> dict:
     filtros = filtros or {}
-    meta = MetaFinanceiroSemana.query.filter_by(semana=semana).first()
+    meta = MetaFinanceiroSemana.query.filter_by(semana=semana, trimestre=get_trimestre()).first()
     registros = _consultar_registros_financeiro_semana(semana, filtros)
     valor_planejado = float(meta.valor_meta) if meta else 0.0
     acoes_planejadas = int(meta.acoes_planejadas or 0) if meta else 0
@@ -492,7 +520,7 @@ def _coletar_semana_financeiro(semana: int, filtros: dict | None = None) -> dict
 
 def _listar_registros_financeiro_contexto_ia(filtros: dict | None = None, limite: int = 500) -> list[dict]:
     filtros = filtros or {}
-    query = FinanceiroBanco.query.filter(FinanceiroBanco.semana.in_(range(1, 13)))
+    query = FinanceiroBanco.query.filter(FinanceiroBanco.semana.in_(range(1, 13)), FinanceiroBanco.trimestre == get_trimestre())
     if filtros.get('banco'):
         query = query.filter(func.upper(FinanceiroBanco.banco) == filtros['banco'])
     if filtros.get('responsavel'):
@@ -524,9 +552,11 @@ def _montar_contexto_ia_financeiro(mes_slug: str, filtros: dict | None = None) -
 
 def _montar_relatorio_financeiro(mes_slug: str, filtros: dict | None = None) -> dict:
     filtros = filtros or {}
-    meses_map = {slug: {'slug': slug, 'nome': nome, 'inicio': inicio} for slug, nome, inicio in MESES_RELATORIO}
+    meses_relatorio = _meses_relatorio()
+    primeiro_mes = get_primeiro_mes_slug()
+    meses_map = {slug: {'slug': slug, 'nome': nome, 'inicio': inicio} for slug, nome, inicio in meses_relatorio}
     meses_map[PERIODO_TRIMESTRAL[0]] = {'slug': PERIODO_TRIMESTRAL[0], 'nome': PERIODO_TRIMESTRAL[1], 'inicio': PERIODO_TRIMESTRAL[2]}
-    mes_selecionado = meses_map.get(mes_slug, meses_map['abril'])
+    mes_selecionado = meses_map.get(mes_slug, meses_map[primeiro_mes])
     semanas_mes = []
     evolucao = []
     acumulado_valor_planejado = 0.0
@@ -534,7 +564,7 @@ def _montar_relatorio_financeiro(mes_slug: str, filtros: dict | None = None) -> 
     acumulado_acoes_planejadas = 0
     acumulado_acoes_realizadas = 0
 
-    for slug, nome, inicio in MESES_RELATORIO:
+    for slug, nome, inicio in meses_relatorio:
         for offset in range(4):
             semana = inicio + offset
             linha = _coletar_semana_financeiro(semana, filtros)
@@ -629,7 +659,7 @@ def _montar_relatorio_financeiro(mes_slug: str, filtros: dict | None = None) -> 
     }
 
     return {
-        'meses': [meses_map[slug] for slug, _, _ in MESES_RELATORIO] + [meses_map[PERIODO_TRIMESTRAL[0]]],
+        'meses': [meses_map[slug] for slug, _, _ in meses_relatorio] + [meses_map[PERIODO_TRIMESTRAL[0]]],
         'mes_atual': mes_selecionado,
         'semanas_mes': semanas_mes,
         'resumo_mensal': resumo_mensal,
@@ -653,7 +683,7 @@ def _normalizar_filtros_giro(args) -> dict:
 
 
 def _consultar_registros_giro_semana(semana: int, filtros: dict):
-    query = GiroCaptacao.query.filter_by(semana=semana)
+    query = GiroCaptacao.query.filter_by(semana=semana, trimestre=get_trimestre())
     if filtros.get('origem'):
         query = query.filter(func.upper(GiroCaptacao.origem) == filtros['origem'])
     if filtros.get('responsavel'):
@@ -667,7 +697,7 @@ def _consultar_registros_giro_semana(semana: int, filtros: dict):
 
 def _coletar_semana_giro(semana: int, filtros: dict | None = None) -> dict:
     filtros = filtros or {}
-    meta = MetaGiroSemana.query.filter_by(semana=semana).first()
+    meta = MetaGiroSemana.query.filter_by(semana=semana, trimestre=get_trimestre()).first()
     registros = _consultar_registros_giro_semana(semana, filtros)
     valor_planejado = float(meta.valor_meta) if meta else 0.0
     acoes_planejadas = int(meta.acoes_planejadas or 0) if meta else 0
@@ -698,7 +728,7 @@ def _coletar_semana_giro(semana: int, filtros: dict | None = None) -> dict:
 
 def _listar_registros_giro_contexto_ia(filtros: dict | None = None, limite: int = 500) -> list[dict]:
     filtros = filtros or {}
-    query = GiroCaptacao.query.filter(GiroCaptacao.semana.in_(range(1, 13)))
+    query = GiroCaptacao.query.filter(GiroCaptacao.semana.in_(range(1, 13)), GiroCaptacao.trimestre == get_trimestre())
     if filtros.get('origem'):
         query = query.filter(func.upper(GiroCaptacao.origem) == filtros['origem'])
     if filtros.get('responsavel'):
@@ -730,9 +760,11 @@ def _montar_contexto_ia_giro(mes_slug: str, filtros: dict | None = None) -> dict
 
 def _montar_relatorio_giro(mes_slug: str, filtros: dict | None = None) -> dict:
     filtros = filtros or {}
-    meses_map = {slug: {'slug': slug, 'nome': nome, 'inicio': inicio} for slug, nome, inicio in MESES_RELATORIO}
+    meses_relatorio = _meses_relatorio()
+    primeiro_mes = get_primeiro_mes_slug()
+    meses_map = {slug: {'slug': slug, 'nome': nome, 'inicio': inicio} for slug, nome, inicio in meses_relatorio}
     meses_map[PERIODO_TRIMESTRAL[0]] = {'slug': PERIODO_TRIMESTRAL[0], 'nome': PERIODO_TRIMESTRAL[1], 'inicio': PERIODO_TRIMESTRAL[2]}
-    mes_selecionado = meses_map.get(mes_slug, meses_map['abril'])
+    mes_selecionado = meses_map.get(mes_slug, meses_map[primeiro_mes])
     semanas_mes = []
     evolucao = []
     acumulado_valor_planejado = 0.0
@@ -740,7 +772,7 @@ def _montar_relatorio_giro(mes_slug: str, filtros: dict | None = None) -> dict:
     acumulado_acoes_planejadas = 0
     acumulado_acoes_realizadas = 0
 
-    for slug, nome, inicio in MESES_RELATORIO:
+    for slug, nome, inicio in meses_relatorio:
         for offset in range(4):
             semana = inicio + offset
             linha = _coletar_semana_giro(semana, filtros)
@@ -835,7 +867,7 @@ def _montar_relatorio_giro(mes_slug: str, filtros: dict | None = None) -> dict:
     }
 
     return {
-        'meses': [meses_map[slug] for slug, _, _ in MESES_RELATORIO] + [meses_map[PERIODO_TRIMESTRAL[0]]],
+        'meses': [meses_map[slug] for slug, _, _ in meses_relatorio] + [meses_map[PERIODO_TRIMESTRAL[0]]],
         'mes_atual': mes_selecionado,
         'semanas_mes': semanas_mes,
         'resumo_mensal': resumo_mensal,
@@ -857,7 +889,7 @@ def _normalizar_filtros_medicao(args) -> dict:
 
 
 def _consultar_registros_medicao_semana(semana: int, filtros: dict):
-    query = MedicaoRegistro.query.filter_by(semana=semana)
+    query = MedicaoRegistro.query.filter_by(semana=semana, trimestre=get_trimestre())
     if filtros.get('empreendimento'):
         query = query.filter(func.upper(MedicaoRegistro.empreendimento) == filtros['empreendimento'])
     if filtros.get('responsavel'):
@@ -867,7 +899,7 @@ def _consultar_registros_medicao_semana(semana: int, filtros: dict):
 
 def _coletar_semana_medicao(semana: int, filtros: dict | None = None) -> dict:
     filtros = filtros or {}
-    meta = MetaMedicaoSemana.query.filter_by(semana=semana).first()
+    meta = MetaMedicaoSemana.query.filter_by(semana=semana, trimestre=get_trimestre()).first()
     registros = _consultar_registros_medicao_semana(semana, filtros)
     valor_planejado = float(meta.valor_meta) if meta else 0.0
     acoes_planejadas = int(meta.acoes_planejadas or 0) if meta else 0
@@ -898,7 +930,7 @@ def _coletar_semana_medicao(semana: int, filtros: dict | None = None) -> dict:
 
 def _listar_registros_medicao_contexto_ia(filtros: dict | None = None, limite: int = 500) -> list[dict]:
     filtros = filtros or {}
-    query = MedicaoRegistro.query.filter(MedicaoRegistro.semana.in_(range(1, 13)))
+    query = MedicaoRegistro.query.filter(MedicaoRegistro.semana.in_(range(1, 13)), MedicaoRegistro.trimestre == get_trimestre())
     if filtros.get('empreendimento'):
         query = query.filter(func.upper(MedicaoRegistro.empreendimento) == filtros['empreendimento'])
     if filtros.get('responsavel'):
@@ -926,9 +958,11 @@ def _montar_contexto_ia_medicao(mes_slug: str, filtros: dict | None = None) -> d
 
 def _montar_relatorio_medicao(mes_slug: str, filtros: dict | None = None) -> dict:
     filtros = filtros or {}
-    meses_map = {slug: {'slug': slug, 'nome': nome, 'inicio': inicio} for slug, nome, inicio in MESES_RELATORIO}
+    meses_relatorio = _meses_relatorio()
+    primeiro_mes = get_primeiro_mes_slug()
+    meses_map = {slug: {'slug': slug, 'nome': nome, 'inicio': inicio} for slug, nome, inicio in meses_relatorio}
     meses_map[PERIODO_TRIMESTRAL[0]] = {'slug': PERIODO_TRIMESTRAL[0], 'nome': PERIODO_TRIMESTRAL[1], 'inicio': PERIODO_TRIMESTRAL[2]}
-    mes_selecionado = meses_map.get(mes_slug, meses_map['abril'])
+    mes_selecionado = meses_map.get(mes_slug, meses_map[primeiro_mes])
     semanas_mes = []
     evolucao = []
     acumulado_valor_planejado = 0.0
@@ -937,7 +971,7 @@ def _montar_relatorio_medicao(mes_slug: str, filtros: dict | None = None) -> dic
     acumulado_acoes_realizadas = 0
     total_empreendimentos_base = Empreendimento.query.filter_by(ativo=True).count()
 
-    for slug, nome, inicio in MESES_RELATORIO:
+    for slug, nome, inicio in meses_relatorio:
         for offset in range(4):
             semana = inicio + offset
             linha = _coletar_semana_medicao(semana, filtros)
@@ -1033,7 +1067,7 @@ def _montar_relatorio_medicao(mes_slug: str, filtros: dict | None = None) -> dic
     }
 
     return {
-        'meses': [meses_map[slug] for slug, _, _ in MESES_RELATORIO] + [meses_map[PERIODO_TRIMESTRAL[0]]],
+        'meses': [meses_map[slug] for slug, _, _ in meses_relatorio] + [meses_map[PERIODO_TRIMESTRAL[0]]],
         'mes_atual': mes_selecionado,
         'semanas_mes': semanas_mes,
         'resumo_mensal': resumo_mensal,
@@ -1062,7 +1096,7 @@ def _normalizar_filtros_fornecedores(args) -> dict:
 
 
 def _consultar_registros_fornecedores_semana(semana: int, filtros: dict):
-    query = FornecedorRegistro.query.filter_by(semana=semana)
+    query = FornecedorRegistro.query.filter_by(semana=semana, trimestre=get_trimestre())
     if filtros.get('empreendimento'):
         query = query.filter(func.upper(FornecedorRegistro.empreendimento) == filtros['empreendimento'])
     if filtros.get('fornecedor'):
@@ -1078,7 +1112,7 @@ def _consultar_registros_fornecedores_semana(semana: int, filtros: dict):
 
 def _coletar_semana_fornecedores(semana: int, filtros: dict | None = None) -> dict:
     filtros = filtros or {}
-    meta = MetaFornecedorSemana.query.filter_by(semana=semana).first()
+    meta = MetaFornecedorSemana.query.filter_by(semana=semana, trimestre=get_trimestre()).first()
     registros = _consultar_registros_fornecedores_semana(semana, filtros)
     valor_planejado = float(meta.valor_meta) if meta else 0.0
     acoes_planejadas = int(meta.acoes_planejadas or 0) if meta else 0
@@ -1111,7 +1145,7 @@ def _coletar_semana_fornecedores(semana: int, filtros: dict | None = None) -> di
 
 def _listar_registros_fornecedores_contexto_ia(filtros: dict | None = None, limite: int = 500) -> list[dict]:
     filtros = filtros or {}
-    query = FornecedorRegistro.query.filter(FornecedorRegistro.semana.in_(range(1, 13)))
+    query = FornecedorRegistro.query.filter(FornecedorRegistro.semana.in_(range(1, 13)), FornecedorRegistro.trimestre == get_trimestre())
     if filtros.get('empreendimento'):
         query = query.filter(func.upper(FornecedorRegistro.empreendimento) == filtros['empreendimento'])
     if filtros.get('fornecedor'):
@@ -1145,9 +1179,11 @@ def _montar_contexto_ia_fornecedores(mes_slug: str, filtros: dict | None = None)
 
 def _montar_relatorio_fornecedores(mes_slug: str, filtros: dict | None = None) -> dict:
     filtros = filtros or {}
-    meses_map = {slug: {'slug': slug, 'nome': nome, 'inicio': inicio} for slug, nome, inicio in MESES_RELATORIO}
+    meses_relatorio = _meses_relatorio()
+    primeiro_mes = get_primeiro_mes_slug()
+    meses_map = {slug: {'slug': slug, 'nome': nome, 'inicio': inicio} for slug, nome, inicio in meses_relatorio}
     meses_map[PERIODO_TRIMESTRAL[0]] = {'slug': PERIODO_TRIMESTRAL[0], 'nome': PERIODO_TRIMESTRAL[1], 'inicio': PERIODO_TRIMESTRAL[2]}
-    mes_selecionado = meses_map.get(mes_slug, meses_map['abril'])
+    mes_selecionado = meses_map.get(mes_slug, meses_map[primeiro_mes])
     semanas_mes = []
     evolucao = []
     acumulado_valor_planejado = 0.0
@@ -1156,7 +1192,7 @@ def _montar_relatorio_fornecedores(mes_slug: str, filtros: dict | None = None) -
     acumulado_acoes_realizadas = 0
     total_empreendimentos_base = Empreendimento.query.filter_by(ativo=True).count()
 
-    for slug, nome, inicio in MESES_RELATORIO:
+    for slug, nome, inicio in meses_relatorio:
         for offset in range(4):
             semana = inicio + offset
             linha = _coletar_semana_fornecedores(semana, filtros)
@@ -1245,7 +1281,7 @@ def _montar_relatorio_fornecedores(mes_slug: str, filtros: dict | None = None) -
     }
 
     return {
-        'meses': [meses_map[slug] for slug, _, _ in MESES_RELATORIO] + [meses_map[PERIODO_TRIMESTRAL[0]]],
+        'meses': [meses_map[slug] for slug, _, _ in meses_relatorio] + [meses_map[PERIODO_TRIMESTRAL[0]]],
         'mes_atual': mes_selecionado,
         'semanas_mes': semanas_mes,
         'resumo_mensal': resumo_mensal,
@@ -1403,8 +1439,8 @@ def _montar_master_painel() -> dict:
     objetivo_geral = _safe_pct(total_realizado, total_meta)
 
     agora = datetime.now().replace(microsecond=0)
-    inicio_contagem = MASTER_START_DATE
-    fim_trimestre = MASTER_END_DATE
+    inicio_contagem = _master_start_date()
+    fim_trimestre = _master_end_date()
     duracao_total = max(int((fim_trimestre - inicio_contagem).total_seconds()), 1)
     tempo_decorrido = int((agora - inicio_contagem).total_seconds())
     tempo_decorrido = min(max(tempo_decorrido, 0), duracao_total)
@@ -1490,8 +1526,10 @@ def _resolver_master_periodo_v2(view: str | None = None, period: str | None = No
     if view_normalizada not in {'semanal', 'mensal', 'trimestral'}:
         view_normalizada = 'trimestral'
 
-    semanas_map = {item[0]: item for item in MASTER_SEMANAS}
-    meses_map = {item[0]: item for item in MASTER_MESES}
+    master_semanas = _master_semanas()
+    master_meses = _master_meses()
+    semanas_map = {item[0]: item for item in master_semanas}
+    meses_map = {item[0]: item for item in master_meses}
     view_options = [
         {'slug': 'semanal', 'label': 'Semanas'},
         {'slug': 'mensal', 'label': 'Meses'},
@@ -1499,7 +1537,7 @@ def _resolver_master_periodo_v2(view: str | None = None, period: str | None = No
     ]
 
     if view_normalizada == 'semanal':
-        selecionado = semanas_map.get((period or 's1').strip().lower(), MASTER_SEMANAS[0])
+        selecionado = semanas_map.get((period or 's1').strip().lower(), master_semanas[0])
         return {
             'view': 'semanal',
             'period': selecionado[0],
@@ -1508,11 +1546,11 @@ def _resolver_master_periodo_v2(view: str | None = None, period: str | None = No
             'started_at': selecionado[3],
             'deadline_at': selecionado[4],
             'view_options': view_options,
-            'period_options': [{'slug': item[0], 'label': item[1]} for item in MASTER_SEMANAS],
+            'period_options': [{'slug': item[0], 'label': item[1]} for item in master_semanas],
         }
 
     if view_normalizada == 'mensal':
-        selecionado = meses_map.get((period or 'abril').strip().lower(), MASTER_MESES[0])
+        selecionado = meses_map.get((period or get_primeiro_mes_slug()).strip().lower(), master_meses[0])
         return {
             'view': 'mensal',
             'period': selecionado[0],
@@ -1521,7 +1559,7 @@ def _resolver_master_periodo_v2(view: str | None = None, period: str | None = No
             'started_at': selecionado[3],
             'deadline_at': selecionado[4],
             'view_options': view_options,
-            'period_options': [{'slug': item[0], 'label': item[1]} for item in MASTER_MESES],
+            'period_options': [{'slug': item[0], 'label': item[1]} for item in master_meses],
         }
 
     return {
@@ -1529,18 +1567,18 @@ def _resolver_master_periodo_v2(view: str | None = None, period: str | None = No
         'period': 'resumo_trimestral',
         'label': 'Resumo Trimestral',
         'semanas': list(range(1, 13)),
-        'started_at': MASTER_START_DATE,
-        'deadline_at': MASTER_END_DATE,
+        'started_at': _master_start_date(),
+        'deadline_at': _master_end_date(),
         'view_options': view_options,
-        'period_options': [{'slug': 'resumo_trimestral', 'label': 'Abril a Junho'}],
+        'period_options': [{'slug': 'resumo_trimestral', 'label': _periodo_trimestral_label()}],
     }
 
 
 def _master_mes_e_semana_local_v2(semana_global: int) -> tuple[str, int]:
-    for slug, _nome, _numero, semana_inicio in MESES_VENDAS:
+    for slug, _nome, _numero, semana_inicio in _meses_vendas():
         if semana_inicio <= semana_global <= semana_inicio + 3:
             return slug, (semana_global - semana_inicio) + 1
-    return 'abril', 1
+    return get_primeiro_mes_slug(), 1
 
 
 def _resolver_periodo_painel(view: str | None, period: str | None, meses_base: list[tuple[str, str, int, int]]) -> dict:
@@ -1586,7 +1624,7 @@ def _resolver_periodo_painel(view: str | None, period: str | None, meses_base: l
         }
 
     if view_normalizada == 'mensal':
-        selecionado = meses_map.get((period or 'abril').strip().lower(), next(iter(meses_map.values())))
+        selecionado = meses_map.get((period or get_primeiro_mes_slug()).strip().lower(), next(iter(meses_map.values())))
         return {
             'view': 'mensal',
             'period': selecionado['slug'],
@@ -1611,8 +1649,9 @@ def _resolver_periodo_painel(view: str | None, period: str | None, meses_base: l
 
 
 def _sumario_valor_por_semanas_v2(modelo_meta, modelo_registro, campo_meta: str, campo_valor: str, semanas: list[int], filtro_valor=None) -> tuple[float, float]:
-    metas = modelo_meta.query.filter(modelo_meta.semana.in_(semanas)).all()
-    registros = modelo_registro.query.filter(modelo_registro.semana.in_(semanas)).all()
+    tri = get_trimestre()
+    metas = modelo_meta.query.filter(modelo_meta.semana.in_(semanas), modelo_meta.trimestre == tri).all()
+    registros = modelo_registro.query.filter(modelo_registro.semana.in_(semanas), modelo_registro.trimestre == tri).all()
     meta = sum(float(getattr(item, campo_meta, 0) or 0) for item in metas)
     realizado = 0.0
     for item in registros:
@@ -1623,7 +1662,8 @@ def _sumario_valor_por_semanas_v2(modelo_meta, modelo_registro, campo_meta: str,
 
 
 def _sumario_acoes_por_semanas_v2(modelo_meta, scope: str, semanas: list[int]) -> dict:
-    metas = modelo_meta.query.filter(modelo_meta.semana.in_(semanas)).all()
+    tri = get_trimestre()
+    metas = modelo_meta.query.filter(modelo_meta.semana.in_(semanas), modelo_meta.trimestre == tri).all()
     meta = sum(int(getattr(item, 'acoes_planejadas', 0) or 0) for item in metas)
     realizado = contar_acoes(scope, semanas)
     return {
@@ -1698,8 +1738,9 @@ def _resumir_investidores_master_v2(periodo: dict) -> dict:
 
 
 def _resumir_inadimplencia_master_v2(semanas: list[int]) -> dict:
-    metas = MetaSemana.query.filter(MetaSemana.semana.in_(semanas)).all()
-    registros = Relacionamento.query.filter(Relacionamento.semana.in_(semanas)).all()
+    tri = get_trimestre()
+    metas = MetaSemana.query.filter(MetaSemana.semana.in_(semanas), MetaSemana.trimestre == tri).all()
+    registros = Relacionamento.query.filter(Relacionamento.semana.in_(semanas), Relacionamento.trimestre == tri).all()
     valor_meta = sum(float(item.valor_meta or 0) for item in metas)
     acoes_planejadas = sum(int(item.acoes_planejadas or 0) for item in metas)
     valor_realizado = sum(
@@ -1915,7 +1956,7 @@ def _garantir_permissao_meta(scope: str):
 def _meta_esta_liberada(scope: str, semana: int) -> bool:
     return (
         MetaLiberacaoSemana.query
-        .filter_by(scope=scope, semana=semana, liberada=True)
+        .filter_by(scope=scope, semana=semana, trimestre=get_trimestre(), liberada=True)
         .first()
         is not None
     )
@@ -1933,7 +1974,8 @@ def _pode_editar_meta_existente(scope: str) -> bool:
 
 def _apenas_admin_pode_editar_primeira_semana(semana: int):
     if int(semana or 0) == 1 and not current_user.can_manage_admin():
-        return jsonify({'erro': 'A semana 1 de abril esta travada para metas. Apenas o ADMIN pode alterar este periodo.'}), 403
+        primeiro_mes = get_meses()[0][1]
+        return jsonify({'erro': f'A semana 1 de {primeiro_mes.lower()} esta travada para metas. Apenas o ADMIN pode alterar este periodo.'}), 403
     return None
 
 
@@ -1962,7 +2004,7 @@ def _mapa_metas_liberadas() -> dict[str, set[int]]:
     mapa: dict[str, set[int]] = {}
     liberacoes = (
         MetaLiberacaoSemana.query
-        .filter_by(liberada=True)
+        .filter_by(liberada=True, trimestre=get_trimestre())
         .order_by(MetaLiberacaoSemana.scope.asc(), MetaLiberacaoSemana.semana.asc())
         .all()
     )
@@ -1972,19 +2014,21 @@ def _mapa_metas_liberadas() -> dict[str, set[int]]:
 
 
 def _contexto_dashboard_metas(show_admin_cards: bool, show_meta_cards: bool) -> dict:
+    tri = get_trimestre()
     return {
         'usuarios': User.query.order_by(User.nome).all() if show_admin_cards and current_user.can_manage_admin() else [],
         'empreendimentos': Empreendimento.query.order_by(Empreendimento.nome).all() if show_admin_cards and current_user.can_manage_admin() else [],
-        'metas': MetaSemana.query.order_by(MetaSemana.semana).all(),
-        'metas_vendas': {meta.semana: meta for meta in MetaVendaSemana.query.order_by(MetaVendaSemana.semana).all()},
-        'metas_investidores': {meta.semana: meta for meta in MetaInvestidorSemana.query.order_by(MetaInvestidorSemana.semana).all()},
-        'metas_financeiro': {meta.semana: meta for meta in MetaFinanceiroSemana.query.order_by(MetaFinanceiroSemana.semana).all()},
-        'metas_fornecedores': {meta.semana: meta for meta in MetaFornecedorSemana.query.order_by(MetaFornecedorSemana.semana).all()},
-        'metas_giro': {meta.semana: meta for meta in MetaGiroSemana.query.order_by(MetaGiroSemana.semana).all()},
-        'metas_medicao': {meta.semana: meta for meta in MetaMedicaoSemana.query.order_by(MetaMedicaoSemana.semana).all()},
+        'metas': MetaSemana.query.filter_by(trimestre=tri).order_by(MetaSemana.semana).all(),
+        'metas_vendas': {meta.semana: meta for meta in MetaVendaSemana.query.filter_by(trimestre=tri).order_by(MetaVendaSemana.semana).all()},
+        'metas_investidores': {meta.semana: meta for meta in MetaInvestidorSemana.query.filter_by(trimestre=tri).order_by(MetaInvestidorSemana.semana).all()},
+        'metas_financeiro': {meta.semana: meta for meta in MetaFinanceiroSemana.query.filter_by(trimestre=tri).order_by(MetaFinanceiroSemana.semana).all()},
+        'metas_fornecedores': {meta.semana: meta for meta in MetaFornecedorSemana.query.filter_by(trimestre=tri).order_by(MetaFornecedorSemana.semana).all()},
+        'metas_giro': {meta.semana: meta for meta in MetaGiroSemana.query.filter_by(trimestre=tri).order_by(MetaGiroSemana.semana).all()},
+        'metas_medicao': {meta.semana: meta for meta in MetaMedicaoSemana.query.filter_by(trimestre=tri).order_by(MetaMedicaoSemana.semana).all()},
         'metas_base_total': _mapa_meta_base_total(),
         'metas_liberadas': _mapa_metas_liberadas(),
-        'meses_vendas': MESES_VENDAS,
+        'meses_vendas': _meses_vendas(),
+        'meses_relatorio': _meses_relatorio(),
         'periodo_investidores': PERIODO_INVESTIDORES,
         'tipos': TIPOS_VALIDOS,
         'is_admin_dashboard': current_user.can_manage_admin(),
@@ -2017,7 +2061,7 @@ def metas_dashboard():
 @requer_painel('relacionamento')
 def relacionamento_painel():
     filtros = _normalizar_filtros(request.args)
-    dados = _montar_relatorio_relacionamento(request.args.get('mes', 'abril'), filtros)
+    dados = _montar_relatorio_relacionamento(request.args.get('mes', get_primeiro_mes_slug()), filtros)
     dados['analytics_ai_enabled'] = analytics_ai_enabled() and analytics_ai_available()
     return render_template('admin/relacionamento_painel.html', **dados)
 
@@ -2026,7 +2070,7 @@ def relacionamento_painel():
 @login_required
 @requer_painel('vendas')
 def vendas_painel():
-    periodo = _resolver_periodo_painel(request.args.get('view'), request.args.get('period'), MESES_VENDAS)
+    periodo = _resolver_periodo_painel(request.args.get('view'), request.args.get('period'), _meses_vendas())
     dados = montar_contexto_template_vendas(periodo['mes_slug'], incluir_resumo=True, semana_local=periodo['semana_local'])
     dados['painel_admin_vendas'] = True
     dados['analytics_view'] = periodo['view']
@@ -2042,7 +2086,7 @@ def vendas_painel():
 @login_required
 @requer_painel('investidores')
 def investidores_painel():
-    periodo = _resolver_periodo_painel(request.args.get('view'), request.args.get('period'), MESES_INVESTIDORES)
+    periodo = _resolver_periodo_painel(request.args.get('view'), request.args.get('period'), _meses_vendas())
     dados = montar_contexto_template_investidores(periodo['mes_slug'], incluir_resumo=True, semana_local=periodo['semana_local'])
     dados['painel_admin_investidores'] = True
     dados['analytics_view'] = periodo['view']
@@ -2059,7 +2103,7 @@ def investidores_painel():
 @requer_painel('financeiro')
 def financeiro_painel():
     filtros = _normalizar_filtros_financeiro(request.args)
-    dados = _montar_relatorio_financeiro(request.args.get('mes', 'abril'), filtros)
+    dados = _montar_relatorio_financeiro(request.args.get('mes', get_primeiro_mes_slug()), filtros)
     dados['analytics_ai_enabled'] = analytics_ai_enabled() and analytics_ai_available()
     return render_template('admin/financeiro_painel.html', **dados)
 
@@ -2069,7 +2113,7 @@ def financeiro_painel():
 @requer_painel('giro')
 def giro_painel():
     filtros = _normalizar_filtros_giro(request.args)
-    dados = _montar_relatorio_giro(request.args.get('mes', 'abril'), filtros)
+    dados = _montar_relatorio_giro(request.args.get('mes', get_primeiro_mes_slug()), filtros)
     dados['analytics_ai_enabled'] = analytics_ai_enabled() and analytics_ai_available()
     return render_template('admin/giro_painel.html', **dados)
 
@@ -2079,7 +2123,7 @@ def giro_painel():
 @requer_painel('fornecedores')
 def fornecedores_painel():
     filtros = _normalizar_filtros_fornecedores(request.args)
-    dados = _montar_relatorio_fornecedores(request.args.get('mes', 'abril'), filtros)
+    dados = _montar_relatorio_fornecedores(request.args.get('mes', get_primeiro_mes_slug()), filtros)
     dados['analytics_ai_enabled'] = analytics_ai_enabled() and analytics_ai_available()
     return render_template('admin/fornecedores_painel.html', **dados)
 
@@ -2089,7 +2133,7 @@ def fornecedores_painel():
 @requer_painel('medicao')
 def medicao_painel():
     filtros = _normalizar_filtros_medicao(request.args)
-    dados = _montar_relatorio_medicao(request.args.get('mes', 'abril'), filtros)
+    dados = _montar_relatorio_medicao(request.args.get('mes', get_primeiro_mes_slug()), filtros)
     dados['analytics_ai_enabled'] = analytics_ai_enabled() and analytics_ai_available()
     return render_template('admin/medicao_painel.html', **dados)
 
@@ -2388,9 +2432,10 @@ def disponibilizar_meta():
     if semana not in range(1, 13):
         return jsonify({'erro': 'Semana invalida.'}), 400
 
-    liberacao = MetaLiberacaoSemana.query.filter_by(scope=scope, semana=semana).first()
+    tri = get_trimestre()
+    liberacao = MetaLiberacaoSemana.query.filter_by(scope=scope, semana=semana, trimestre=tri).first()
     if not liberacao:
-        liberacao = MetaLiberacaoSemana(scope=scope, semana=semana)
+        liberacao = MetaLiberacaoSemana(scope=scope, semana=semana, trimestre=tri)
         db.session.add(liberacao)
 
     liberacao.liberada = True
@@ -2442,7 +2487,8 @@ def salvar_meta():
     except (ValueError, TypeError):
         return jsonify({'erro': 'Valores inválidos.'}), 400
 
-    meta = MetaSemana.query.filter_by(semana=semana).first()
+    tri = get_trimestre()
+    meta = MetaSemana.query.filter_by(semana=semana, trimestre=tri).first()
     if meta:
         if _meta_relacionamento_preenchida(meta) and not _pode_editar_meta_existente('relacionamento'):
             return jsonify({'erro': 'Meta ja preenchida e bloqueada para edicao.'}), 403
@@ -2451,7 +2497,7 @@ def salvar_meta():
         meta.acoes_planejadas = acoes
         meta.valor_meta = valor
     else:
-        meta = MetaSemana(semana=semana, acoes_planejadas=acoes, valor_meta=valor)
+        meta = MetaSemana(semana=semana, trimestre=tri, acoes_planejadas=acoes, valor_meta=valor)
         db.session.add(meta)
         _registrar_auditoria_meta('relacionamento', 'acoes_planejadas', 0, acoes, f's{semana}')
         _registrar_auditoria_meta('relacionamento', 'valor_meta', 0, valor, f's{semana}')
@@ -2479,7 +2525,8 @@ def salvar_meta_investidor():
     if not _garantir_meta_liberada('investidores', semana):
         return jsonify({'erro': 'Meta ainda nao foi disponibilizada pelo administrador.'}), 403
 
-    meta = MetaInvestidorSemana.query.filter_by(semana=semana).first()
+    tri = get_trimestre()
+    meta = MetaInvestidorSemana.query.filter_by(semana=semana, trimestre=tri).first()
     if meta:
         if _meta_valor_preenchida(meta) and not _pode_editar_meta_existente('investidores'):
             return jsonify({'erro': 'Meta ja preenchida e bloqueada para edicao.'}), 403
@@ -2488,7 +2535,7 @@ def salvar_meta_investidor():
         meta.valor_meta = max(valor, 0)
         meta.acoes_planejadas = max(acoes, 0)
     else:
-        meta = MetaInvestidorSemana(semana=semana, valor_meta=max(valor, 0), acoes_planejadas=max(acoes, 0))
+        meta = MetaInvestidorSemana(semana=semana, trimestre=tri, valor_meta=max(valor, 0), acoes_planejadas=max(acoes, 0))
         db.session.add(meta)
         _registrar_auditoria_meta('investidores', 'valor_meta', 0, max(valor, 0), f's{semana}')
         _registrar_auditoria_meta('investidores', 'acoes_planejadas', 0, max(acoes, 0), f's{semana}')
@@ -2516,7 +2563,8 @@ def salvar_meta_financeiro():
     if not _garantir_meta_liberada('financeiro', semana):
         return jsonify({'erro': 'Meta ainda nao foi disponibilizada pelo administrador.'}), 403
 
-    meta = MetaFinanceiroSemana.query.filter_by(semana=semana).first()
+    tri = get_trimestre()
+    meta = MetaFinanceiroSemana.query.filter_by(semana=semana, trimestre=tri).first()
     if meta:
         if _meta_valor_preenchida(meta) and not _pode_editar_meta_existente('financeiro'):
             return jsonify({'erro': 'Meta ja preenchida e bloqueada para edicao.'}), 403
@@ -2525,7 +2573,7 @@ def salvar_meta_financeiro():
         meta.valor_meta = max(valor, 0)
         meta.acoes_planejadas = max(acoes, 0)
     else:
-        meta = MetaFinanceiroSemana(semana=semana, valor_meta=max(valor, 0), acoes_planejadas=max(acoes, 0))
+        meta = MetaFinanceiroSemana(semana=semana, trimestre=tri, valor_meta=max(valor, 0), acoes_planejadas=max(acoes, 0))
         db.session.add(meta)
         _registrar_auditoria_meta('financeiro', 'valor_meta', 0, max(valor, 0), f's{semana}')
         _registrar_auditoria_meta('financeiro', 'acoes_planejadas', 0, max(acoes, 0), f's{semana}')
@@ -2553,7 +2601,8 @@ def salvar_meta_giro():
     if not _garantir_meta_liberada('giro', semana):
         return jsonify({'erro': 'Meta ainda nao foi disponibilizada pelo administrador.'}), 403
 
-    meta = MetaGiroSemana.query.filter_by(semana=semana).first()
+    tri = get_trimestre()
+    meta = MetaGiroSemana.query.filter_by(semana=semana, trimestre=tri).first()
     if meta:
         if _meta_valor_preenchida(meta) and not _pode_editar_meta_existente('giro'):
             return jsonify({'erro': 'Meta ja preenchida e bloqueada para edicao.'}), 403
@@ -2562,7 +2611,7 @@ def salvar_meta_giro():
         meta.valor_meta = max(valor, 0)
         meta.acoes_planejadas = max(acoes, 0)
     else:
-        meta = MetaGiroSemana(semana=semana, valor_meta=max(valor, 0), acoes_planejadas=max(acoes, 0))
+        meta = MetaGiroSemana(semana=semana, trimestre=tri, valor_meta=max(valor, 0), acoes_planejadas=max(acoes, 0))
         db.session.add(meta)
         _registrar_auditoria_meta('giro', 'valor_meta', 0, max(valor, 0), f's{semana}')
         _registrar_auditoria_meta('giro', 'acoes_planejadas', 0, max(acoes, 0), f's{semana}')
@@ -2590,7 +2639,8 @@ def salvar_meta_fornecedor():
     if not _garantir_meta_liberada('fornecedores', semana):
         return jsonify({'erro': 'Meta ainda nao foi disponibilizada pelo administrador.'}), 403
 
-    meta = MetaFornecedorSemana.query.filter_by(semana=semana).first()
+    tri = get_trimestre()
+    meta = MetaFornecedorSemana.query.filter_by(semana=semana, trimestre=tri).first()
     if meta:
         if _meta_valor_preenchida(meta) and not _pode_editar_meta_existente('fornecedores'):
             return jsonify({'erro': 'Meta ja preenchida e bloqueada para edicao.'}), 403
@@ -2599,7 +2649,7 @@ def salvar_meta_fornecedor():
         meta.valor_meta = max(valor, 0)
         meta.acoes_planejadas = max(acoes, 0)
     else:
-        meta = MetaFornecedorSemana(semana=semana, valor_meta=max(valor, 0), acoes_planejadas=max(acoes, 0))
+        meta = MetaFornecedorSemana(semana=semana, trimestre=tri, valor_meta=max(valor, 0), acoes_planejadas=max(acoes, 0))
         db.session.add(meta)
         _registrar_auditoria_meta('fornecedores', 'valor_meta', 0, max(valor, 0), f's{semana}')
         _registrar_auditoria_meta('fornecedores', 'acoes_planejadas', 0, max(acoes, 0), f's{semana}')
@@ -2627,7 +2677,8 @@ def salvar_meta_medicao():
     if not _garantir_meta_liberada('medicao', semana):
         return jsonify({'erro': 'Meta ainda nao foi disponibilizada pelo administrador.'}), 403
 
-    meta = MetaMedicaoSemana.query.filter_by(semana=semana).first()
+    tri = get_trimestre()
+    meta = MetaMedicaoSemana.query.filter_by(semana=semana, trimestre=tri).first()
     if meta:
         if _meta_valor_preenchida(meta) and not _pode_editar_meta_existente('medicao'):
             return jsonify({'erro': 'Meta ja preenchida e bloqueada para edicao.'}), 403
@@ -2636,7 +2687,7 @@ def salvar_meta_medicao():
         meta.valor_meta = max(valor, 0)
         meta.acoes_planejadas = max(acoes, 0)
     else:
-        meta = MetaMedicaoSemana(semana=semana, valor_meta=max(valor, 0), acoes_planejadas=max(acoes, 0))
+        meta = MetaMedicaoSemana(semana=semana, trimestre=tri, valor_meta=max(valor, 0), acoes_planejadas=max(acoes, 0))
         db.session.add(meta)
         _registrar_auditoria_meta('medicao', 'valor_meta', 0, max(valor, 0), f's{semana}')
         _registrar_auditoria_meta('medicao', 'acoes_planejadas', 0, max(acoes, 0), f's{semana}')
@@ -2664,7 +2715,8 @@ def salvar_meta_venda():
         return bloqueio_semana
     if not _garantir_meta_liberada('vendas', semana):
         return jsonify({'erro': 'Meta ainda nao foi disponibilizada pelo administrador.'}), 403
-    meta = MetaVendaSemana.query.filter_by(semana=semana).first()
+    tri = get_trimestre()
+    meta = MetaVendaSemana.query.filter_by(semana=semana, trimestre=tri).first()
     if meta:
         if _meta_venda_preenchida(meta) and not _pode_editar_meta_existente('vendas'):
             return jsonify({'erro': 'Meta ja preenchida e bloqueada para edicao.'}), 403
@@ -2673,7 +2725,7 @@ def salvar_meta_venda():
         meta.quantidade_meta = max(quantidade, 0)
         meta.acoes_planejadas = max(acoes, 0)
     else:
-        meta = MetaVendaSemana(semana=semana, quantidade_meta=max(quantidade, 0), acoes_planejadas=max(acoes, 0))
+        meta = MetaVendaSemana(semana=semana, trimestre=tri, quantidade_meta=max(quantidade, 0), acoes_planejadas=max(acoes, 0))
         db.session.add(meta)
         _registrar_auditoria_meta('vendas', 'quantidade_meta', 0, max(quantidade, 0), f's{semana}')
         _registrar_auditoria_meta('vendas', 'acoes_planejadas', 0, max(acoes, 0), f's{semana}')

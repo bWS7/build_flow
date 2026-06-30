@@ -11,6 +11,7 @@ from app.models.meta_configuracao import MetaConfiguracaoIndicador
 from sqlalchemy import func
 from app.utils.progress import calcular_percentual_meta, calcular_percentual_planejado_realizado
 from app.utils.quarter import semana_editavel, semana_padrao_preenchimento
+from app.utils.trimestre_context import get_trimestre
 
 relacionamento_bp = Blueprint('relacionamento', __name__)
 
@@ -46,12 +47,13 @@ def requer_relacionamento_ou_admin(f):
 # ── Helpers ────────────────────────────────────────────────────────────────────
 
 def _calcular_indicadores(semana: int, registros: list[Relacionamento] | None = None) -> dict:
-    meta = MetaSemana.query.filter_by(semana=semana).first()
+    tri = get_trimestre()
+    meta = MetaSemana.query.filter_by(semana=semana, trimestre=tri).first()
     acoes_planejadas = meta.acoes_planejadas if meta else 0
     valor_meta = float(meta.valor_meta) if meta else 0.0
-    meta_base = MetaConfiguracaoIndicador.query.filter_by(scope='relacionamento').first()
+    meta_base = MetaConfiguracaoIndicador.query.filter_by(scope='relacionamento', trimestre=tri).first()
 
-    todos = registros if registros is not None else Relacionamento.query.filter_by(semana=semana).all()
+    todos = registros if registros is not None else Relacionamento.query.filter_by(semana=semana, trimestre=tri).all()
     acoes_realizadas = contar_acoes('relacionamento', semana)
     registros_sim = [r for r in todos if _situacao_conta_como_sim(r.situacao)]
     soma_valores = sum(float(r.valor) for r in registros_sim if r.valor > 0)
@@ -80,7 +82,8 @@ def _calcular_indicadores(semana: int, registros: list[Relacionamento] | None = 
 
 def _broadcast_update(semana: int):
     """Emite atualização via WebSocket para todos os clientes."""
-    registros = Relacionamento.query.filter_by(semana=semana)\
+    tri = get_trimestre()
+    registros = Relacionamento.query.filter_by(semana=semana, trimestre=tri)\
         .order_by(Relacionamento.criado_em.desc()).all()
     indicadores = _calcular_indicadores(semana, registros)
     socketio.emit('dados_atualizados', {
@@ -123,7 +126,8 @@ def _parse_semana(valor) -> int | None:
 def index():
     semana = _parse_semana(request.args.get('semana', semana_padrao_preenchimento())) or semana_padrao_preenchimento()
     empreendimentos = Empreendimento.query.filter_by(ativo=True).order_by(Empreendimento.nome).all()
-    registros = Relacionamento.query.filter_by(semana=semana)\
+    tri = get_trimestre()
+    registros = Relacionamento.query.filter_by(semana=semana, trimestre=tri)\
         .order_by(Relacionamento.criado_em.desc()).all()
     indicadores = _calcular_indicadores(semana, registros)
 
@@ -174,6 +178,7 @@ def cadastrar():
     if bloqueio:
         return bloqueio
 
+    tri = get_trimestre()
     novo = Relacionamento(
         empreendimento=dados['empreendimento'].upper().strip(),
         cliente=dados['cliente'].upper().strip(),
@@ -185,6 +190,7 @@ def cadastrar():
         valor=valor,
         responsavel=current_user.nome.upper(),
         semana=semana,
+        trimestre=tri,
     )
     db.session.add(novo)
     db.session.flush()
@@ -213,6 +219,7 @@ def bulk_cadastrar():
 
     registros_criados = []
     semanas_processadas = set()
+    tri = get_trimestre()
 
     for indice, linha in enumerate(linhas, start=1):
         if not isinstance(linha, dict):
@@ -252,6 +259,7 @@ def bulk_cadastrar():
             valor=valor,
             responsavel=current_user.nome.upper(),
             semana=semana,
+            trimestre=tri,
         )
         db.session.add(novo)
         registros_criados.append(novo)
@@ -338,9 +346,11 @@ def registrar_acao():
     reg = db.session.get(Relacionamento, int(reg_id)) if reg_id else None
     if reg and not _pode_gerenciar_registro(reg):
         return jsonify({'erro': 'Voce so pode editar registros criados por voce.'}), 403
+    tri = get_trimestre()
     nova_acao = IndicadorAcao(
         scope='relacionamento',
         semana=semana,
+        trimestre=tri,
         descricao=acao_realizada,
         responsavel=current_user.nome.upper(),
         registro_id=reg.id if reg else None,
@@ -359,7 +369,8 @@ def listar_registros():
     semana = _parse_semana(request.args.get('semana', semana_padrao_preenchimento()))
     if semana is None:
         return jsonify({'erro': 'Semana inválida.'}), 400
-    registros = Relacionamento.query.filter_by(semana=semana)\
+    tri = get_trimestre()
+    registros = Relacionamento.query.filter_by(semana=semana, trimestre=tri)\
         .order_by(Relacionamento.criado_em.desc()).all()
     indicadores = _calcular_indicadores(semana)
     return jsonify({
@@ -422,7 +433,8 @@ def deletar_registros_semana():
     if bloqueio:
         return bloqueio
 
-    registros = Relacionamento.query.filter_by(semana=semana).all()
+    tri = get_trimestre()
+    registros = Relacionamento.query.filter_by(semana=semana, trimestre=tri).all()
     registros_permitidos = [reg for reg in registros if _pode_gerenciar_registro(reg)]
     if registros and len(registros_permitidos) != len(registros) and not current_user.can_manage_admin():
         return jsonify({'erro': 'Voce so pode excluir em massa registros criados por voce.'}), 403

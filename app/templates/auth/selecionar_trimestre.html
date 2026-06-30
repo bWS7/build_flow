@@ -1,0 +1,132 @@
+{% extends "base.html" %}
+{% block title %}Selecionar Trimestre{% endblock %}
+
+{% block body %}
+<div class="login-page">
+  <div class="login-brand">
+    <img src="{{ url_for('static', filename='images/logo2.png') }}" alt="Build Flow" class="login-brand__logo" />
+  </div>
+
+  <div class="login-card" style="max-width: 600px; width: 90%;">
+    <div class="login-card__header" style="margin-bottom: 1.5rem; text-align: center;">
+      <h1 class="login-card__title" style="font-size: 1.8rem; font-weight: 700; color: var(--color-text, #1e293b);">Selecione o Período</h1>
+      <p style="color: var(--color-text-secondary, #64748b); margin-top: 0.5rem; font-size: 0.95rem;">
+        Olá, <strong>{{ current_user.nome }}</strong>. Por favor, escolha o trimestre em que deseja trabalhar.
+      </p>
+    </div>
+
+    <form method="POST" id="select-trimestre-form" class="login-form">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+      <input type="hidden" name="trimestre" id="selected-trimestre" value="" />
+
+      <div class="quarter-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; margin-bottom: 1.5rem;">
+        <!-- Q1 Card -->
+        <button type="button" onclick="selectQuarter('q1')" class="quarter-card" style="
+          background: rgba(255, 255, 255, 0.7);
+          border: 2px solid #e2e8f0;
+          border-radius: 12px;
+          padding: 1.5rem;
+          text-align: left;
+          cursor: pointer;
+          transition: all 0.3s ease;
+          display: flex;
+          flex-direction: column;
+          align-items: flex-start;
+          width: 100%;
+          outline: none;
+        ">
+          <div class="quarter-icon" style="
+            background: rgba(59, 130, 246, 0.1);
+            color: #3b82f6;
+            width: 40px;
+            height: 40px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 1rem;
+            font-weight: 700;
+          ">Q1</div>
+          <h3 style="font-size: 1.1rem; font-weight: 600; margin: 0; color: #1e293b;">1º Trimestre</h3>
+          <p style="font-size: 0.85rem; color: #64748b; margin: 0.25rem 0 0.75rem 0;">Abril a Junho</p>
+          <span style="
+            font-size: 0.75rem;
+            background: #f1f5f9;
+            color: #475569;
+            padding: 0.25rem 0.5rem;
+            border-radius: 4px;
+            font-weight: 500;
+          ">Dados Consolidados</span>
+        </button>
+
+        <!-- Q2 Card -->
+        <button type="button" onclick="selectQuarter('q2')" class="quarter-card" style="
+          background: rgba(255, 255, 255, 0.7);
+          border: 2px solid #e2e8f0;
+          border-radius: 12px;
+          padding: 1.5rem;
+          text-align: left;
+          cursor: pointer;
+          transition: all 0.3s ease;
+          display: flex;
+          flex-direction: column;
+          align-items: flex-start;
+          width: 100%;
+          outline: none;
+        ">
+          <div class="quarter-icon" style="
+            background: rgba(16, 185, 129, 0.1);
+            color: #10b981;
+            width: 40px;
+            height: 40px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 1rem;
+            font-weight: 700;
+          ">Q2</div>
+          <h3 style="font-size: 1.1rem; font-weight: 600; margin: 0; color: #1e293b;">2º Trimestre</h3>
+          <p style="font-size: 0.85rem; color: #64748b; margin: 0.25rem 0 0.75rem 0;">Julho a Setembro</p>
+          <span style="
+            font-size: 0.75rem;
+            background: #ecfdf5;
+            color: #047857;
+            padding: 0.25rem 0.5rem;
+            border-radius: 4px;
+            font-weight: 500;
+          ">Trimestre Atual / Vazio</span>
+        </button>
+      </div>
+    </form>
+  </div>
+
+  <div class="login-page__bg">
+    <div class="login-page__bg-shape login-page__bg-shape--1"></div>
+    <div class="login-page__bg-shape login-page__bg-shape--2"></div>
+  </div>
+</div>
+
+<style>
+.quarter-card:hover {
+  transform: translateY(-4px);
+  border-color: #3b82f6 !important;
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.05), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+}
+.quarter-card:active {
+  transform: translateY(0);
+}
+@media (max-width: 480px) {
+  .quarter-grid {
+    grid-template-columns: 1fr !important;
+  }
+}
+</style>
+
+<script>
+function selectQuarter(q) {
+  document.getElementById('selected-trimestre').value = q;
+  document.getElementById('select-trimestre-form').submit();
+}
+</script>
+{% endblock %}

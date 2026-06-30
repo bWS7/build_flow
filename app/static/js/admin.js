@@ -5,13 +5,20 @@
 'use strict';
 
 const META_LOCK_PREFIX = 'meta-locked-s';
-const MESES = ['abril', 'maio', 'junho'];
-const MESES_FINANCEIRO = ['financeiro-abril', 'financeiro-maio', 'financeiro-junho'];
-const MESES_FORNECEDORES = ['fornecedores-abril', 'fornecedores-maio', 'fornecedores-junho'];
-const MESES_GIRO = ['giro-abril', 'giro-maio', 'giro-junho'];
-const MESES_MEDICAO = ['medicao-abril', 'medicao-maio', 'medicao-junho'];
-const MESES_VENDAS = ['vendas-abril', 'vendas-maio', 'vendas-junho'];
-const MESES_INVESTIDORES = ['investidores-abril', 'investidores-maio', 'investidores-junho'];
+function getMesIds(prefix = '') {
+  const ids = Array.from(document.querySelectorAll('.mes-body[id^="body-"]'))
+    .map((el) => el.id.replace('body-', ''));
+  if (!prefix) return ids.filter((id) => !id.includes('-'));
+  return ids.filter((id) => id.startsWith(`${prefix}-`));
+}
+
+const MESES = getMesIds();
+const MESES_FINANCEIRO = getMesIds('financeiro');
+const MESES_FORNECEDORES = getMesIds('fornecedores');
+const MESES_GIRO = getMesIds('giro');
+const MESES_MEDICAO = getMesIds('medicao');
+const MESES_VENDAS = getMesIds('vendas');
+const MESES_INVESTIDORES = getMesIds('investidores');
 const ADMIN_COLLAPSIBLES = ['metas-varejo', 'metas-investidores', 'metas-financeiro', 'metas-fornecedores', 'metas-giro', 'metas-medicao', 'metas-relacionamento'];
 const CAN_EDIT_LOCKED_METAS = window.CAN_EDIT_LOCKED_METAS === true;
 

@@ -164,7 +164,7 @@
           <div class="master-toolbar__group">
             <a href="{{ url_for('admin.master_painel', view='trimestral') }}"
                class="analytics-month {% if master_view == 'trimestral' %}analytics-month--active{% endif %}">Trimestre</a>
-            <a href="{{ url_for('admin.master_painel', view='mensal', period=(master_period if master_view == 'mensal' else 'abril')) }}"
+            <a href="{{ url_for('admin.master_painel', view='mensal', period=(master_period if master_view == 'mensal' else meses_trimestre[0].slug)) }}"
                class="analytics-month {% if master_view == 'mensal' %}analytics-month--active{% endif %}">Meses</a>
             <a href="{{ url_for('admin.master_painel', view='semanal', period=(master_period if master_view == 'semanal' else 's1')) }}"
                class="analytics-month {% if master_view == 'semanal' %}analytics-month--active{% endif %}">Semanas</a>
@@ -179,7 +179,7 @@
           {% elif master_view == 'semanal' %}
           <div class="master-week-grid">
             <div class="master-week-card {% if master_period in ['s1', 's2', 's3', 's4'] %}master-week-card--active{% endif %}">
-              <div class="master-week-card__title"><span>Abril</span></div>
+              <div class="master-week-card__title"><span>{{ meses_trimestre[0].nome }}</span></div>
               <div class="master-week-card__buttons">
                 <a href="{{ url_for('admin.master_painel', view='semanal', period='s1') }}" class="master-week-btn {% if master_period == 's1' %}master-week-btn--active{% endif %}">S1</a>
                 <a href="{{ url_for('admin.master_painel', view='semanal', period='s2') }}" class="master-week-btn {% if master_period == 's2' %}master-week-btn--active{% endif %}">S2</a>
@@ -188,7 +188,7 @@
               </div>
             </div>
             <div class="master-week-card {% if master_period in ['s5', 's6', 's7', 's8'] %}master-week-card--active{% endif %}">
-              <div class="master-week-card__title"><span>Maio</span></div>
+              <div class="master-week-card__title"><span>{{ meses_trimestre[1].nome }}</span></div>
               <div class="master-week-card__buttons">
                 <a href="{{ url_for('admin.master_painel', view='semanal', period='s5') }}" class="master-week-btn {% if master_period == 's5' %}master-week-btn--active{% endif %}">S1</a>
                 <a href="{{ url_for('admin.master_painel', view='semanal', period='s6') }}" class="master-week-btn {% if master_period == 's6' %}master-week-btn--active{% endif %}">S2</a>
@@ -197,7 +197,7 @@
               </div>
             </div>
             <div class="master-week-card {% if master_period in ['s9', 's10', 's11', 's12'] %}master-week-card--active{% endif %}">
-              <div class="master-week-card__title"><span>Junho</span></div>
+              <div class="master-week-card__title"><span>{{ meses_trimestre[2].nome }}</span></div>
               <div class="master-week-card__buttons">
                 <a href="{{ url_for('admin.master_painel', view='semanal', period='s9') }}" class="master-week-btn {% if master_period == 's9' %}master-week-btn--active{% endif %}">S1</a>
                 <a href="{{ url_for('admin.master_painel', view='semanal', period='s10') }}" class="master-week-btn {% if master_period == 's10' %}master-week-btn--active{% endif %}">S2</a>

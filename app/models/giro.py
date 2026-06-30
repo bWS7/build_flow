@@ -49,6 +49,7 @@ class GiroCaptacao(db.Model):
     referencia = db.Column(db.String(120), nullable=True)
     responsavel = db.Column(db.String(120), nullable=False)
     semana = db.Column(db.Integer, nullable=False, default=1)
+    trimestre = db.Column(db.String(2), nullable=False, default='q1')
     criado_em = db.Column(
         db.DateTime(timezone=True),
         default=agora_brasilia,
@@ -76,6 +77,7 @@ class GiroCaptacao(db.Model):
             'referencia': self.referencia or '',
             'responsavel': self.responsavel,
             'semana': self.semana,
+            'trimestre': self.trimestre,
             'criado_em': self.formatar_criado_em(),
             'criado_em_iso': criado_em.isoformat() if criado_em else '',
         }

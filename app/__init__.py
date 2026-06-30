@@ -144,6 +144,21 @@ def create_app():
     app.jinja_env.filters['brl_int'] = _format_brl_int
     app.jinja_env.filters['user_type_label'] = _format_user_type
 
+    @app.context_processor
+    def inject_trimestre():
+        try:
+            from app.utils.trimestre_context import get_meses, get_trimestre, get_periodo_label
+            return {
+                'trimestre_ativo': get_trimestre(),
+                'trimestre_label': get_periodo_label(),
+                'meses_trimestre': [
+                    {'slug': slug, 'nome': nome, 'numero': numero, 'semana_inicio': semana_inicio}
+                    for slug, nome, numero, semana_inicio in get_meses()
+                ],
+            }
+        except Exception:
+            return {}
+
     # ── Configurações ──────────────────────────────────────────────────────────
     app.config['SECRET_KEY'] = _resolve_secret_key()
     app.config['SQLALCHEMY_DATABASE_URI'] = _resolve_database_url()
@@ -319,36 +334,59 @@ def _ensure_database_columns():
         'financeiro_bancos': {
             'negociacao': "ALTER TABLE financeiro_bancos ADD COLUMN negociacao VARCHAR(20) NOT NULL DEFAULT 'PARCIAL'",
             'acao_realizada': "ALTER TABLE financeiro_bancos ADD COLUMN acao_realizada TEXT",
+            'trimestre': "ALTER TABLE financeiro_bancos ADD COLUMN trimestre VARCHAR(2) NOT NULL DEFAULT 'q1'",
         },
         'giro_captacoes': {
             'acao_realizada': "ALTER TABLE giro_captacoes ADD COLUMN acao_realizada TEXT",
+            'trimestre': "ALTER TABLE giro_captacoes ADD COLUMN trimestre VARCHAR(2) NOT NULL DEFAULT 'q1'",
         },
         'fornecedores_registros': {
             'acao_realizada': "ALTER TABLE fornecedores_registros ADD COLUMN acao_realizada TEXT",
+            'trimestre': "ALTER TABLE fornecedores_registros ADD COLUMN trimestre VARCHAR(2) NOT NULL DEFAULT 'q1'",
         },
         'medicoes': {
             'acao_realizada': "ALTER TABLE medicoes ADD COLUMN acao_realizada TEXT",
+            'trimestre': "ALTER TABLE medicoes ADD COLUMN trimestre VARCHAR(2) NOT NULL DEFAULT 'q1'",
         },
         'relacionamentos': {
             'acao_realizada': "ALTER TABLE relacionamentos ADD COLUMN acao_realizada TEXT",
+            'trimestre': "ALTER TABLE relacionamentos ADD COLUMN trimestre VARCHAR(2) NOT NULL DEFAULT 'q1'",
+        },
+        'indicador_acoes': {
+            'trimestre': "ALTER TABLE indicador_acoes ADD COLUMN trimestre VARCHAR(2) NOT NULL DEFAULT 'q1'",
         },
         'metas_venda_semana': {
             'acoes_planejadas': "ALTER TABLE metas_venda_semana ADD COLUMN acoes_planejadas INTEGER NOT NULL DEFAULT 0",
+            'trimestre': "ALTER TABLE metas_venda_semana ADD COLUMN trimestre VARCHAR(2) NOT NULL DEFAULT 'q1'",
         },
         'metas_investidor_semana': {
             'acoes_planejadas': "ALTER TABLE metas_investidor_semana ADD COLUMN acoes_planejadas INTEGER NOT NULL DEFAULT 0",
+            'trimestre': "ALTER TABLE metas_investidor_semana ADD COLUMN trimestre VARCHAR(2) NOT NULL DEFAULT 'q1'",
         },
         'metas_financeiro_semana': {
             'acoes_planejadas': "ALTER TABLE metas_financeiro_semana ADD COLUMN acoes_planejadas INTEGER NOT NULL DEFAULT 0",
+            'trimestre': "ALTER TABLE metas_financeiro_semana ADD COLUMN trimestre VARCHAR(2) NOT NULL DEFAULT 'q1'",
         },
         'metas_giro_semana': {
             'acoes_planejadas': "ALTER TABLE metas_giro_semana ADD COLUMN acoes_planejadas INTEGER NOT NULL DEFAULT 0",
+            'trimestre': "ALTER TABLE metas_giro_semana ADD COLUMN trimestre VARCHAR(2) NOT NULL DEFAULT 'q1'",
         },
         'meta_fornecedor_semana': {
             'acoes_planejadas': "ALTER TABLE meta_fornecedor_semana ADD COLUMN acoes_planejadas INTEGER NOT NULL DEFAULT 0",
+            'trimestre': "ALTER TABLE meta_fornecedor_semana ADD COLUMN trimestre VARCHAR(2) NOT NULL DEFAULT 'q1'",
         },
         'metas_medicao_semana': {
             'acoes_planejadas': "ALTER TABLE metas_medicao_semana ADD COLUMN acoes_planejadas INTEGER NOT NULL DEFAULT 0",
+            'trimestre': "ALTER TABLE metas_medicao_semana ADD COLUMN trimestre VARCHAR(2) NOT NULL DEFAULT 'q1'",
+        },
+        'metas_semana': {
+            'trimestre': "ALTER TABLE metas_semana ADD COLUMN trimestre VARCHAR(2) NOT NULL DEFAULT 'q1'",
+        },
+        'meta_configuracao_indicador': {
+            'trimestre': "ALTER TABLE meta_configuracao_indicador ADD COLUMN trimestre VARCHAR(2) NOT NULL DEFAULT 'q1'",
+        },
+        'meta_liberacoes_semana': {
+            'trimestre': "ALTER TABLE meta_liberacoes_semana ADD COLUMN trimestre VARCHAR(2) NOT NULL DEFAULT 'q1'",
         },
         'exclusao_auditoria': {
             'usuario_nome': "ALTER TABLE exclusao_auditoria ADD COLUMN usuario_nome VARCHAR(120) NOT NULL DEFAULT ''",
@@ -365,3 +403,44 @@ def _ensure_database_columns():
                 continue
             db.session.execute(text(ddl))
             db.session.commit()
+
+    # ── Migrar unique constraints das tabelas de meta para incluir trimestre ───
+    _migrar_unique_constraints_trimestre()
+
+
+def _migrar_unique_constraints_trimestre():
+    """Dropa constraints antigas (semana-only) e cria novas (semana+trimestre)."""
+    migracoes = [
+        ('metas_semana',           'uq_meta_semana',               'uq_meta_semana_trimestre',               'semana, trimestre'),
+        ('metas_venda_semana',     'uq_meta_venda_semana',         'uq_meta_venda_semana_trimestre',         'semana, trimestre'),
+        ('metas_financeiro_semana','uq_meta_financeiro_semana',    'uq_meta_financeiro_semana_trimestre',    'semana, trimestre'),
+        ('metas_giro_semana',      'uq_meta_giro_semana',          'uq_meta_giro_semana_trimestre',          'semana, trimestre'),
+        ('metas_medicao_semana',   'uq_meta_medicao_semana',       'uq_meta_medicao_semana_trimestre',       'semana, trimestre'),
+        ('metas_investidor_semana','uq_meta_investidor_semana',    'uq_meta_investidor_semana_trimestre',    'semana, trimestre'),
+        ('meta_fornecedor_semana',  'uq_meta_fornecedor_semana',    'uq_meta_fornecedor_semana_trimestre',    'semana, trimestre'),
+        ('meta_configuracao_indicador', 'uq_meta_config_scope',   'uq_meta_config_scope_trimestre',         'scope, trimestre'),
+        ('meta_liberacoes_semana', 'uq_meta_liberacao_scope_semana','uq_meta_liberacao_scope_semana_trimestre','scope, semana, trimestre'),
+    ]
+    inspector = inspect(db.engine)
+    for tabela, constraint_antiga, constraint_nova, colunas in migracoes:
+        if not inspector.has_table(tabela):
+            continue
+        constraints_existentes = {c['name'] for c in inspector.get_unique_constraints(tabela)}
+        # Dropa a constraint antiga se ainda existe (e a nova ainda não foi criada)
+        if constraint_antiga in constraints_existentes and constraint_nova not in constraints_existentes:
+            try:
+                db.session.execute(text(
+                    f'ALTER TABLE {tabela} DROP CONSTRAINT IF EXISTS {constraint_antiga}'
+                ))
+                db.session.commit()
+            except Exception:
+                db.session.rollback()
+        # Cria a nova constraint se ainda não existe
+        if constraint_nova not in constraints_existentes:
+            try:
+                db.session.execute(text(
+                    f'ALTER TABLE {tabela} ADD CONSTRAINT {constraint_nova} UNIQUE ({colunas})'
+                ))
+                db.session.commit()
+            except Exception:
+                db.session.rollback()
