@@ -314,6 +314,44 @@ body {
 }
 .drawer__link:hover { background: rgba(255,255,255,.1); color: var(--white); }
 .drawer__link--active { background: rgba(255,255,255,.15); color: var(--white); font-weight: 600; }
+
+/* Indicador de trimestre ativo no drawer */
+.drawer-trimestre {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 12px 14px;
+  margin: 2px 2px 14px;
+  border-radius: var(--radius);
+  background: linear-gradient(135deg, rgba(255,255,255,.08), rgba(255,255,255,.03));
+  border: 1px solid rgba(255,255,255,.12);
+}
+.drawer-trimestre__eyebrow {
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: .09em;
+  text-transform: uppercase;
+  color: rgba(255,255,255,.45);
+}
+.drawer-trimestre__value {
+  display: flex; align-items: center; gap: 8px;
+  font-size: 13.5px; font-weight: 600; line-height: 1.25;
+  color: var(--white);
+}
+.drawer-trimestre__dot {
+  width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0;
+  box-shadow: 0 0 0 3px rgba(255,255,255,.06);
+}
+.drawer-trimestre__dot--q1 { background: #c98a3a; }
+.drawer-trimestre__dot--q2 { background: #3fae74; }
+.drawer-trimestre__link {
+  display: inline-flex; align-items: center; gap: 6px;
+  font-size: 12px; font-weight: 500;
+  color: rgba(255,255,255,.6);
+  text-decoration: none;
+  transition: color var(--transition);
+}
+.drawer-trimestre__link:hover { color: var(--white); }
 .drawer-subnav {
   display: flex;
   flex-direction: column;
@@ -593,6 +631,116 @@ body {
 .login-page__bg-shape--2 {
   width: 340px; height: 340px;
   background: #6B1A2A; bottom: -100px; left: -100px;
+}
+
+/* -- SELEÇÃO DE TRIMESTRE --------------------------------------------------- */
+.quarter-page {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  overflow: hidden;
+  padding: 32px 20px;
+  background: linear-gradient(135deg, #781720 0%, #3A1E22 55%, #171717 100%);
+}
+.quarter-page__bg { position: absolute; inset: 0; overflow: hidden; pointer-events: none; }
+.quarter-page__bg-shape { position: absolute; border-radius: 50%; filter: blur(72px); opacity: .28; }
+.quarter-page__bg-shape--1 { width: 460px; height: 460px; background: #A52430; top: -150px; right: -130px; }
+.quarter-page__bg-shape--2 { width: 340px; height: 340px; background: #6B1A2A; bottom: -110px; left: -110px; }
+
+.quarter-shell {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  max-width: 640px;
+  background: rgba(255, 255, 255, 0.10);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 24px;
+  padding: 38px 36px 40px;
+  box-shadow: 0 24px 50px rgba(0,0,0,.28);
+  backdrop-filter: blur(14px);
+  text-align: center;
+}
+.quarter-shell__logo {
+  width: min(220px, 60%);
+  height: auto;
+  margin: 0 auto 22px;
+  display: block;
+  filter: drop-shadow(0 12px 24px rgba(0,0,0,.28));
+}
+.quarter-shell__header { margin-bottom: 26px; }
+.quarter-shell__title {
+  font-family: var(--font-display);
+  font-size: clamp(24px, 4vw, 30px);
+  font-weight: 800;
+  color: var(--white);
+  margin-bottom: 8px;
+}
+.quarter-shell__subtitle {
+  font-size: 14px;
+  color: rgba(255,255,255,.72);
+  margin: 0 auto;
+  max-width: 420px;
+  line-height: 1.5;
+}
+.quarter-shell__subtitle strong { color: var(--white); }
+
+.quarter-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 18px;
+}
+.quarter-card {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  padding: 22px 22px 20px;
+  border-radius: var(--radius-lg);
+  background: rgba(255,255,255,.06);
+  border: 1.5px solid rgba(255,255,255,.14);
+  cursor: pointer;
+  text-align: left;
+  transition: transform var(--transition), border-color var(--transition), background var(--transition), box-shadow var(--transition);
+}
+.quarter-card:hover {
+  transform: translateY(-5px);
+  background: rgba(255,255,255,.10);
+  border-color: rgba(255,255,255,.42);
+  box-shadow: 0 16px 32px rgba(0,0,0,.28);
+}
+.quarter-card:active { transform: translateY(-1px); }
+.quarter-card__badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 42px; height: 42px;
+  border-radius: 12px;
+  font-size: 15px; font-weight: 800;
+  margin-bottom: 12px;
+}
+.quarter-card__badge--q1 { background: rgba(201, 138, 58, .18); color: #e7b877; }
+.quarter-card__badge--q2 { background: rgba(63, 174, 116, .18); color: #5fd29a; }
+.quarter-card__name {
+  font-size: 16px; font-weight: 700; color: var(--white);
+}
+.quarter-card__period {
+  font-size: 13px; color: rgba(255,255,255,.62);
+  margin-bottom: 14px;
+}
+.quarter-card__tag {
+  font-size: 11px; font-weight: 600;
+  letter-spacing: .02em;
+  padding: 4px 10px;
+  border-radius: 999px;
+}
+.quarter-card__tag--neutral { background: rgba(255,255,255,.12); color: rgba(255,255,255,.82); }
+.quarter-card__tag--current { background: rgba(63, 174, 116, .20); color: #7ddcab; }
+
+@media (max-width: 520px) {
+  .quarter-shell { padding: 30px 22px 32px; }
+  .quarter-grid { grid-template-columns: 1fr; }
 }
 
 /* -- CONSTRUCTION PAGE ------------------------------------------------------ */

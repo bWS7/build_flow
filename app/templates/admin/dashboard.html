@@ -652,7 +652,7 @@
             <div class="metas-grid">
               {% for s in range(mes_ini, mes_ini + 4) %}
               {% set semana_local = loop.index %}
-              {% set meta = metas | selectattr('semana', 'equalto', s) | first %}
+              {% set meta = metas | selectattr('semana', 'equalto', s) | first | default(none, true) %}
               {% set is_saved = meta is not none and ((meta.acoes_planejadas or 0) > 0 or (meta.valor_meta or 0) > 0) %}
               {% set is_released_rel = s in metas_liberadas.get('relacionamento', []) %}
               {% set is_primeira_semana_travada = s == 1 and not current_user.can_manage_admin() %}
