@@ -1973,7 +1973,7 @@ def _pode_editar_meta_existente(scope: str) -> bool:
 
 
 def _apenas_admin_pode_editar_primeira_semana(semana: int):
-    if int(semana or 0) == 1 and not current_user.can_manage_admin():
+    if int(semana or 0) == 1 and not current_user.can_manage_admin() and get_trimestre() == 'q1':
         primeiro_mes = get_meses()[0][1]
         return jsonify({'erro': f'A semana 1 de {primeiro_mes.lower()} esta travada para metas. Apenas o ADMIN pode alterar este periodo.'}), 403
     return None

@@ -129,7 +129,7 @@
           <div class="week-month__body week-month__body--collapsed" id="body-{{ mes_id }}">
             {% for s in range(mes_ini, mes_ini + 4) %}
             {% set semana_local = loop.index %}
-            {% set semana_travada = s == 1 and not current_user.can_manage_admin() %}
+            {% set semana_travada = s == 1 and not current_user.can_manage_admin() and trimestre_ativo == 'q1' %}
             <a href="?semana={{ s }}"
                class="week-pill {% if s == semana_atual %}week-pill--active{% endif %} {% if semana_travada %}week-pill--locked{% endif %}"
                {% if semana_travada %}title="Semana encerrada: apenas visualizacao"{% endif %}>

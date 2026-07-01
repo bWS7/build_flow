@@ -172,7 +172,7 @@
               {% set meta_venda = metas_vendas.get(s) %}
               {% set is_saved_meta_venda = meta_venda is not none and (meta_venda.quantidade_meta or 0) > 0 %}
               {% set is_released_meta_venda = s in metas_liberadas.get('vendas', []) %}
-              {% set is_primeira_semana_travada = s == 1 and not current_user.can_manage_admin() %}
+              {% set is_primeira_semana_travada = s == 1 and not current_user.can_manage_admin() and trimestre_ativo == 'q1' %}
               <div class="meta-item {% if is_saved_meta_venda %}meta-item--saved{% endif %} {% if is_primeira_semana_travada %}meta-item--locked{% endif %}" data-meta-venda="{{ s }}" data-locked="{{ 'true' if is_saved_meta_venda or is_primeira_semana_travada else 'false' }}">
                 <span class="meta-item__label">Semana {{ loop.index }}</span>
                 <div class="field">
@@ -253,7 +253,7 @@
               {% set meta_investidor = metas_investidores.get(s) %}
               {% set is_saved_meta_investidor = meta_investidor is not none and (meta_investidor.valor_meta or 0) > 0 %}
               {% set is_released_meta_investidor = s in metas_liberadas.get('investidores', []) %}
-              {% set is_primeira_semana_travada = s == 1 and not current_user.can_manage_admin() %}
+              {% set is_primeira_semana_travada = s == 1 and not current_user.can_manage_admin() and trimestre_ativo == 'q1' %}
               <div class="meta-item {% if is_saved_meta_investidor %}meta-item--saved{% endif %} {% if is_primeira_semana_travada %}meta-item--locked{% endif %}" data-meta-investidor="{{ s }}" data-locked="{{ 'true' if is_saved_meta_investidor or is_primeira_semana_travada else 'false' }}">
                 <span class="meta-item__label">Semana {{ loop.index }}</span>
                 <div class="field">
@@ -334,7 +334,7 @@
               {% set meta_fin = metas_financeiro.get(s) %}
               {% set is_saved_fin = meta_fin is not none and (meta_fin.valor_meta or 0) > 0 %}
               {% set is_released_fin = s in metas_liberadas.get('financeiro', []) %}
-              {% set is_primeira_semana_travada = s == 1 and not current_user.can_manage_admin() %}
+              {% set is_primeira_semana_travada = s == 1 and not current_user.can_manage_admin() and trimestre_ativo == 'q1' %}
               <div class="meta-item {% if is_saved_fin %}meta-item--saved{% endif %} {% if is_primeira_semana_travada %}meta-item--locked{% endif %}" data-meta-financeiro="{{ s }}" data-locked="{{ 'true' if is_saved_fin or is_primeira_semana_travada else 'false' }}">
                 <span class="meta-item__label">Semana {{ loop.index }}</span>
                 <div class="field">
@@ -416,7 +416,7 @@
                 {% set meta_giro = metas_giro.get(s) %}
                 {% set is_saved_giro = meta_giro is not none and (meta_giro.valor_meta or 0) > 0 %}
                 {% set is_released_giro = s in metas_liberadas.get('giro', []) %}
-                {% set is_primeira_semana_travada = s == 1 and not current_user.can_manage_admin() %}
+                {% set is_primeira_semana_travada = s == 1 and not current_user.can_manage_admin() and trimestre_ativo == 'q1' %}
                 <div class="meta-item {% if is_saved_giro %}meta-item--saved{% endif %} {% if is_primeira_semana_travada %}meta-item--locked{% endif %}" data-meta-giro="{{ s }}" data-locked="{{ 'true' if is_saved_giro or is_primeira_semana_travada else 'false' }}">
                   <span class="meta-item__label">Semana {{ loop.index }}</span>
                     <div class="field">
@@ -498,7 +498,7 @@
                 {% set meta_fornecedor = metas_fornecedores.get(s) %}
                 {% set is_saved_fornecedor = meta_fornecedor is not none and (meta_fornecedor.valor_meta or 0) > 0 %}
                 {% set is_released_fornecedor = s in metas_liberadas.get('fornecedores', []) %}
-                {% set is_primeira_semana_travada = s == 1 and not current_user.can_manage_admin() %}
+                {% set is_primeira_semana_travada = s == 1 and not current_user.can_manage_admin() and trimestre_ativo == 'q1' %}
                 <div class="meta-item {% if is_saved_fornecedor %}meta-item--saved{% endif %} {% if is_primeira_semana_travada %}meta-item--locked{% endif %}" data-meta-fornecedor="{{ s }}" data-locked="{{ 'true' if is_saved_fornecedor or is_primeira_semana_travada else 'false' }}">
                   <span class="meta-item__label">Semana {{ loop.index }}</span>
                   <div class="field">
@@ -571,7 +571,7 @@
                 {% set meta_medicao = metas_medicao.get(s) %}
                 {% set is_saved_medicao = meta_medicao is not none and (meta_medicao.valor_meta or 0) > 0 %}
                 {% set is_released_medicao = s in metas_liberadas.get('medicao', []) %}
-                {% set is_primeira_semana_travada = s == 1 and not current_user.can_manage_admin() %}
+                {% set is_primeira_semana_travada = s == 1 and not current_user.can_manage_admin() and trimestre_ativo == 'q1' %}
                 <div class="meta-item {% if is_saved_medicao %}meta-item--saved{% endif %} {% if is_primeira_semana_travada %}meta-item--locked{% endif %}" data-meta-medicao="{{ s }}" data-locked="{{ 'true' if is_saved_medicao or is_primeira_semana_travada else 'false' }}">
                   <span class="meta-item__label">Semana {{ loop.index }}</span>
                   <div class="field">
@@ -655,7 +655,7 @@
               {% set meta = metas | selectattr('semana', 'equalto', s) | first | default(none, true) %}
               {% set is_saved = meta is not none and ((meta.acoes_planejadas or 0) > 0 or (meta.valor_meta or 0) > 0) %}
               {% set is_released_rel = s in metas_liberadas.get('relacionamento', []) %}
-              {% set is_primeira_semana_travada = s == 1 and not current_user.can_manage_admin() %}
+              {% set is_primeira_semana_travada = s == 1 and not current_user.can_manage_admin() and trimestre_ativo == 'q1' %}
               <div class="meta-item {% if is_saved %}meta-item--saved{% endif %} {% if is_primeira_semana_travada %}meta-item--locked{% endif %}" data-semana="{{ s }}" data-locked="{{ 'true' if is_saved or is_primeira_semana_travada else 'false' }}">
                 <span class="meta-item__label">Semana {{ semana_local }}</span>
                 <div class="field">

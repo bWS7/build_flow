@@ -117,7 +117,8 @@ def semana_editavel_trimestre(
     """Verifica se uma semana é editável no contexto do trimestre ativo."""
     semana = int(semana_global or 0)
     primeira_semana = 1
-    if semana == primeira_semana and not is_admin:
+    # A trava da semana 1 vale apenas para o 1º trimestre (semana inicial de abril).
+    if semana == primeira_semana and not is_admin and get_trimestre() == 'q1':
         return False
     if can_override_past_lock:
         return True
