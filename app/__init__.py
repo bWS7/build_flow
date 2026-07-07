@@ -409,37 +409,63 @@ def _ensure_database_columns():
 
 
 def _migrar_unique_constraints_trimestre():
-    """Dropa constraints antigas (semana-only) e cria novas (semana+trimestre)."""
+    """Substitui unicidades antigas (sem trimestre) pelas versoes com trimestre.
+
+    Dropa qualquer constraint OU indice unico cujo conjunto de colunas seja
+    exatamente o 'antigo' (independente do nome — inclusive nomes auto-gerados
+    pelo Postgres a partir de `unique=True` na coluna) e cria a nova unica composta
+    incluindo o trimestre. Sem isso, uma unicidade antiga em `scope`/`semana`
+    impede a segunda linha do mesmo indicador em outro trimestre.
+    """
     migracoes = [
-        ('metas_semana',           'uq_meta_semana',               'uq_meta_semana_trimestre',               'semana, trimestre'),
-        ('metas_venda_semana',     'uq_meta_venda_semana',         'uq_meta_venda_semana_trimestre',         'semana, trimestre'),
-        ('metas_financeiro_semana','uq_meta_financeiro_semana',    'uq_meta_financeiro_semana_trimestre',    'semana, trimestre'),
-        ('metas_giro_semana',      'uq_meta_giro_semana',          'uq_meta_giro_semana_trimestre',          'semana, trimestre'),
-        ('metas_medicao_semana',   'uq_meta_medicao_semana',       'uq_meta_medicao_semana_trimestre',       'semana, trimestre'),
-        ('metas_investidor_semana','uq_meta_investidor_semana',    'uq_meta_investidor_semana_trimestre',    'semana, trimestre'),
-        ('meta_fornecedor_semana',  'uq_meta_fornecedor_semana',    'uq_meta_fornecedor_semana_trimestre',    'semana, trimestre'),
-        ('meta_configuracao_indicador', 'uq_meta_config_scope',   'uq_meta_config_scope_trimestre',         'scope, trimestre'),
-        ('meta_liberacoes_semana', 'uq_meta_liberacao_scope_semana','uq_meta_liberacao_scope_semana_trimestre','scope, semana, trimestre'),
+        ('metas_semana',                ['semana'],          'uq_meta_semana_trimestre',                 'semana, trimestre'),
+        ('metas_venda_semana',          ['semana'],          'uq_meta_venda_semana_trimestre',           'semana, trimestre'),
+        ('metas_financeiro_semana',     ['semana'],          'uq_meta_financeiro_semana_trimestre',      'semana, trimestre'),
+        ('metas_giro_semana',           ['semana'],          'uq_meta_giro_semana_trimestre',            'semana, trimestre'),
+        ('metas_medicao_semana',        ['semana'],          'uq_meta_medicao_semana_trimestre',         'semana, trimestre'),
+        ('metas_investidor_semana',     ['semana'],          'uq_meta_investidor_semana_trimestre',      'semana, trimestre'),
+        ('meta_fornecedor_semana',      ['semana'],          'uq_meta_fornecedor_semana_trimestre',      'semana, trimestre'),
+        ('meta_configuracao_indicador', ['scope'],           'uq_meta_config_scope_trimestre',           'scope, trimestre'),
+        ('meta_liberacoes_semana',      ['scope', 'semana'], 'uq_meta_liberacao_scope_semana_trimestre', 'scope, semana, trimestre'),
     ]
     inspector = inspect(db.engine)
-    for tabela, constraint_antiga, constraint_nova, colunas in migracoes:
+    for tabela, colunas_antigas, constraint_nova, colunas_novas in migracoes:
         if not inspector.has_table(tabela):
             continue
-        constraints_existentes = {c['name'] for c in inspector.get_unique_constraints(tabela)}
-        # Dropa a constraint antiga se ainda existe (e a nova ainda não foi criada)
-        if constraint_antiga in constraints_existentes and constraint_nova not in constraints_existentes:
+
+        uniques = inspector.get_unique_constraints(tabela)
+        nomes_existentes = {u.get('name') for u in uniques}
+        alvo = sorted(colunas_antigas)
+
+        # 1) Dropa constraints unicas antigas (mesmo conjunto de colunas, nome qualquer)
+        for constraint in uniques:
+            nome = constraint.get('name')
+            if not nome or nome == constraint_nova:
+                continue
+            if sorted(constraint.get('column_names') or []) == alvo:
+                try:
+                    db.session.execute(text(f'ALTER TABLE {tabela} DROP CONSTRAINT IF EXISTS "{nome}"'))
+                    db.session.commit()
+                except Exception:
+                    db.session.rollback()
+
+        # 2) Dropa indices unicos antigos (caso a unicidade seja um indice, nao constraint)
+        for indice in inspector.get_indexes(tabela):
+            nome = indice.get('name')
+            if not nome or not indice.get('unique'):
+                continue
+            if sorted(indice.get('column_names') or []) == alvo:
+                try:
+                    db.session.execute(text(f'DROP INDEX IF EXISTS "{nome}"'))
+                    db.session.commit()
+                except Exception:
+                    db.session.rollback()
+
+        # 3) Cria a nova unica composta (com trimestre) se ainda nao existe
+        if constraint_nova not in nomes_existentes:
             try:
                 db.session.execute(text(
-                    f'ALTER TABLE {tabela} DROP CONSTRAINT IF EXISTS {constraint_antiga}'
-                ))
-                db.session.commit()
-            except Exception:
-                db.session.rollback()
-        # Cria a nova constraint se ainda não existe
-        if constraint_nova not in constraints_existentes:
-            try:
-                db.session.execute(text(
-                    f'ALTER TABLE {tabela} ADD CONSTRAINT {constraint_nova} UNIQUE ({colunas})'
+                    f'ALTER TABLE {tabela} ADD CONSTRAINT {constraint_nova} UNIQUE ({colunas_novas})'
                 ))
                 db.session.commit()
             except Exception:
