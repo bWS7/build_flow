@@ -162,6 +162,8 @@
         </div>
         <div class="master-toolbar">
           <div class="master-toolbar__group">
+            <a href="{{ url_for('admin.master_painel', view='geral') }}"
+               class="analytics-month {% if master_view == 'geral' %}analytics-month--active{% endif %}">Geral</a>
             <a href="{{ url_for('admin.master_painel', view='trimestral') }}"
                class="analytics-month {% if master_view == 'trimestral' %}analytics-month--active{% endif %}">Trimestre</a>
             <a href="{{ url_for('admin.master_painel', view='mensal', period=(master_period if master_view == 'mensal' else meses_trimestre[0].slug)) }}"

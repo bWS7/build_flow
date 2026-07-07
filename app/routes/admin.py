@@ -1,4 +1,4 @@
-from flask import Blueprint, render_template, request, jsonify, abort, flash, redirect, url_for
+from flask import Blueprint, render_template, request, jsonify, abort, flash, redirect, url_for, session
 from flask_login import login_required, current_user
 from functools import wraps
 from datetime import date, datetime, time
@@ -57,7 +57,10 @@ def _meses_relatorio() -> list[tuple[str, str, int]]:
 
 
 def _periodo_trimestral_label() -> str:
-    return get_periodo_label().replace('1º Trimestre (', '').replace('2º Trimestre (', '').rstrip(')')
+    label = get_periodo_label()
+    if '(' in label and ')' in label:
+        return label[label.index('(') + 1:label.rindex(')')]
+    return label
 
 
 def _master_meses() -> list[tuple[str, str, range, datetime, datetime]]:
@@ -1760,6 +1763,8 @@ def _resumir_inadimplencia_master_v2(semanas: list[int]) -> dict:
 
 
 def _montar_master_painel_periodizado(view: str | None = None, period: str | None = None) -> dict:
+    if (view or '').strip().lower() == 'geral':
+        return _montar_master_geral()
     periodo = _resolver_master_periodo_v2(view, period)
     semanas = periodo['semanas']
     meta_base_por_scope = _mapa_meta_base_total()
@@ -1862,6 +1867,99 @@ def _montar_master_painel_periodizado(view: str | None = None, period: str | Non
         'master_period_label': periodo['label'],
         'master_view_options': periodo['view_options'],
         'master_period_options': periodo['period_options'],
+    }
+
+
+TRIMESTRES_DISPONIVEIS = ['q1', 'q2']
+
+
+def _montar_master_geral() -> dict:
+    """Consolida (soma) os indicadores de todos os trimestres num único painel."""
+    original = session.get('trimestre')
+    modificado_antes = session.modified
+    paineis: list[dict] = []
+    try:
+        for tri in TRIMESTRES_DISPONIVEIS:
+            session['trimestre'] = tri
+            paineis.append(_montar_master_painel_periodizado(view='trimestral'))
+    finally:
+        if original is None:
+            session.pop('trimestre', None)
+        else:
+            session['trimestre'] = original
+        session.modified = modificado_antes
+
+    def _consolidar(chave: str) -> list[dict]:
+        base = paineis[0][chave]
+        consolidados = []
+        for idx, card in enumerate(base):
+            realizado = sum(float(p[chave][idx]['realizado']) for p in paineis)
+            meta = sum(float(p[chave][idx]['meta']) for p in paineis)
+            merged = dict(card)
+            merged['realizado'] = realizado
+            merged['meta'] = meta
+            merged['percentual'] = _safe_pct(realizado, meta)
+            consolidados.append(merged)
+        return consolidados
+
+    cards = _consolidar('cards_master')
+    cards_acoes = _consolidar('cards_master_acoes')
+
+    inicios = [datetime.fromisoformat(p['timer_started_at_iso']) for p in paineis]
+    fins = [datetime.fromisoformat(p['timer_deadline_at_iso']) for p in paineis]
+    inicio_contagem = min(inicios)
+    fim_periodo = max(fins)
+    agora = datetime.now().replace(microsecond=0)
+    duracao_total = max(int((fim_periodo - inicio_contagem).total_seconds()), 1)
+    tempo_decorrido = min(max(int((agora - inicio_contagem).total_seconds()), 0), duracao_total)
+    tempo_pct = round((tempo_decorrido / duracao_total) * 100, 1)
+
+    for card in cards + cards_acoes:
+        if card['percentual'] > tempo_pct + 0.1:
+            card['desempenho_status'] = 'positivo'
+        elif card['percentual'] < tempo_pct - 0.1:
+            card['desempenho_status'] = 'negativo'
+        else:
+            card['desempenho_status'] = 'neutro'
+
+    total_realizado = sum(min(float(item['percentual']), 100.0) for item in cards)
+    total_meta = float(len(cards) * 100)
+    objetivo_geral = _safe_pct(total_realizado, total_meta)
+    total_acoes_realizadas = sum(float(item['realizado']) for item in cards_acoes)
+    total_acoes_meta = sum(float(item['meta']) for item in cards_acoes)
+    percentual_acoes_master = _safe_pct(total_acoes_realizadas, total_acoes_meta)
+    destaque_principal = max(cards, key=lambda item: item['percentual']) if cards else None
+    alerta_principal = min(cards, key=lambda item: item['percentual']) if cards else None
+
+    view_options = [
+        {'slug': 'geral', 'label': 'Geral'},
+        {'slug': 'trimestral', 'label': 'Trimestre'},
+        {'slug': 'mensal', 'label': 'Meses'},
+        {'slug': 'semanal', 'label': 'Semanas'},
+    ]
+
+    return {
+        'cards_master': cards,
+        'cards_master_acoes': cards_acoes,
+        'objetivo_geral': objetivo_geral,
+        'objetivo_realizado_total': total_realizado,
+        'objetivo_meta_total': total_meta,
+        'acoes_realizadas_master': total_acoes_realizadas,
+        'acoes_meta_master': total_acoes_meta,
+        'acoes_percentual_master': percentual_acoes_master,
+        'tempo_pct': tempo_pct,
+        'tempo_restante_label': _formatar_tempo_restante(tempo_decorrido),
+        'data_limite_label': f'{inicio_contagem.strftime("%d/%m/%Y")} a {fim_periodo.strftime("%d/%m/%Y")}',
+        'timer_started_at_iso': inicio_contagem.isoformat(),
+        'timer_deadline_at_iso': fim_periodo.isoformat(),
+        'destaque_principal': destaque_principal,
+        'alerta_principal': alerta_principal,
+        'analytics_ai_enabled': analytics_ai_enabled() and analytics_ai_available(),
+        'master_view': 'geral',
+        'master_period': 'geral',
+        'master_period_label': 'Consolidado — Todos os semestres',
+        'master_view_options': view_options,
+        'master_period_options': [],
     }
 
 
