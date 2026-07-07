@@ -171,7 +171,14 @@
             <a href="{{ url_for('admin.master_painel', view='semanal', period=(master_period if master_view == 'semanal' else 's1')) }}"
                class="analytics-month {% if master_view == 'semanal' %}analytics-month--active{% endif %}">Semanas</a>
           </div>
-          {% if master_view == 'mensal' %}
+          {% if master_view == 'trimestral' %}
+          <div class="master-toolbar__months">
+            {% for option in master_tri_options %}
+            <a href="{{ url_for('admin.master_painel', view='trimestral', tri=option.slug) }}"
+               class="analytics-month {% if option.slug == master_tri %}analytics-month--active{% endif %}">{{ option.label }}</a>
+            {% endfor %}
+          </div>
+          {% elif master_view == 'mensal' %}
           <div class="master-toolbar__months">
             {% for option in master_period_options %}
             <a href="{{ url_for('admin.master_painel', view=master_view, period=option.slug) }}"
@@ -399,7 +406,7 @@
 })();
 </script>
 <script>
-  window.MASTER_DATA_URL = "{{ url_for('admin.master_painel_data', view=master_view, period=master_period) }}";
+  window.MASTER_DATA_URL = "{{ url_for('admin.master_painel_data', view=master_view, period=master_period, tri=master_tri) }}";
 </script>
 <script src="{{ url_for('static', filename='js/master.js') }}"></script>
 <script src="{{ url_for('static', filename='js/analytics_ai.js') }}"></script>

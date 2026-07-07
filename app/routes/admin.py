@@ -1762,9 +1762,24 @@ def _resumir_inadimplencia_master_v2(semanas: list[int]) -> dict:
     }
 
 
-def _montar_master_painel_periodizado(view: str | None = None, period: str | None = None) -> dict:
+def _montar_master_painel_periodizado(view: str | None = None, period: str | None = None, tri: str | None = None) -> dict:
     if (view or '').strip().lower() == 'geral':
         return _montar_master_geral()
+    # Alternador de trimestre no painel master: computa outro trimestre sem
+    # alterar o trimestre ativo da sessão (drawer/demais telas seguem iguais).
+    tri_norm = (tri or '').strip().lower()
+    if tri_norm in TRIMESTRES_DISPONIVEIS and tri_norm != get_trimestre():
+        original = session.get('trimestre')
+        modificado_antes = session.modified
+        try:
+            session['trimestre'] = tri_norm
+            return _montar_master_painel_periodizado(view, period)
+        finally:
+            if original is None:
+                session.pop('trimestre', None)
+            else:
+                session['trimestre'] = original
+            session.modified = modificado_antes
     periodo = _resolver_master_periodo_v2(view, period)
     semanas = periodo['semanas']
     meta_base_por_scope = _mapa_meta_base_total()
@@ -1867,10 +1882,17 @@ def _montar_master_painel_periodizado(view: str | None = None, period: str | Non
         'master_period_label': periodo['label'],
         'master_view_options': periodo['view_options'],
         'master_period_options': periodo['period_options'],
+        'master_tri': get_trimestre(),
+        'master_tri_options': _master_tri_options(),
     }
 
 
 TRIMESTRES_DISPONIVEIS = ['q1', 'q2']
+TRIMESTRE_LABELS = {'q1': '2º Trimestre', 'q2': '3º Trimestre'}
+
+
+def _master_tri_options() -> list[dict]:
+    return [{'slug': t, 'label': TRIMESTRE_LABELS[t]} for t in TRIMESTRES_DISPONIVEIS]
 
 
 def _montar_master_geral() -> dict:
@@ -1957,14 +1979,16 @@ def _montar_master_geral() -> dict:
         'analytics_ai_enabled': analytics_ai_enabled() and analytics_ai_available(),
         'master_view': 'geral',
         'master_period': 'geral',
-        'master_period_label': 'Consolidado — Todos os semestres',
+        'master_period_label': 'Consolidado — Todos os trimestres',
         'master_view_options': view_options,
         'master_period_options': [],
+        'master_tri': None,
+        'master_tri_options': _master_tri_options(),
     }
 
 
-def _serializar_master_painel_periodizado(view: str | None = None, period: str | None = None) -> dict:
-    painel = _montar_master_painel_periodizado(view, period)
+def _serializar_master_painel_periodizado(view: str | None = None, period: str | None = None, tri: str | None = None) -> dict:
+    painel = _montar_master_painel_periodizado(view, period, tri)
     return {
         'cards_master': painel['cards_master'],
         'cards_master_acoes': painel['cards_master_acoes'],
@@ -1984,6 +2008,7 @@ def _serializar_master_painel_periodizado(view: str | None = None, period: str |
         'master_view': painel['master_view'],
         'master_period': painel['master_period'],
         'master_period_label': painel['master_period_label'],
+        'master_tri': painel.get('master_tri'),
     }
 
 
@@ -2242,7 +2267,8 @@ def medicao_painel():
 def master_painel():
     view = request.args.get('view', 'trimestral')
     period = request.args.get('period')
-    return render_template('admin/master_painel.html', **_montar_master_painel_periodizado(view, period))
+    tri = request.args.get('tri')
+    return render_template('admin/master_painel.html', **_montar_master_painel_periodizado(view, period, tri))
 
 
 @admin_bp.route('/master/data')
@@ -2251,7 +2277,8 @@ def master_painel():
 def master_painel_data():
     view = request.args.get('view', 'trimestral')
     period = request.args.get('period')
-    return jsonify(_serializar_master_painel_periodizado(view, period))
+    tri = request.args.get('tri')
+    return jsonify(_serializar_master_painel_periodizado(view, period, tri))
 
 
 @admin_bp.route('/master/ai-chat', methods=['POST'])

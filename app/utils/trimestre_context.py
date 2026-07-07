@@ -92,8 +92,8 @@ def get_primeiro_mes_slug() -> str:
 def get_periodo_label() -> str:
     """Label do trimestre ativo para exibição."""
     if get_trimestre() == 'q2':
-        return '3º Semestre (Julho–Setembro)'
-    return '2º Semestre (Abril–Junho)'
+        return '3º Trimestre (Julho–Setembro)'
+    return '2º Trimestre (Abril–Junho)'
 
 
 def semana_global_atual_trimestre(agora: datetime | None = None) -> int:
