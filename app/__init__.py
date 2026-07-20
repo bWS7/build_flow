@@ -200,6 +200,7 @@ def create_app():
     from app.routes.giro import giro_bp
     from app.routes.medicao import medicao_bp
     from app.routes.fornecedores import fornecedores_bp
+    from app.routes.negociacao_fornecedores import negociacao_fornecedores_bp
 
     app.register_blueprint(auth_bp)
     app.register_blueprint(relacionamento_bp, url_prefix='/relacionamento')
@@ -209,6 +210,7 @@ def create_app():
     app.register_blueprint(financeiro_bp, url_prefix='/financeiro')
     app.register_blueprint(giro_bp, url_prefix='/giro')
     app.register_blueprint(fornecedores_bp, url_prefix='/fornecedores')
+    app.register_blueprint(negociacao_fornecedores_bp, url_prefix='/negociacao-fornecedores')
     app.register_blueprint(medicao_bp, url_prefix='/medicao')
 
     # ── Seed inicial ───────────────────────────────────────────────────────────
@@ -241,6 +243,7 @@ def create_app():
             or request.path.startswith('/financeiro/')
             or request.path.startswith('/giro/')
             or request.path.startswith('/fornecedores/')
+            or request.path.startswith('/negociacao-fornecedores/')
             or request.path.startswith('/medicao/')
             or request.is_json
         )

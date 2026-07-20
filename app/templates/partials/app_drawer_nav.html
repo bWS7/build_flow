@@ -70,6 +70,12 @@
     Renegociação Fornecedores
   </a>
   {% endif %}
+  {% if current_user.can_access_page('negociacao_fornecedores') %}
+  <a href="{{ url_for('negociacao_fornecedores.index') }}" class="drawer__link{% if active_page == 'negociacao_fornecedores' %} drawer__link--active{% endif %}">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 3h5v5"/><path d="M8 3H3v5"/><path d="M3 16v5h5"/><path d="M21 16v5h-5"/><path d="M9 9l6 6"/><path d="M9 15l6-6"/></svg>
+    Negociação Fornecedores
+  </a>
+  {% endif %}
   {% if current_user.can_access_page('medicao') %}
   <a href="{{ url_for('medicao.index') }}" class="drawer__link{% if active_page == 'medicao' %} drawer__link--active{% endif %}">
     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 20h18"/><path d="M6 16h12"/><path d="M8 12h8"/><path d="M10 4h4v8h-4z"/></svg>

@@ -16,6 +16,9 @@ from .medicao import MedicaoRegistro
 from .meta_medicao import MetaMedicaoSemana
 from .fornecedor import FornecedorRegistro
 from .meta_fornecedor import MetaFornecedorSemana
+from .fornecedor_cadastro import FornecedorCadastro
+from .negociacao_fornecedor import NegociacaoFornecedor
+from .meta_negociacao_fornecedor import MetaNegociacaoFornecedorSemana
 from .meta_liberacao import MetaLiberacaoSemana
 from .login_throttle import LoginThrottle
 from .meta_configuracao import MetaConfiguracaoIndicador

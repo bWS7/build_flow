@@ -67,6 +67,7 @@ PERMISSOES_PAGINAS = {
     'vendas': {ADMIN, ADMIN_COMERCIAL, COMERCIAL},
     'investidores': {ADMIN, ADMIN_MARKETING, MARKETING},
     'fornecedores': {ADMIN, ADMIN_SUPRIMENTOS, SUPRIMENTOS},
+    'negociacao_fornecedores': {ADMIN, ADMIN_SUPRIMENTOS, SUPRIMENTOS},
     'relacionamento': {ADMIN, ADMIN_CREDITO, CREDITO},
 }
 
@@ -88,6 +89,7 @@ PERMISSOES_METAS = {
     'vendas': {ADMIN, ADMIN_COMERCIAL},
     'investidores': {ADMIN, ADMIN_MARKETING},
     'fornecedores': {ADMIN, ADMIN_SUPRIMENTOS},
+    'negociacao_fornecedores': {ADMIN, ADMIN_SUPRIMENTOS},
     'relacionamento': {ADMIN, ADMIN_CREDITO},
 }
 
@@ -98,6 +100,7 @@ PERMISSOES_EDICAO_PAGINAS = {
     'vendas': {ADMIN, ADMIN_COMERCIAL, COMERCIAL},
     'investidores': {ADMIN, ADMIN_MARKETING, MARKETING},
     'fornecedores': {ADMIN, ADMIN_SUPRIMENTOS, SUPRIMENTOS},
+    'negociacao_fornecedores': {ADMIN, ADMIN_SUPRIMENTOS, SUPRIMENTOS},
     'relacionamento': {ADMIN, ADMIN_CREDITO, CREDITO},
 }
 

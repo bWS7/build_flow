@@ -61,6 +61,7 @@
     {% set pode_editar_meta_financeiro = current_user.can_manage_admin() or 'financeiro' in meta_scopes %}
     {% set pode_editar_meta_giro = current_user.can_manage_admin() or 'giro' in meta_scopes %}
     {% set pode_editar_meta_fornecedores = current_user.can_manage_admin() or 'fornecedores' in meta_scopes %}
+    {% set pode_editar_meta_negociacao_fornecedores = current_user.can_manage_admin() or 'negociacao_fornecedores' in meta_scopes %}
     {% set pode_editar_meta_medicao = current_user.can_manage_admin() or 'medicao' in meta_scopes %}
     {% include "partials/app_drawer_nav.html" %}
     <div class="drawer__theme-slot">
@@ -135,6 +136,30 @@
               </tr>
               {% else %}
               <tr><td colspan="3" class="td-empty">Nenhum empreendimento.</td></tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </section>
+      <section class="admin-card">
+        <div class="admin-card__header">
+          <h3>Fornecedores (Negociação Fornecedores)</h3>
+          <span class="admin-card__toggle-wrap">
+            <span class="btn btn--sm btn--primary" onclick="event.stopPropagation(); openModal('modal-fornecedor-cadastro')">+ Novo</span>
+          </span>
+        </div>
+        <div class="admin-scroll-area admin-scroll-area--empreendimentos">
+          <table class="data-table">
+            <thead><tr><th>Nome</th><th>Status</th><th></th></tr></thead>
+            <tbody id="tbody-fornecedores-cadastro">
+              {% for f in fornecedores_cadastro %}
+              <tr data-id="{{ f.id }}">
+                <td>{{ f.nome }}</td>
+                <td><span class="badge {% if f.ativo %}badge--sim{% else %}badge--contato-rejeitado{% endif %}">{{ 'ATIVO' if f.ativo else 'INATIVO' }}</span></td>
+                <td><button class="btn btn--xs btn--ghost" onclick="toggleFornecedorCadastro({{ f.id }}, this)">{{ 'Desativar' if f.ativo else 'Ativar' }}</button></td>
+              </tr>
+              {% else %}
+              <tr><td colspan="3" class="td-empty">Nenhum fornecedor cadastrado.</td></tr>
               {% endfor %}
             </tbody>
           </table>
@@ -540,6 +565,82 @@
       </section>
       {% endif %}
 
+      {% if 'negociacao_fornecedores' in meta_scopes %}
+      <section class="admin-card admin-card--full admin-collapsible">
+          <button class="admin-card__header admin-card__header--toggle" type="button" onclick="toggleAdminCard('metas-negociacao-fornecedores')">
+            <h3>Metas Negociação Fornecedores</h3>
+            <svg class="admin-card__arrow" id="arrow-metas-negociacao-fornecedores" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+          </button>
+          <div class="admin-card__body" id="body-metas-negociacao-fornecedores">
+          {% if trimestre_ativo == 'q1' %}
+          <p class="section-header__subtitle" style="margin-bottom:16px">Este indicador passa a contar para as metas somente a partir do 3º Trimestre. Selecione o 3º Trimestre no menu lateral para configurar as metas semanais.</p>
+          {% else %}
+          <div class="field" style="margin-bottom:16px">
+            <label class="field__label">Meta Base Total (R$)</label>
+            <input class="field__input" type="text" id="meta-base-negociacao_fornecedores"
+                   value="{{ metas_base_total.get('negociacao_fornecedores', 0) | brl }}"
+                   {% if current_user.can_manage_admin() %}oninput="formatarValorBR(this)"{% else %}readonly{% endif %} />
+            {% if current_user.can_manage_admin() %}
+            <div style="margin-top:10px"><button class="btn btn--sm btn--primary" type="button" onclick="salvarMetaBase('negociacao_fornecedores', this)">Salvar Meta Base</button></div>
+            {% endif %}
+          </div>
+          {% for mes in meses_trimestre %}
+          {% set mes_nome = mes.nome %}
+          {% set mes_ini = mes.semana_inicio %}
+          {% set mes_id = 'negociacao-fornecedores-' ~ mes.slug %}
+          <div class="mes-group" id="mes-{{ mes_id }}">
+            <button class="mes-label" type="button" onclick="toggleMesNegociacaoFornecedores('{{ mes_id }}')">
+              {{ mes_nome }}
+              <svg class="mes-arrow mes-arrow--collapsed" id="arrow-{{ mes_id }}" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+            </button>
+            <div class="mes-body mes-body--collapsed" id="body-{{ mes_id }}">
+              <div class="metas-grid">
+                {% for s in range(mes_ini, mes_ini + 4) %}
+                {% set meta_negfor = metas_negociacao_fornecedores.get(s) %}
+                {% set is_saved_negfor = meta_negfor is not none and (meta_negfor.valor_meta or 0) > 0 %}
+                {% set is_released_negfor = s in metas_liberadas.get('negociacao_fornecedores', []) %}
+                <div class="meta-item {% if is_saved_negfor %}meta-item--saved{% endif %}" data-meta-negociacao-fornecedor="{{ s }}" data-locked="{{ 'true' if is_saved_negfor else 'false' }}">
+                  <span class="meta-item__label">Semana {{ loop.index }}</span>
+                  <div class="field">
+                    <label class="field__label">Meta negociação fornecedores (R$)</label>
+                    <input class="field__input" type="text" id="meta-negociacao-fornecedor-s{{ s }}"
+                           value="{{ meta_negfor.valor_meta | brl if meta_negfor else '0,00' }}"
+                           placeholder="0,00"
+                           {% if is_saved_negfor or (not pode_editar_meta_negociacao_fornecedores and not is_released_negfor) %}readonly{% else %}oninput="formatarValorBR(this)"{% endif %} />
+                  </div>
+                  <div class="field">
+                    <label class="field__label">Ações planejadas</label>
+                    <input class="field__input" type="number" min="0" step="1" id="acoes-negociacao-fornecedor-s{{ s }}"
+                           value="{{ meta_negfor.acoes_planejadas if meta_negfor else 0 }}"
+                           placeholder="0"
+                           {% if is_saved_negfor or (not pode_editar_meta_negociacao_fornecedores and not is_released_negfor) %}readonly{% endif %} />
+                  </div>
+                  <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px">
+                    <button class="btn btn--sm {% if is_saved_negfor or (not pode_editar_meta_negociacao_fornecedores and not is_released_negfor) %}btn--ghost{% else %}btn--primary{% endif %}"
+                            id="btn-meta-negociacao-fornecedor-s{{ s }}"
+                            onclick="{% if is_saved_negfor and pode_editar_meta_negociacao_fornecedores %}editarMetaNegociacaoFornecedor({{ s }}, this){% elif not is_saved_negfor and (pode_editar_meta_negociacao_fornecedores or is_released_negfor) %}salvarMetaNegociacaoFornecedor({{ s }}, this){% endif %}"
+                            {% if (is_saved_negfor and not pode_editar_meta_negociacao_fornecedores) or (not is_saved_negfor and not pode_editar_meta_negociacao_fornecedores and not is_released_negfor) %}disabled{% endif %}>
+                      {% if is_saved_negfor and pode_editar_meta_negociacao_fornecedores %}Editar{% elif is_saved_negfor %}Preenchido{% elif not pode_editar_meta_negociacao_fornecedores and not is_released_negfor %}Aguardando liberação{% else %}Salvar{% endif %}
+                    </button>
+                    {% if current_user.can_manage_admin() %}
+                    <button class="btn btn--xs {% if is_released_negfor or is_saved_negfor %}btn--ghost{% else %}btn--primary{% endif %}" type="button"
+                            onclick="disponibilizarMeta('negociacao_fornecedores', {{ s }}, this)"
+                            {% if is_released_negfor or is_saved_negfor %}disabled{% endif %}>
+                      {% if is_released_negfor or is_saved_negfor %}Disponibilizada{% else %}Disponibilizar Meta{% endif %}
+                    </button>
+                    {% endif %}
+                  </div>
+                </div>
+                {% endfor %}
+              </div>
+            </div>
+          </div>
+          {% endfor %}
+          {% endif %}
+          </div>
+      </section>
+      {% endif %}
+
       {% if 'medicao' in meta_scopes %}
       <section class="admin-card admin-card--full admin-collapsible">
           <button class="admin-card__header admin-card__header--toggle" type="button" onclick="toggleAdminCard('metas-medicao')">
@@ -762,6 +863,21 @@
     <div class="modal__actions">
       <button class="btn btn--ghost" type="button" onclick="closeModal('modal-empreendimento')">Cancelar</button>
       <button class="btn btn--primary" type="button" onclick="criarEmpreendimento()">Criar</button>
+    </div>
+  </div>
+</div>
+<div id="modal-fornecedor-cadastro" class="modal-overlay" hidden>
+  <div class="modal__dialog">
+    <div class="modal__header">
+      <h4>Novo Fornecedor</h4>
+      <button class="modal__close" type="button" onclick="closeModal('modal-fornecedor-cadastro')">✕</button>
+    </div>
+    <div class="modal__body">
+      <div class="field"><label class="field__label">Nome *</label><input class="field__input" id="fornecedor-cadastro-nome" type="text" /></div>
+    </div>
+    <div class="modal__actions">
+      <button class="btn btn--ghost" type="button" onclick="closeModal('modal-fornecedor-cadastro')">Cancelar</button>
+      <button class="btn btn--primary" type="button" onclick="criarFornecedorCadastro()">Criar</button>
     </div>
   </div>
 </div>

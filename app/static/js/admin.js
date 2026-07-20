@@ -15,11 +15,12 @@ function getMesIds(prefix = '') {
 const MESES = getMesIds();
 const MESES_FINANCEIRO = getMesIds('financeiro');
 const MESES_FORNECEDORES = getMesIds('fornecedores');
+const MESES_NEGOCIACAO_FORNECEDORES = getMesIds('negociacao-fornecedores');
 const MESES_GIRO = getMesIds('giro');
 const MESES_MEDICAO = getMesIds('medicao');
 const MESES_VENDAS = getMesIds('vendas');
 const MESES_INVESTIDORES = getMesIds('investidores');
-const ADMIN_COLLAPSIBLES = ['metas-varejo', 'metas-investidores', 'metas-financeiro', 'metas-fornecedores', 'metas-giro', 'metas-medicao', 'metas-relacionamento'];
+const ADMIN_COLLAPSIBLES = ['metas-varejo', 'metas-investidores', 'metas-financeiro', 'metas-fornecedores', 'metas-negociacao-fornecedores', 'metas-giro', 'metas-medicao', 'metas-relacionamento'];
 const CAN_EDIT_LOCKED_METAS = window.CAN_EDIT_LOCKED_METAS === true;
 
 async function disponibilizarMeta(scope, semana, btn) {
@@ -210,6 +211,49 @@ async function toggleEmpreendimento(id, btn) {
     const json = await resp.json();
     if (resp.ok) {
       showToast(json.ativo ? 'Empreendimento ativado.' : 'Desativado.', 'success');
+      setTimeout(() => location.reload(), 700);
+    } else {
+      showToast(json.erro || 'Erro.', 'error');
+    }
+  } catch {
+    showToast('Falha de conexão.', 'error');
+  }
+}
+
+// ── Criar fornecedor (cadastro para Negociação Fornecedores) ──────────────
+async function criarFornecedorCadastro() {
+  const nome = document.getElementById('fornecedor-cadastro-nome').value.trim();
+  if (!nome) { showToast('Informe o nome.', 'error'); return; }
+
+  try {
+    const resp = await fetch('/admin/fornecedor-cadastro/criar', {
+      method: 'POST',
+      headers: csrfHeaders({ 'Content-Type': 'application/json' }),
+      body: JSON.stringify({ nome }),
+    });
+    const json = await resp.json();
+    if (resp.ok) {
+      showToast('Fornecedor criado!', 'success');
+      closeModal('modal-fornecedor-cadastro');
+      setTimeout(() => location.reload(), 800);
+    } else {
+      showToast(json.erro || 'Erro ao criar.', 'error');
+    }
+  } catch {
+    showToast('Falha de conexão.', 'error');
+  }
+}
+
+// ── Toggle fornecedor (cadastro) ───────────────────────────────────────────
+async function toggleFornecedorCadastro(id, btn) {
+  try {
+    const resp = await fetch(`/admin/fornecedor-cadastro/${id}/toggle`, {
+      method: 'POST',
+      headers: csrfHeaders(),
+    });
+    const json = await resp.json();
+    if (resp.ok) {
+      showToast(json.ativo ? 'Fornecedor ativado.' : 'Desativado.', 'success');
       setTimeout(() => location.reload(), 700);
     } else {
       showToast(json.erro || 'Erro.', 'error');
@@ -459,6 +503,10 @@ function toggleMesFornecedores(mesId) {
   toggleMesFinanceiro(mesId);
 }
 
+function toggleMesNegociacaoFornecedores(mesId) {
+  toggleMesFinanceiro(mesId);
+}
+
 function toggleMesMedicao(mesId) {
   toggleMesFinanceiro(mesId);
 }
@@ -527,6 +575,12 @@ document.addEventListener('DOMContentLoaded', () => {
     if (lockedByServer) renderizarMetaFornecedorBloqueada(semana);
   });
 
+  document.querySelectorAll('.meta-item[data-meta-negociacao-fornecedor]').forEach((item) => {
+    const semana = item.dataset.metaNegociacaoFornecedor;
+    const lockedByServer = item.dataset.locked === 'true';
+    if (lockedByServer) renderizarMetaNegociacaoFornecedorBloqueada(semana);
+  });
+
   document.querySelectorAll('.meta-item[data-meta-medicao]').forEach((item) => {
     const semana = item.dataset.metaMedicao;
     const lockedByServer = item.dataset.locked === 'true';
@@ -552,6 +606,15 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   MESES_FORNECEDORES.forEach((mesId) => {
+    const body = document.getElementById(`body-${mesId}`);
+    const arrow = document.getElementById(`arrow-${mesId}`);
+    if (body && arrow) {
+      body.classList.add('mes-body--collapsed');
+      arrow.classList.add('mes-arrow--collapsed');
+    }
+  });
+
+  MESES_NEGOCIACAO_FORNECEDORES.forEach((mesId) => {
     const body = document.getElementById(`body-${mesId}`);
     const arrow = document.getElementById(`arrow-${mesId}`);
     if (body && arrow) {
@@ -837,6 +900,67 @@ async function salvarMetaFornecedor(semana, btn) {
 
 function editarMetaFornecedor(semana, btn) {
   renderizarMetaFornecedorEditavel(semana);
+}
+
+function obterMetaNegociacaoFornecedorEls(semana) {
+  return {
+    item: document.querySelector(`.meta-item[data-meta-negociacao-fornecedor="${semana}"]`),
+    input: document.getElementById(`meta-negociacao-fornecedor-s${semana}`),
+    acoesEl: document.getElementById(`acoes-negociacao-fornecedor-s${semana}`),
+    btn: document.getElementById(`btn-meta-negociacao-fornecedor-s${semana}`),
+  };
+}
+
+function renderizarMetaNegociacaoFornecedorBloqueada(semana) {
+  const { item, input, acoesEl, btn } = obterMetaNegociacaoFornecedorEls(semana);
+  if (!input || !btn) return;
+  input.readOnly = true;
+  input.oninput = null;
+  if (acoesEl) acoesEl.readOnly = true;
+  aplicarEstadoBloqueado(btn, '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg> Editar', () => editarMetaNegociacaoFornecedor(semana, btn));
+  if (item) item.dataset.locked = 'true';
+}
+
+function renderizarMetaNegociacaoFornecedorEditavel(semana) {
+  const { item, input, acoesEl, btn } = obterMetaNegociacaoFornecedorEls(semana);
+  if (!input || !btn) return;
+  input.readOnly = false;
+  input.oninput = function () { formatarValorBR(this); };
+  if (acoesEl) acoesEl.readOnly = false;
+  btn.textContent = 'Salvar';
+  btn.classList.remove('btn--ghost');
+  btn.classList.add('btn--primary');
+  btn.onclick = () => salvarMetaNegociacaoFornecedor(semana, btn);
+  if (item) item.dataset.locked = 'false';
+}
+
+async function salvarMetaNegociacaoFornecedor(semana, btn) {
+  const input = document.getElementById(`meta-negociacao-fornecedor-s${semana}`);
+  const acoesEl = document.getElementById(`acoes-negociacao-fornecedor-s${semana}`);
+  const valor = Math.max(parsearValorBR(input ? input.value : '0') || 0, 0);
+  const acoes = parsearInteiroSeguro(acoesEl ? acoesEl.value : '0');
+  const metaBaseTotal = obterMetaBase('negociacao_fornecedores');
+  try {
+    const resp = await fetch('/admin/meta-negociacao-fornecedores/salvar', {
+      method: 'POST',
+      headers: csrfHeaders({ 'Content-Type': 'application/json' }),
+      body: JSON.stringify({ semana, valor_meta: valor, acoes_planejadas: acoes, meta_base_total: metaBaseTotal }),
+    });
+    const raw = await resp.text();
+    const json = raw ? JSON.parse(raw) : {};
+    if (resp.ok) {
+      showToast(`Meta de negociação fornecedores da semana ${semana} salva!`, 'success');
+      renderizarMetaNegociacaoFornecedorBloqueada(semana);
+    } else {
+      showToast(json.erro || 'Erro ao salvar meta de negociação fornecedores.', 'error');
+    }
+  } catch {
+    showToast('Erro ao salvar meta de negociação fornecedores.', 'error');
+  }
+}
+
+function editarMetaNegociacaoFornecedor(semana, btn) {
+  renderizarMetaNegociacaoFornecedorEditavel(semana);
 }
 
 function obterMetaMedicaoEls(semana) {

@@ -11,6 +11,9 @@ from app.models.meta import MetaSemana
 from app.models.meta_financeiro import MetaFinanceiroSemana
 from app.models.indicador_acao import contar_acoes
 from app.models.meta_fornecedor import MetaFornecedorSemana
+from app.models.meta_negociacao_fornecedor import MetaNegociacaoFornecedorSemana
+from app.models.negociacao_fornecedor import NegociacaoFornecedor
+from app.models.fornecedor_cadastro import FornecedorCadastro
 from app.models.meta_giro import MetaGiroSemana
 from app.models.meta_medicao import MetaMedicaoSemana
 from app.models.meta_investidor_semana import MetaInvestidorSemana
@@ -1801,6 +1804,19 @@ def _montar_master_painel_periodizado(view: str | None = None, period: str | Non
     resumo_giro = _sumario_acoes_por_semanas_v2(MetaGiroSemana, 'giro', semanas)
     resumo_medicao = _sumario_acoes_por_semanas_v2(MetaMedicaoSemana, 'medicao', semanas)
     resumo_fornecedores = _sumario_acoes_por_semanas_v2(MetaFornecedorSemana, 'fornecedores', semanas)
+    # Negociação Fornecedores só passa a contar para as metas a partir do 3º Trimestre (tri == 'q2').
+    if get_trimestre() == 'q1':
+        negfor_realizado, negfor_meta = 0.0, 0.0
+        resumo_negfor = {'acoes_planejadas': 0.0, 'acoes_realizadas': 0.0, 'percentual_acoes': 0.0}
+    else:
+        negfor_realizado, negfor_meta = _sumario_valor_por_semanas_v2(
+            MetaNegociacaoFornecedorSemana,
+            NegociacaoFornecedor,
+            'valor_meta',
+            'valor_arrecadado',
+            semanas,
+        )
+        resumo_negfor = _sumario_acoes_por_semanas_v2(MetaNegociacaoFornecedorSemana, 'negociacao_fornecedores', semanas)
 
     agora = datetime.now().replace(microsecond=0)
     inicio_contagem = periodo['started_at']
@@ -1818,6 +1834,7 @@ def _montar_master_painel_periodizado(view: str | None = None, period: str | Non
         {'slug': 'investidor', 'scope': 'investidores', 'nome': 'Investidor', 'realizado': float(resumo_investidores['realizado']), 'meta': float(resumo_investidores['meta']), 'percentual': float(resumo_investidores['percentual']), 'descricao': f"Valor realizado de investidores no período {periodo['label']}.", 'comparativo_label': 'valor realizado x meta de investidores', 'ficticio': False, 'monetario': True},
         {'slug': 'fornecedores', 'scope': 'fornecedores', 'nome': 'Renegociação Fornecedores', 'realizado': fornecedores_realizado, 'meta': fornecedores_meta, 'percentual': _safe_pct(fornecedores_realizado, fornecedores_meta), 'descricao': f"Valor negociado com fornecedores no período {periodo['label']}.", 'comparativo_label': 'valor negociado x meta de renegociação de fornecedores', 'ficticio': False, 'monetario': True},
         {'slug': 'bancos', 'scope': 'financeiro', 'nome': 'Renegociação Bancária', 'realizado': bancos_realizado, 'meta': bancos_meta, 'percentual': _safe_pct(bancos_realizado, bancos_meta), 'descricao': f"Valor arrecadado com bancos no período {periodo['label']}.", 'comparativo_label': 'valor arrecadado x meta de renegociação bancária', 'ficticio': False, 'monetario': True},
+        {'slug': 'negociacao_fornecedores', 'scope': 'negociacao_fornecedores', 'nome': 'Negociação Fornecedores', 'realizado': negfor_realizado, 'meta': negfor_meta, 'percentual': _safe_pct(negfor_realizado, negfor_meta), 'descricao': f"Valor arrecadado em negociação com fornecedores no período {periodo['label']}.", 'comparativo_label': 'valor arrecadado x meta de negociação de fornecedores', 'ficticio': False, 'monetario': True},
     ]
     cards_acoes = [
         {'slug': 'venda_varejo', 'nome': 'Acoes Venda Varejo', 'realizado': float(resumo_vendas['acoes_realizadas']), 'meta': float(resumo_vendas['meta_acoes']), 'percentual': float(resumo_vendas['percentual_acoes']), 'descricao': f"Acoes de venda varejo no periodo {periodo['label']}.", 'comparativo_label': 'acoes realizadas x meta de acoes', 'ficticio': False, 'monetario': False},
@@ -1827,8 +1844,9 @@ def _montar_master_painel_periodizado(view: str | None = None, period: str | Non
         {'slug': 'investidor', 'nome': 'Acoes Investidor', 'realizado': float(resumo_investidores['acoes_realizadas']), 'meta': float(resumo_investidores['meta_acoes']), 'percentual': float(resumo_investidores['percentual_acoes']), 'descricao': f"Acoes de investidores no periodo {periodo['label']}.", 'comparativo_label': 'acoes realizadas x meta de acoes', 'ficticio': False, 'monetario': False},
         {'slug': 'fornecedores', 'nome': 'Acoes Renegociacao Fornecedores', 'realizado': float(resumo_fornecedores['acoes_realizadas']), 'meta': float(resumo_fornecedores['acoes_planejadas']), 'percentual': float(resumo_fornecedores['percentual_acoes']), 'descricao': f"Acoes de fornecedores no periodo {periodo['label']}.", 'comparativo_label': 'acoes realizadas x meta de acoes', 'ficticio': False, 'monetario': False},
         {'slug': 'bancos', 'nome': 'Acoes Renegociacao Bancaria', 'realizado': float(resumo_bancos['acoes_realizadas']), 'meta': float(resumo_bancos['acoes_planejadas']), 'percentual': float(resumo_bancos['percentual_acoes']), 'descricao': f"Acoes bancarias no periodo {periodo['label']}.", 'comparativo_label': 'acoes realizadas x meta de acoes', 'ficticio': False, 'monetario': False},
+        {'slug': 'negociacao_fornecedores', 'nome': 'Acoes Negociacao Fornecedores', 'realizado': float(resumo_negfor['acoes_realizadas']), 'meta': float(resumo_negfor['acoes_planejadas']), 'percentual': float(resumo_negfor['percentual_acoes']), 'descricao': f"Acoes de negociacao com fornecedores no periodo {periodo['label']}.", 'comparativo_label': 'acoes realizadas x meta de acoes', 'ficticio': False, 'monetario': False},
     ]
-    ordem = ['venda_varejo', 'giro', 'inadimplencia', 'medicao', 'investidor', 'fornecedores', 'bancos']
+    ordem = ['venda_varejo', 'giro', 'inadimplencia', 'medicao', 'investidor', 'fornecedores', 'bancos', 'negociacao_fornecedores']
     cards_ordenados = sorted(cards, key=lambda item: ordem.index(item['slug']))
     if periodo['view'] == 'trimestral':
         for card in cards_ordenados:
@@ -2141,11 +2159,13 @@ def _contexto_dashboard_metas(show_admin_cards: bool, show_meta_cards: bool) -> 
     return {
         'usuarios': User.query.order_by(User.nome).all() if show_admin_cards and current_user.can_manage_admin() else [],
         'empreendimentos': Empreendimento.query.order_by(Empreendimento.nome).all() if show_admin_cards and current_user.can_manage_admin() else [],
+        'fornecedores_cadastro': FornecedorCadastro.query.order_by(FornecedorCadastro.nome).all() if show_admin_cards and current_user.can_manage_admin() else [],
         'metas': MetaSemana.query.filter_by(trimestre=tri).order_by(MetaSemana.semana).all(),
         'metas_vendas': {meta.semana: meta for meta in MetaVendaSemana.query.filter_by(trimestre=tri).order_by(MetaVendaSemana.semana).all()},
         'metas_investidores': {meta.semana: meta for meta in MetaInvestidorSemana.query.filter_by(trimestre=tri).order_by(MetaInvestidorSemana.semana).all()},
         'metas_financeiro': {meta.semana: meta for meta in MetaFinanceiroSemana.query.filter_by(trimestre=tri).order_by(MetaFinanceiroSemana.semana).all()},
         'metas_fornecedores': {meta.semana: meta for meta in MetaFornecedorSemana.query.filter_by(trimestre=tri).order_by(MetaFornecedorSemana.semana).all()},
+        'metas_negociacao_fornecedores': {meta.semana: meta for meta in MetaNegociacaoFornecedorSemana.query.filter_by(trimestre=tri).order_by(MetaNegociacaoFornecedorSemana.semana).all()},
         'metas_giro': {meta.semana: meta for meta in MetaGiroSemana.query.filter_by(trimestre=tri).order_by(MetaGiroSemana.semana).all()},
         'metas_medicao': {meta.semana: meta for meta in MetaMedicaoSemana.query.filter_by(trimestre=tri).order_by(MetaMedicaoSemana.semana).all()},
         'metas_base_total': _mapa_meta_base_total(),
@@ -2539,6 +2559,36 @@ def toggle_empreendimento(eid):
     return jsonify({'sucesso': True, 'ativo': emp.ativo})
 
 
+# ── Fornecedores (cadastro para Negociação Fornecedores) ────────────────────────
+
+@admin_bp.route('/fornecedor-cadastro/criar', methods=['POST'])
+@login_required
+@requer_admin
+def criar_fornecedor_cadastro():
+    dados = request.get_json(silent=True) or request.form.to_dict()
+    nome = (dados.get('nome') or '').strip().upper()
+    if not nome:
+        return jsonify({'erro': 'Nome obrigatório.'}), 400
+    if FornecedorCadastro.query.filter_by(nome=nome).first():
+        return jsonify({'erro': 'Fornecedor já cadastrado.'}), 409
+    fornecedor = FornecedorCadastro(nome=nome)
+    db.session.add(fornecedor)
+    db.session.commit()
+    return jsonify({'sucesso': True, 'id': fornecedor.id, 'nome': fornecedor.nome}), 201
+
+
+@admin_bp.route('/fornecedor-cadastro/<int:fid>/toggle', methods=['POST'])
+@login_required
+@requer_admin
+def toggle_fornecedor_cadastro(fid):
+    fornecedor = db.session.get(FornecedorCadastro, fid)
+    if not fornecedor:
+        return jsonify({'erro': 'Fornecedor não encontrado.'}), 404
+    fornecedor.ativo = not fornecedor.ativo
+    db.session.commit()
+    return jsonify({'sucesso': True, 'ativo': fornecedor.ativo})
+
+
 # ── Metas ──────────────────────────────────────────────────────────────────────
 
 @admin_bp.route('/meta/disponibilizar', methods=['POST'])
@@ -2552,7 +2602,7 @@ def disponibilizar_meta():
     except (TypeError, ValueError):
         return jsonify({'erro': 'Semana invalida.'}), 400
 
-    if scope not in {'relacionamento', 'vendas', 'investidores', 'financeiro', 'giro', 'fornecedores', 'medicao'}:
+    if scope not in {'relacionamento', 'vendas', 'investidores', 'financeiro', 'giro', 'fornecedores', 'negociacao_fornecedores', 'medicao'}:
         return jsonify({'erro': 'Escopo de meta invalido.'}), 400
     if semana not in range(1, 13):
         return jsonify({'erro': 'Semana invalida.'}), 400
@@ -2577,7 +2627,7 @@ def salvar_meta_base():
     dados = request.get_json(silent=True) or request.form.to_dict()
     scope = (dados.get('scope') or '').strip().lower()
     tipo = (dados.get('tipo') or 'monetario').strip().lower()
-    if scope not in {'relacionamento', 'vendas', 'investidores', 'financeiro', 'giro', 'fornecedores', 'medicao'}:
+    if scope not in {'relacionamento', 'vendas', 'investidores', 'financeiro', 'giro', 'fornecedores', 'negociacao_fornecedores', 'medicao'}:
         return jsonify({'erro': 'Escopo de meta invalido.'}), 400
 
     try:
@@ -2780,6 +2830,46 @@ def salvar_meta_fornecedor():
         _registrar_auditoria_meta('fornecedores', 'acoes_planejadas', 0, max(acoes, 0), f's{semana}')
     if current_user.can_manage_admin():
         _salvar_meta_base_total('fornecedores', meta_base_total)
+    db.session.commit()
+    return jsonify({'sucesso': True})
+
+
+@admin_bp.route('/meta-negociacao-fornecedores/salvar', methods=['POST'])
+@login_required
+def salvar_meta_negociacao_fornecedores():
+    _garantir_permissao_meta('negociacao_fornecedores')
+    if get_trimestre() == 'q1':
+        return jsonify({'erro': 'Este indicador passa a valer somente a partir do 3º trimestre.'}), 400
+    dados = request.get_json(silent=True) or request.form.to_dict()
+    try:
+        semana = int(dados.get('semana', 1))
+        valor = float(dados.get('valor_meta', 0) or 0)
+        acoes = int(dados.get('acoes_planejadas', 0) or 0)
+        meta_base_total = float(dados.get('meta_base_total', 0) or 0)
+    except (ValueError, TypeError):
+        return jsonify({'erro': 'Valores invalidos.'}), 400
+    bloqueio_semana = _apenas_admin_pode_editar_primeira_semana(semana)
+    if bloqueio_semana:
+        return bloqueio_semana
+    if not _garantir_meta_liberada('negociacao_fornecedores', semana):
+        return jsonify({'erro': 'Meta ainda nao foi disponibilizada pelo administrador.'}), 403
+
+    tri = get_trimestre()
+    meta = MetaNegociacaoFornecedorSemana.query.filter_by(semana=semana, trimestre=tri).first()
+    if meta:
+        if _meta_valor_preenchida(meta) and not _pode_editar_meta_existente('negociacao_fornecedores'):
+            return jsonify({'erro': 'Meta ja preenchida e bloqueada para edicao.'}), 403
+        _registrar_auditoria_meta('negociacao_fornecedores', 'valor_meta', float(meta.valor_meta or 0), max(valor, 0), f's{semana}')
+        _registrar_auditoria_meta('negociacao_fornecedores', 'acoes_planejadas', int(meta.acoes_planejadas or 0), max(acoes, 0), f's{semana}')
+        meta.valor_meta = max(valor, 0)
+        meta.acoes_planejadas = max(acoes, 0)
+    else:
+        meta = MetaNegociacaoFornecedorSemana(semana=semana, trimestre=tri, valor_meta=max(valor, 0), acoes_planejadas=max(acoes, 0))
+        db.session.add(meta)
+        _registrar_auditoria_meta('negociacao_fornecedores', 'valor_meta', 0, max(valor, 0), f's{semana}')
+        _registrar_auditoria_meta('negociacao_fornecedores', 'acoes_planejadas', 0, max(acoes, 0), f's{semana}')
+    if current_user.can_manage_admin():
+        _salvar_meta_base_total('negociacao_fornecedores', meta_base_total)
     db.session.commit()
     return jsonify({'sucesso': True})
 
