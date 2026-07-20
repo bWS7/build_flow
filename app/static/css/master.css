@@ -22,7 +22,7 @@
 
 .master-strip {
   display: grid;
-  grid-template-columns: repeat(7, minmax(0, 1fr));
+  grid-template-columns: repeat(8, minmax(0, 1fr));
   gap: 12px;
 }
 
@@ -39,7 +39,7 @@
 }
 
 .master-chip--ficticio::after {
-  content: 'Fictício';
+  content: 'FictÃ­cio';
   position: absolute;
   top: 12px;
   right: 12px;
