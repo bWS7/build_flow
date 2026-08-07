@@ -398,7 +398,7 @@ function calcularFinanceiroFiltrado(registros) {
     base[label].quantidade += 1;
     if (normalizarSituacaoLabel(item.situacao) === 'VENDIDA') {
       totalVendidas += 1;
-      valorRealizado += Number(item.valor_presente || 0);
+      valorRealizado += Number(item.valor_presente || 0) || Number(item.valor_unitario || 0);
     }
   }
 
