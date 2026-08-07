@@ -356,7 +356,7 @@ def _calcular_financeiro(mes_slug: str, investidores: list[Investidor] | None = 
         meta_valor = _obter_meta_mes(mes_slug)
         meta_acoes = _obter_meta_acoes_mes(mes_slug)
     valor_realizado = sum(
-        float(investidor.valor_presente or 0)
+        float(investidor.valor_presente or 0) or float(investidor.valor_unitario or 0)
         for investidor in investidores
         if _normalizar_situacao(investidor.situacao) == 'VENDIDA'
     )
