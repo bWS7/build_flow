@@ -1,5 +1,4 @@
 import os
-import secrets
 from flask import Flask, flash, redirect, render_template, request, url_for
 from flask_sqlalchemy import SQLAlchemy
 from flask_login import LoginManager
@@ -74,7 +73,10 @@ def _resolve_database_url():
 
 
 def _resolve_secret_key():
-    return os.environ.get('SECRET_KEY') or secrets.token_urlsafe(32)
+    value = os.environ.get('SECRET_KEY')
+    if not value:
+        raise RuntimeError('SECRET_KEY nao configurada. Defina uma variavel de ambiente forte antes de iniciar.')
+    return value
 
 
 def _resolve_socketio_cors():
@@ -271,12 +273,13 @@ def _seed_initial_data():
     """Cria usuário admin e empreendimentos padrão se não existirem."""
     from app.models.user import User
     from app.models.empreendimento import Empreendimento
+    from app.seed_data import EMPREENDIMENTOS
 
     seed_admin_email = (os.environ.get('SEED_ADMIN_EMAIL') or '').strip().lower()
     seed_admin_password = os.environ.get('SEED_ADMIN_PASSWORD') or ''
     seed_admin_name = (os.environ.get('SEED_ADMIN_NAME') or 'ADMIN').strip().upper()
 
-    # Admin inicial controlado por variÃ¡veis de ambiente
+    # Admin inicial controlado por variáveis de ambiente
     if seed_admin_email and seed_admin_password and not User.query.filter_by(email=seed_admin_email).first():
         admin = User(
             nome=seed_admin_name,
@@ -290,33 +293,8 @@ def _seed_initial_data():
     placeholders = ['EMPREENDIMENTO A', 'EMPREENDIMENTO B', 'EMPREENDIMENTO C']
     Empreendimento.query.filter(Empreendimento.nome.in_(placeholders)).delete(synchronize_session=False)
 
-    # Seed de empreendimentos reais
-    _EMPREENDIMENTOS = [
-        'AMETISTA', 'GRAN PORTINARI', 'MONET I', 'MONET II', 'PORTAL DO LAGO',
-        'SAFIRA I', 'SAFIRA II', 'SIENA', 'SOU PLENO HOME I', 'SOU PLENO HOME II',
-        'SOU PLENO JACAREÍ', 'SOU PLENO LIFE I', 'SOU PLENO LIFE II',
-        'SOU PLENO PAISAGE I', 'SOU PLENO PAISAGE II', 'SOU PLENO VISAGE',
-        'SOU SPECIAL MOMENT', 'SOU VIVER NOVA ODESSA', 'SOU VIVER POÁ',
-        'SOU VIVER TAUBATÉ I', 'SOU VIVER TAUBATÉ II', 'TANGARÁ II',
-        'SOU VIVER VICENZA', 'VIDÁLA', 'BOSQUE DAS CEREJEIRAS I',
-        'BOSQUE DAS CEREJEIRAS II', 'SOU VIVER JACAREÍ DAVILINO',
-        'SOU VIVER FLORENÇA', 'SOU MAIS GUAIANASES', 'SOU VIVER DIADEMA I',
-        'SOU VIVER DIADEMA II', 'SOU MAIS DIADEMA', 'SOU VIVER VERONA',
-        'SOU VIVER PAVENNA', 'SOU VIVER RAVENNIA II', 'SOU MAIS SUZANO',
-        'SOU PLENO COTIA', 'SOU SPECIAL PLACE', 'DUMONT', 'DA VINCI',
-        'SOU MAIS URBAN', 'SOU VIVER ITATIBA I', 'SOU VIVER ITATIBA II',
-        'SOU VIVER ROMA', 'SOU VIVER ALTOS DE SÃO JOSÉ', 'SOU VIVER UP',
-        'SOU VIVER SOROCABA', 'ALAMEDAS', 'CARAPICUIBA', 'CEREJEIRAS I',
-        'CEREJEIRAS II', 'ERNESTO NAZARETH', 'HORTOLANDIA I', 'HORTOLANDIA II',
-        'JOÃO DUCIN', 'LOUVEIRA', 'MOOD ALTO DA MOOCA', 'MOOD ESPERANÇA',
-        'MOOD PATRIARCA', 'MOOD SIQUEIRA BUENO', 'MOOD VILA EMA',
-        'MOOD VILA RÉ I', 'MOOD VILA RÉ II', 'NOVA VALINHOS', 'PEDRO AMÉRICO',
-        'POR DO SOL', 'SOU MIAS DIADEMA', 'SOU MIAS GUAIANASES',
-        'SOU MIAS URBAN', 'SOU VIVER DIADEMA', 'SOU VIVER ITATIBA',
-        'SOU VIVER JACAREÍ', 'SOU VIVER NOVA ODESSA I', 'SOU VIVER RAVENNA I',
-        'SOU VIVER RAVENNA II', 'TANGARÁ III',
-    ]
-    for nome in _EMPREENDIMENTOS:
+    # Seed de empreendimentos reais (lista em app/seed_data.py)
+    for nome in EMPREENDIMENTOS:
         if not Empreendimento.query.filter_by(nome=nome).first():
             db.session.add(Empreendimento(nome=nome))
 
