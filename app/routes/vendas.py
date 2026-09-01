@@ -564,7 +564,14 @@ def index():
 @requer_vendas
 def listar_registros():
     mes_slug = _mes_slug_atual()
-    semana_local = None if mes_slug == RESUMO_TRIMESTRAL[0] else _semana_do_mes_atual()
+    # Sem o parametro "semana" a consulta deve agregar o mes inteiro (visao mensal
+    # do Painel de Vendas). So resolvemos a semana padrao quando ela for
+    # explicitamente informada, evitando zerar o mes ao cair na semana padrao.
+    semana_informada = bool((request.args.get('semana') or request.form.get('semana') or '').strip())
+    if mes_slug == RESUMO_TRIMESTRAL[0] or not semana_informada:
+        semana_local = None
+    else:
+        semana_local = _semana_do_mes_atual()
     vendas = _consultar_vendas_periodo(mes_slug, semana_local=semana_local)
     return jsonify({
         'registros': [venda.to_dict() for venda in vendas],

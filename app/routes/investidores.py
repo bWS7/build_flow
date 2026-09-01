@@ -551,7 +551,14 @@ def index():
 @requer_investidores
 def listar_registros():
     mes_slug = _mes_slug_atual()
-    semana_local = None if mes_slug == PERIODO_INVESTIDORES[0] else _semana_do_mes_atual()
+    # Sem o parametro "semana" a consulta deve agregar o mes inteiro (visao mensal
+    # do Painel de Investidores). So resolvemos a semana padrao quando ela for
+    # explicitamente informada, evitando zerar o mes ao cair na semana padrao.
+    semana_informada = bool((request.args.get('semana') or request.form.get('semana') or '').strip())
+    if mes_slug == PERIODO_INVESTIDORES[0] or not semana_informada:
+        semana_local = None
+    else:
+        semana_local = _semana_do_mes_atual()
     investidores = _consultar_investidores_periodo(mes_slug, semana_local=semana_local)
     return jsonify({
         'registros': [investidor.to_dict() for investidor in investidores],
