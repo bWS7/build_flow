@@ -8,6 +8,8 @@
 
 {% set logo_svg %}<img src="{{ url_for('static', filename='images/logo2.png') }}" alt="Build Flow" />{% endset %}
 {% set period_label = analytics_period_label if painel_admin_vendas else (mes_atual_nome ~ (' S' ~ semana_atual if semana_atual and not resumo_trimestral else '')) %}
+{% set _escopo_view = analytics_view if painel_admin_vendas else 'semanal' %}
+{% set escopo_periodo = 'TRIMESTRE' if (resumo_trimestral or _escopo_view == 'trimestral') else ('MÊS' if _escopo_view == 'mensal' else 'SEMANA') %}
 
 {% block body %}
 <div class="app-layout">
@@ -208,7 +210,7 @@
       </div>
       <div class="progress-block summary-banner">
         <div class="progress-block__header">
-          <span class="progress-block__label">Planejado X Realizado (Metrica e Acoes) - Semana {{ semana_atual or 1 }}</span>
+          <span class="progress-block__label">Planejado X Realizado (Metrica e Acoes) - {{ period_label }}</span>
         </div>
         <div class="progress-track">
           <div class="progress-fill progress-fill--acoes" id="bar-resumo-geral" style="width:{{ financeiro.percentual_atingimento if financeiro.percentual_atingimento <= 100 else 100 }}%"></div>
@@ -226,25 +228,25 @@
     <section class="indicators sales-kpi-grid">
       <div class="kpi-card kpi-card--compact">
         <div class="kpi-card__body">
-          <span class="kpi-card__label">META VENDAS (SEMANA)</span>
+          <span class="kpi-card__label">META VENDAS ({{ escopo_periodo }})</span>
           <span class="kpi-card__value" id="meta-quantidade">{{ financeiro.meta_quantidade }}</span>
         </div>
       </div>
       <div class="kpi-card kpi-card--compact">
         <div class="kpi-card__body">
-          <span class="kpi-card__label">REALIZADAS (SEMANA)</span>
+          <span class="kpi-card__label">REALIZADAS ({{ escopo_periodo }})</span>
           <span class="kpi-card__value" id="total-vendidas">{{ financeiro.total_vendidas }}</span>
         </div>
       </div>
       <div class="kpi-card kpi-card--compact">
         <div class="kpi-card__body">
-          <span class="kpi-card__label">ACOES PLANEJADAS (SEMANA)</span>
+          <span class="kpi-card__label">ACOES PLANEJADAS ({{ escopo_periodo }})</span>
           <span class="kpi-card__value" id="meta-acoes">{{ financeiro.meta_acoes }}</span>
         </div>
       </div>
       <div class="kpi-card kpi-card--compact">
         <div class="kpi-card__body">
-          <span class="kpi-card__label">ACOES REALIZADAS (SEMANA)</span>
+          <span class="kpi-card__label">ACOES REALIZADAS ({{ escopo_periodo }})</span>
           <span class="kpi-card__value" id="acoes-realizadas">{{ financeiro.acoes_realizadas }}</span>
         </div>
       </div>
@@ -254,7 +256,7 @@
       <div class="sales-overview-grid__main">
         <div class="progress-block">
           <div class="progress-block__header">
-            <span class="progress-block__label">Progresso Meta (semana)</span>
+            <span class="progress-block__label">Progresso Meta ({{ escopo_periodo | lower }})</span>
             <span class="progress-block__pct" id="pct-valor">{{ financeiro.percentual_atingimento }}%</span>
           </div>
           <div class="progress-track">
@@ -264,7 +266,7 @@
         </div>
         <div class="progress-block">
           <div class="progress-block__header">
-            <span class="progress-block__label">Progresso acoes (semana)</span>
+            <span class="progress-block__label">Progresso acoes ({{ escopo_periodo | lower }})</span>
             <span class="progress-block__pct" id="pct-acoes">{{ financeiro.percentual_acoes }}%</span>
           </div>
           <div class="progress-track">
