@@ -1905,8 +1905,8 @@ def _montar_master_painel_periodizado(view: str | None = None, period: str | Non
     }
 
 
-TRIMESTRES_DISPONIVEIS = ['q1', 'q2']
-TRIMESTRE_LABELS = {'q1': '2º Trimestre', 'q2': '3º Trimestre'}
+TRIMESTRES_DISPONIVEIS = ['q1', 'q2', 'q3']
+TRIMESTRE_LABELS = {'q1': '2º Trimestre', 'q2': '3º Trimestre', 'q3': '4º Trimestre'}
 
 
 def _master_tri_options() -> list[dict]:

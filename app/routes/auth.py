@@ -158,7 +158,7 @@ def login():
 def selecionar_trimestre():
     if request.method == 'POST':
         trimestre = request.form.get('trimestre', 'q1')
-        if trimestre not in ('q1', 'q2'):
+        if trimestre not in ('q1', 'q2', 'q3'):
             trimestre = 'q1'
         session['trimestre'] = trimestre
         return _redirecionar(current_user.tipo)

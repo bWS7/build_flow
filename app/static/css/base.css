@@ -722,6 +722,7 @@ body {
 }
 .quarter-card__badge--q1 { background: rgba(201, 138, 58, .18); color: #e7b877; }
 .quarter-card__badge--q2 { background: rgba(63, 174, 116, .18); color: #5fd29a; }
+.quarter-card__badge--q3 { background: rgba(90, 141, 201, .18); color: #7fb4e7; }
 .quarter-card__name {
   font-size: 16px; font-weight: 700; color: var(--white);
 }
